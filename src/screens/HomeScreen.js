@@ -5,24 +5,91 @@ import {
   Text,
   View,
   TouchableOpacity,
-  TextInput,
   ScrollView,
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
-import { typography, fontFamilies } from '../theme/typography';
+import { fontFamilies } from '../theme/typography';
 import { layout } from '../theme/layout';
-import { mockNavigation, mockMusicLibrary, initialVehicleStatus } from '../mock/mockData';
+import { mockMusicLibrary, initialVehicleStatus } from '../mock/mockData';
+
+// Lista de clientes simulados para entrega / rota comercial
+const CLIENTS_LIST = [
+  {
+    id: 'c1',
+    name: 'Mizael Dorotéia',
+    status: 'Ativo',
+    avatarEmoji: '👨‍💼',
+    avatarBg: '#EBF3FA',
+    orderTitle: 'Pedido',
+    orderItems: [
+      '1x Pomada Caramelo',
+      '5x Cola Comercial',
+      '10x Shampoo 5L',
+      '20x Pomada Barbearia',
+    ],
+    addressLine1: 'Rua Padre Natal Pigato, 17',
+    addressLine2: 'Vila Missionária',
+    phone: '(+55) 11 96461-7878',
+    eta: '18 min',
+    arrivalTime: '14:43',
+    distance: '9.4 km',
+  },
+  {
+    id: 'c2',
+    name: 'Carlos Mendes',
+    status: 'Aguardando',
+    avatarEmoji: '👨‍🔧',
+    avatarBg: '#F3E8FF',
+    orderTitle: 'Pedido',
+    orderItems: [
+      '3x Óleo Sintético 5W30',
+      '2x Filtro de Combustível',
+      '4x Pastilha de Freio Premium',
+    ],
+    addressLine1: 'Av. Brigadeiro Faria Lima, 3477',
+    addressLine2: 'Itaim Bibi',
+    phone: '(+55) 11 98765-4321',
+    eta: '25 min',
+    arrivalTime: '15:10',
+    distance: '12.8 km',
+  },
+  {
+    id: 'c3',
+    name: 'Juliana Rocha',
+    status: 'Confirmado',
+    avatarEmoji: '👩‍💼',
+    avatarBg: '#FEF3C7',
+    orderTitle: 'Contrato',
+    orderItems: [
+      '1x Kit Peças de Reposição',
+      '2x Módulo de Controle ECU',
+    ],
+    addressLine1: 'Alameda Santos, 1800',
+    addressLine2: 'Cerqueira César',
+    phone: '(+55) 11 97654-3210',
+    eta: '32 min',
+    arrivalTime: '15:35',
+    distance: '15.2 km',
+  },
+];
 
 export const HomeScreen = ({ onNavigate }) => {
   const [selectedTransport, setSelectedTransport] = useState('car'); // 'car' | 'walk' | 'bike'
-  const [searchQuery, setSearchQuery] = useState('CENU - Centro Empresarial');
+  const [currentClientIndex, setCurrentClientIndex] = useState(0);
   const [isPlayingMusic, setIsPlayingMusic] = useState(true);
+  const [activeMenu, setActiveMenu] = useState('map'); // 'home' | 'map' | 'music' | 'contacts' | 'routes' | 'settings'
+
+  const currentClient = CLIENTS_LIST[currentClientIndex];
+
+  const handleNextClient = () => {
+    setCurrentClientIndex((prev) => (prev + 1) % CLIENTS_LIST.length);
+  };
 
   return (
     <View style={styles.container}>
-      {/* 1. BARRA LATERAL ESQUERDA (SIDEBAR ESTILO APPLE MAPS) */}
+      {/* 1. BARRA LATERAL ESQUERDA (MENU COM AS PÁGINAS DO APP - IMAGEM 1 ADAPTADA) */}
       <View style={styles.sidebar}>
         {/* Topo da Sidebar: Logo Maps / GoClient */}
         <View style={styles.sidebarTop}>
@@ -38,21 +105,90 @@ export const HomeScreen = ({ onNavigate }) => {
           </TouchableOpacity>
         </View>
 
-        {/* Menu Principal Vertical */}
+        {/* Menu Principal com TODAS as Páginas do GoClient solicitadas */}
         <View style={styles.menuGroup}>
-          <TouchableOpacity style={styles.menuItem}>
-            <Ionicons name="search" size={20} color={colors.textSecondary} />
-            <Text style={styles.menuItemText}>Search</Text>
+          <TouchableOpacity
+            style={[styles.menuItem, activeMenu === 'home' && styles.menuItemActive]}
+            onPress={() => setActiveMenu('home')}
+          >
+            <Ionicons
+              name={activeMenu === 'home' ? 'grid' : 'grid-outline'}
+              size={20}
+              color={activeMenu === 'home' ? colors.actionBlue : colors.textSecondary}
+            />
+            <Text style={[styles.menuItemText, activeMenu === 'home' && styles.menuItemTextActive]}>
+              Início
+            </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem}>
-            <Ionicons name="grid-outline" size={20} color={colors.textSecondary} />
-            <Text style={styles.menuItemText}>Guides</Text>
+          <TouchableOpacity
+            style={[styles.menuItem, activeMenu === 'map' && styles.menuItemActive]}
+            onPress={() => setActiveMenu('map')}
+          >
+            <Ionicons
+              name={activeMenu === 'map' ? 'navigate' : 'map-outline'}
+              size={20}
+              color={activeMenu === 'map' ? colors.actionBlue : colors.textSecondary}
+            />
+            <Text style={[styles.menuItemText, activeMenu === 'map' && styles.menuItemTextActive]}>
+              Mapa & Rota
+            </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={[styles.menuItem, styles.menuItemActive]}>
-            <Ionicons name="navigate" size={20} color={colors.actionBlue} />
-            <Text style={[styles.menuItemText, styles.menuItemTextActive]}>Directions</Text>
+          <TouchableOpacity
+            style={[styles.menuItem, activeMenu === 'music' && styles.menuItemActive]}
+            onPress={() => setActiveMenu('music')}
+          >
+            <Ionicons
+              name={activeMenu === 'music' ? 'musical-notes' : 'musical-notes-outline'}
+              size={20}
+              color={activeMenu === 'music' ? colors.actionBlue : colors.textSecondary}
+            />
+            <Text style={[styles.menuItemText, activeMenu === 'music' && styles.menuItemTextActive]}>
+              Música
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.menuItem, activeMenu === 'contacts' && styles.menuItemActive]}
+            onPress={() => setActiveMenu('contacts')}
+          >
+            <Ionicons
+              name={activeMenu === 'contacts' ? 'people' : 'people-outline'}
+              size={20}
+              color={activeMenu === 'contacts' ? colors.actionBlue : colors.textSecondary}
+            />
+            <Text style={[styles.menuItemText, activeMenu === 'contacts' && styles.menuItemTextActive]}>
+              Clientes
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.menuItem, activeMenu === 'routes' && styles.menuItemActive]}
+            onPress={() => setActiveMenu('routes')}
+          >
+            <Ionicons
+              name={activeMenu === 'routes' ? 'git-branch' : 'git-branch-outline'}
+              size={20}
+              color={activeMenu === 'routes' ? colors.actionBlue : colors.textSecondary}
+            />
+            <Text style={[styles.menuItemText, activeMenu === 'routes' && styles.menuItemTextActive]}>
+              Rotas
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.menuItem, activeMenu === 'settings' && styles.menuItemActive]}
+            onPress={() => setActiveMenu('settings')}
+          >
+            <Ionicons
+              name={activeMenu === 'settings' ? 'settings' : 'settings-outline'}
+              size={20}
+              color={activeMenu === 'settings' ? colors.actionBlue : colors.textSecondary}
+            />
+            <Text style={[styles.menuItemText, activeMenu === 'settings' && styles.menuItemTextActive]}>
+              Ajustes
+            </Text>
           </TouchableOpacity>
         </View>
 
@@ -64,36 +200,36 @@ export const HomeScreen = ({ onNavigate }) => {
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false} style={styles.recentsList}>
-            <TouchableOpacity style={styles.recentItem}>
-              <View style={[styles.recentCircle, { backgroundColor: colors.actionBlue }]}>
-                <Ionicons name="star" size={14} color="#FFFFFF" />
-              </View>
-              <Text style={styles.recentItemText} numberOfLines={1}>
-                CENU - Central...
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.recentItem}>
-              <View style={[styles.recentCircle, { backgroundColor: colors.accentPurple }]}>
-                <Ionicons name="business" size={14} color="#FFFFFF" />
-              </View>
-              <Text style={styles.recentItemText} numberOfLines={1}>
-                Apex Soluções...
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.recentItem}>
-              <View style={[styles.recentCircle, { backgroundColor: colors.accentOrange }]}>
-                <Ionicons name="restaurant" size={14} color="#FFFFFF" />
-              </View>
-              <Text style={styles.recentItemText} numberOfLines={1}>
-                Figueira Rubaiyat
-              </Text>
-            </TouchableOpacity>
+            {CLIENTS_LIST.map((c, index) => (
+              <TouchableOpacity
+                key={c.id}
+                style={styles.recentItem}
+                onPress={() => setCurrentClientIndex(index)}
+              >
+                <View
+                  style={[
+                    styles.recentCircle,
+                    {
+                      backgroundColor:
+                        index === 0
+                          ? colors.actionBlue
+                          : index === 1
+                          ? colors.accentPurple
+                          : colors.accentOrange,
+                    },
+                  ]}
+                >
+                  <Text style={styles.recentEmojiText}>{c.avatarEmoji}</Text>
+                </View>
+                <Text style={styles.recentItemText} numberOfLines={1}>
+                  {c.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
 
             <TouchableOpacity style={styles.recentItem}>
               <View style={[styles.recentCircle, { backgroundColor: colors.accentGreen }]}>
-                <Ionicons name="airplane" size={14} color="#FFFFFF" />
+                <Ionicons name="airplane" size={13} color="#FFFFFF" />
               </View>
               <Text style={styles.recentItemText} numberOfLines={1}>
                 Aeroporto CGH
@@ -111,7 +247,7 @@ export const HomeScreen = ({ onNavigate }) => {
         </View>
       </View>
 
-      {/* 2. PAINEL FLUTUANTE DE DIREÇÕES (DIRECTIONS PANEL) */}
+      {/* 2. PAINEL CENTRAL FLUTUANTE DE DIREÇÕES & PERFIL DO CLIENTE (EXATAMENTE IGUAL À IMAGEM 3) */}
       <View style={styles.directionsPanel}>
         {/* Cabeçalho do Painel: Título + Botão Compartilhar e Fechar */}
         <View style={styles.panelHeader}>
@@ -174,111 +310,70 @@ export const HomeScreen = ({ onNavigate }) => {
           </TouchableOpacity>
         </View>
 
-        {/* Linhas de Trajeto: Origem, Ponto Intermediário e Destino */}
-        <View style={styles.routePointsBox}>
-          {/* Ponto 1: Minha Localização */}
-          <View style={styles.routeRow}>
-            <View style={[styles.routePinDot, { backgroundColor: colors.actionBlue }]}>
-              <Ionicons name="navigate" size={10} color="#FFFFFF" />
+        {/* CARD DO PERFIL DO CLIENTE (EXATAMENTE IGUAL À IMAGEM 3) */}
+        <View style={styles.clientProfileCard}>
+          {/* Topo: Avatar + Nome + Ponto Verde Ativo */}
+          <View style={styles.clientProfileHeader}>
+            <View style={styles.clientAvatarContainer}>
+              <Text style={styles.clientAvatarEmojiLarge}>{currentClient.avatarEmoji}</Text>
             </View>
-            <Text style={styles.routeLocationText} numberOfLines={1}>
-              Minha Localização (Av. Paulista)
-            </Text>
-            <Ionicons name="reorder-two-outline" size={18} color={colors.border} />
-          </View>
 
-          <View style={styles.connectorSegment} />
-
-          {/* Ponto 2: Parada Intermediária */}
-          <View style={styles.routeRow}>
-            <View style={[styles.routePinDot, { backgroundColor: colors.accentPurple }]}>
-              <Ionicons name="business" size={10} color="#FFFFFF" />
+            <View style={styles.clientNameAndStatusCol}>
+              <Text style={styles.clientHeaderName}>{currentClient.name}</Text>
+              <View style={styles.statusRowBadge}>
+                <View style={styles.greenStatusDot} />
+                <Text style={styles.statusLabelText}>{currentClient.status}</Text>
+              </View>
             </View>
-            <Text style={styles.routeLocationText} numberOfLines={1}>
-              Apex Soluções (Carlos Mendes)
-            </Text>
-            <Ionicons name="reorder-two-outline" size={18} color={colors.border} />
           </View>
 
-          <View style={styles.connectorSegment} />
-
-          {/* Ponto 3: Campo de Destino com Busca */}
-          <View style={styles.activeDestinationInputRow}>
-            <Ionicons name="add-circle" size={18} color={colors.actionBlue} />
-            <TextInput
-              style={styles.destinationInput}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              placeholder="Pesquisar destino..."
-              placeholderTextColor={colors.textMuted}
-            />
-            <TouchableOpacity style={styles.inputMoreBtn}>
-              <Ionicons name="ellipsis-horizontal" size={16} color={colors.textSecondary} />
-            </TouchableOpacity>
-            <Ionicons name="reorder-two-outline" size={18} color={colors.border} />
+          {/* Seção Pedido com Lista de Produtos */}
+          <View style={styles.orderSection}>
+            <Text style={styles.orderSectionTitle}>{currentClient.orderTitle}</Text>
+            <View style={styles.orderItemsList}>
+              {currentClient.orderItems.map((item, index) => (
+                <Text key={index} style={styles.orderItemRowText}>
+                  {item}
+                </Text>
+              ))}
+            </View>
           </View>
+
+          {/* Seção de Endereço com Ícone de Pin Preto em Card Arredondado */}
+          <View style={styles.infoPillRow}>
+            <View style={styles.infoIconSquare}>
+              <Ionicons name="location" size={20} color="#111827" />
+            </View>
+            <View style={styles.infoTextsCol}>
+              <Text style={styles.addressLine1Text}>{currentClient.addressLine1}</Text>
+              <Text style={styles.addressLine2Text}>{currentClient.addressLine2}</Text>
+            </View>
+          </View>
+
+          {/* Seção de Telefone com Ícone de Telefone Preto */}
+          <View style={styles.infoPillRow}>
+            <View style={styles.infoIconSquare}>
+              <Ionicons name="call" size={20} color="#111827" />
+            </View>
+            <Text style={styles.phoneText}>{currentClient.phone}</Text>
+          </View>
+
+          {/* Botão Oficial: "PRÓXIMO CLIENTE" (Identico à Imagem 3) */}
+          <TouchableOpacity
+            style={styles.nextClientButton}
+            onPress={handleNextClient}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.nextClientButtonText}>PRÓXIMO CLIENTE</Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Lista de Sugestões de Destinos / Locais com Marcadores Amarelos */}
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          style={styles.suggestionsScroll}
-          contentContainerStyle={styles.suggestionsContent}
-        >
-          {/* Item 1: Pesquisar nas proximidades */}
-          <TouchableOpacity style={styles.suggestionItem}>
-            <View style={[styles.suggestionIconCircle, { backgroundColor: colors.surfaceSubtle }]}>
-              <Ionicons name="search" size={16} color={colors.textSecondary} />
-            </View>
-            <View style={styles.suggestionTexts}>
-              <Text style={styles.suggestionTitle}>CENU</Text>
-              <Text style={styles.suggestionSubtitle}>Buscar nas proximidades</Text>
-            </View>
-          </TouchableOpacity>
-
-          {/* Item 2: CENU Torre Norte */}
-          <TouchableOpacity style={styles.suggestionItem}>
-            <View style={[styles.suggestionIconCircle, { backgroundColor: colors.accentYellow }]}>
-              <Ionicons name="bag" size={16} color="#FFFFFF" />
-            </View>
-            <View style={styles.suggestionTexts}>
-              <Text style={styles.suggestionTitle}>CENU Torre Norte</Text>
-              <Text style={styles.suggestionSubtitle}>
-                9.4 km • Av. das Nações Unidas, 12901
-              </Text>
-              <Text style={styles.suggestionMeta}>★ Destaque em 3 Guias Automotivos</Text>
-            </View>
-          </TouchableOpacity>
-
-          {/* Item 3: Estacionamento VIP */}
-          <TouchableOpacity style={styles.suggestionItem}>
-            <View style={[styles.suggestionIconCircle, { backgroundColor: colors.accentYellow }]}>
-              <Ionicons name="car" size={16} color="#FFFFFF" />
-            </View>
-            <View style={styles.suggestionTexts}>
-              <Text style={styles.suggestionTitle}>CENU Estacionamento VIP</Text>
-              <Text style={styles.suggestionSubtitle}>9.4 km • Entrada G2 Subsolo</Text>
-            </View>
-          </TouchableOpacity>
-
-          {/* Item 4: Apex Soluções */}
-          <TouchableOpacity style={styles.suggestionItem}>
-            <View style={[styles.suggestionIconCircle, { backgroundColor: colors.accentYellow }]}>
-              <Ionicons name="business" size={16} color="#FFFFFF" />
-            </View>
-            <View style={styles.suggestionTexts}>
-              <Text style={styles.suggestionTitle}>Apex Soluções - Faria Lima</Text>
-              <Text style={styles.suggestionSubtitle}>5.1 km • Av. Brigadeiro Faria Lima, 3477</Text>
-            </View>
-          </TouchableOpacity>
-        </ScrollView>
-
-        {/* Rodapé de Estimativa de Tempo (ETA) Idêntico à Referência */}
+        {/* Rodapé de Estimativa de Tempo (ETA) */}
         <View style={styles.etaFooter}>
           <View style={styles.etaTextCol}>
-            <Text style={styles.etaTimeNumber}>18 min</Text>
+            <Text style={styles.etaTimeNumber}>{currentClient.eta}</Text>
             <Text style={styles.etaSubDetails}>
-              {mockNavigation.arrivalTime} ETA • {mockNavigation.distance}
+              {currentClient.arrivalTime} ETA • {currentClient.distance}
             </Text>
           </View>
           <TouchableOpacity style={styles.infoCircleBtn}>
@@ -287,7 +382,7 @@ export const HomeScreen = ({ onNavigate }) => {
         </View>
       </View>
 
-      {/* 3. ÁREA AMPLA DO MAPA (MAP CANVAS) */}
+      {/* 3. ÁREA AMPLA DO MAPA (MAP CANVAS EM ALTA RESOLUÇÃO) */}
       <View style={styles.mapCanvas}>
         {/* Renderização Vetorial Clara e Nítida do Mapa */}
         <View style={styles.mapVectorGrid}>
@@ -301,9 +396,9 @@ export const HomeScreen = ({ onNavigate }) => {
           <View style={styles.streetMinor1} />
           <View style={styles.streetMinor2} />
 
-          {/* Área Verde / Parque Urbano */}
+          {/* Área Verde / Bairro Residencial */}
           <View style={styles.greenParkArea}>
-            <Text style={styles.parkLabel}>Parque do Povo</Text>
+            <Text style={styles.parkLabel}>{currentClient.addressLine2}</Text>
           </View>
 
           {/* Traçado da Rota Principal em Azul Apple Maps */}
@@ -312,7 +407,7 @@ export const HomeScreen = ({ onNavigate }) => {
           {/* Rota Alternativa */}
           <View style={styles.altRouteLine} />
 
-          {/* Pin de Origem */}
+          {/* Pin de Origem (Partida) */}
           <View style={styles.originPinWrapper}>
             <View style={styles.originPinOuter}>
               <View style={styles.originPinInner} />
@@ -320,29 +415,28 @@ export const HomeScreen = ({ onNavigate }) => {
             <Text style={styles.pinLabel}>Av. Paulista</Text>
           </View>
 
-          {/* Pin de Destino */}
+          {/* Pin de Destino (Local do Cliente) */}
           <View style={styles.destPinWrapper}>
             <View style={styles.destPinOuter}>
-              <Ionicons name="flag" size={14} color="#FFFFFF" />
+              <Text style={{ fontSize: 14 }}>{currentClient.avatarEmoji}</Text>
             </View>
-            <Text style={styles.pinLabel}>CENU</Text>
+            <Text style={styles.pinLabel}>{currentClient.name}</Text>
           </View>
 
-          {/* Balão Flutuante de ETA Principal: 18 min Mais Rápido */}
+          {/* Balão Flutuante de ETA Principal: Mais Rápido */}
           <View style={styles.fastestRouteBadge}>
-            <Text style={styles.fastestBadgeTime}>18 min</Text>
+            <Text style={styles.fastestBadgeTime}>{currentClient.eta}</Text>
             <Text style={styles.fastestBadgeSub}>Mais Rápido</Text>
           </View>
 
-          {/* Balão Flutuante da Rota Alternativa: 22 min */}
+          {/* Balão Flutuante da Rota Alternativa */}
           <View style={styles.altRouteBadge}>
-            <Text style={styles.altBadgeTime}>22 min</Text>
+            <Text style={styles.altBadgeTime}>24 min</Text>
           </View>
         </View>
 
         {/* Widget Automotivo Flutuante no Topo do Mapa: Mídia & Clima */}
         <View style={styles.floatingMediaBar}>
-          {/* Status do Veículo */}
           <View style={styles.vehicleStatPill}>
             <Ionicons name="thermometer-outline" size={16} color={colors.actionBlue} />
             <Text style={styles.vehicleStatText}>{initialVehicleStatus.cabinTemp}</Text>
@@ -426,7 +520,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.sidebarBackground,
   },
 
-  // 1. BARRA LATERAL
+  // 1. BARRA LATERAL ESQUERDA
   sidebar: {
     width: layout.sidebarWidth,
     height: '100%',
@@ -469,13 +563,13 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   menuGroup: {
-    gap: 6,
-    marginBottom: 24,
+    gap: 4,
+    marginBottom: 20,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: 9,
     paddingHorizontal: 12,
     borderRadius: layout.radius.small,
     gap: 12,
@@ -485,7 +579,7 @@ const styles = StyleSheet.create({
   },
   menuItemText: {
     fontFamily: fontFamilies.regular,
-    fontSize: 16,
+    fontSize: 15,
     color: colors.textSecondary,
   },
   menuItemTextActive: {
@@ -499,7 +593,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: 10,
     paddingHorizontal: 4,
   },
   recentsTitle: {
@@ -513,7 +607,7 @@ const styles = StyleSheet.create({
   recentItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 7,
     gap: 10,
   },
   recentCircle: {
@@ -523,6 +617,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  recentEmojiText: {
+    fontSize: 14,
+  },
   recentItemText: {
     fontFamily: fontFamilies.regular,
     fontSize: 14,
@@ -530,7 +627,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   sidebarFooter: {
-    paddingTop: 14,
+    paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
@@ -546,15 +643,15 @@ const styles = StyleSheet.create({
     color: colors.actionBlue,
   },
 
-  // 2. PAINEL FLUTUANTE DE DIREÇÕES
+  // 2. PAINEL CENTRAL DE DIREÇÕES & CARD DO CLIENTE (IMAGEM 3)
   directionsPanel: {
-    width: layout.panelWidth,
+    width: 480,
     height: '100%',
     backgroundColor: colors.cardSurface,
     borderRightWidth: 1,
     borderRightColor: colors.border,
     paddingHorizontal: 22,
-    paddingTop: 20,
+    paddingTop: 18,
     paddingBottom: 16,
     justifyContent: 'space-between',
     ...Platform.select({
@@ -570,7 +667,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    marginBottom: 14,
   },
   panelTitle: {
     fontFamily: fontFamilies.bold,
@@ -596,7 +693,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#EAECEE',
     borderRadius: layout.radius.pill,
     padding: 3,
-    marginBottom: 16,
+    marginBottom: 14,
   },
   transportTab: {
     flex: 1,
@@ -608,111 +705,149 @@ const styles = StyleSheet.create({
   transportTabActive: {
     backgroundColor: colors.actionBlue,
   },
-  routePointsBox: {
-    backgroundColor: colors.surfaceSubtle,
-    borderRadius: layout.radius.card,
-    padding: 12,
+
+  // CARD DO CLIENTE (EXATAMENTE IGUAL À IMAGEM 3)
+  clientProfileCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 28,
+    padding: 20,
     borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: 14,
+    borderColor: '#E6E9ED',
+    ...Platform.select({
+      web: {
+        boxShadow: '0 10px 28px rgba(0, 0, 0, 0.06)',
+      },
+      default: {
+        elevation: 4,
+      },
+    }),
+    gap: 14,
   },
-  routeRow: {
+  clientProfileHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    height: 32,
+    gap: 16,
   },
-  routePinDot: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+  clientAvatarContainer: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: '#F3F4F6',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
-  routeLocationText: {
-    fontFamily: fontFamilies.medium,
-    fontSize: 14,
-    color: colors.textPrimary,
+  clientAvatarEmojiLarge: {
+    fontSize: 38,
+  },
+  clientNameAndStatusCol: {
     flex: 1,
   },
-  connectorSegment: {
-    width: 2,
+  clientHeaderName: {
+    fontFamily: fontFamilies.bold,
+    fontSize: 24,
+    color: '#111827',
+    letterSpacing: -0.4,
+  },
+  statusRowBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+  },
+  greenStatusDot: {
+    width: 12,
     height: 12,
-    backgroundColor: colors.border,
-    marginLeft: 10,
-    marginVertical: 2,
+    borderRadius: 6,
+    backgroundColor: '#22C55E',
   },
-  activeDestinationInputRow: {
+  statusLabelText: {
+    fontFamily: fontFamilies.medium,
+    fontSize: 16,
+    color: '#111827',
+  },
+  orderSection: {
+    paddingVertical: 4,
+  },
+  orderSectionTitle: {
+    fontFamily: fontFamilies.bold,
+    fontSize: 24,
+    color: '#111827',
+    marginBottom: 8,
+  },
+  orderItemsList: {
+    gap: 4,
+  },
+  orderItemRowText: {
+    fontFamily: fontFamilies.medium,
+    fontSize: 16,
+    color: '#1F2937',
+    lineHeight: 24,
+  },
+  infoPillRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.cardSurface,
-    borderRadius: layout.radius.small,
-    borderWidth: 1.5,
-    borderColor: colors.actionBlue,
-    paddingHorizontal: 8,
-    height: 38,
-    gap: 8,
-  },
-  destinationInput: {
-    flex: 1,
-    fontFamily: fontFamilies.semibold,
-    fontSize: 14,
-    color: colors.textPrimary,
-    padding: 0,
-  },
-  inputMoreBtn: {
-    padding: 4,
-  },
-  suggestionsScroll: {
-    flex: 1,
-  },
-  suggestionsContent: {
-    gap: 8,
-    paddingBottom: 10,
-  },
-  suggestionItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+    gap: 14,
+    backgroundColor: '#F9FAFB',
+    paddingHorizontal: 14,
     paddingVertical: 10,
-    paddingHorizontal: 8,
-    borderRadius: layout.radius.small,
-    gap: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderSubtle,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
   },
-  suggestionIconCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+  infoIconSquare: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 2,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
-  suggestionTexts: {
+  infoTextsCol: {
     flex: 1,
   },
-  suggestionTitle: {
-    fontFamily: fontFamilies.semibold,
+  addressLine1Text: {
+    fontFamily: fontFamilies.medium,
     fontSize: 15,
-    color: colors.textPrimary,
+    color: '#111827',
   },
-  suggestionSubtitle: {
+  addressLine2Text: {
     fontFamily: fontFamilies.regular,
-    fontSize: 13,
-    color: colors.textSecondary,
+    fontSize: 14,
+    color: '#4B5563',
     marginTop: 1,
   },
-  suggestionMeta: {
-    fontFamily: fontFamilies.medium,
-    fontSize: 12,
-    color: colors.textMuted,
-    marginTop: 3,
+  phoneText: {
+    fontFamily: fontFamilies.semibold,
+    fontSize: 15,
+    color: '#111827',
   },
+  nextClientButton: {
+    backgroundColor: '#F3F4F6',
+    height: 52,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  nextClientButtonText: {
+    fontFamily: fontFamilies.bold,
+    fontSize: 16,
+    color: '#111827',
+    letterSpacing: 0.5,
+  },
+
+  // ETA FOOTER
   etaFooter: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: 14,
+    paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
@@ -721,14 +856,14 @@ const styles = StyleSheet.create({
   },
   etaTimeNumber: {
     fontFamily: fontFamilies.bold,
-    fontSize: 32,
+    fontSize: 30,
     color: colors.textPrimary,
-    lineHeight: 36,
+    lineHeight: 34,
     letterSpacing: -0.5,
   },
   etaSubDetails: {
     fontFamily: fontFamilies.regular,
-    fontSize: 14,
+    fontSize: 13,
     color: colors.textSecondary,
     marginTop: 2,
   },
@@ -736,7 +871,7 @@ const styles = StyleSheet.create({
     padding: 6,
   },
 
-  // 3. ÁREA AMPLA DO MAPA (MAP CANVAS)
+  // 3. MAPA
   mapCanvas: {
     flex: 1,
     backgroundColor: colors.mapBackground,
@@ -885,9 +1020,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   destPinOuter: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     backgroundColor: colors.actionBlue,
     alignItems: 'center',
     justifyContent: 'center',
