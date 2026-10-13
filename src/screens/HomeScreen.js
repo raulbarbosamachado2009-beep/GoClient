@@ -1,5 +1,5 @@
 // src/screens/HomeScreen.js
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import {
   StyleSheet,
   Text,
@@ -7,12 +7,31 @@ import {
   TouchableOpacity,
   ScrollView,
   Platform,
+  PanResponder,
+  LayoutAnimation,
+  UIManager,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { fontFamilies } from '../theme/typography';
 import { layout } from '../theme/layout';
 import { mockMusicLibrary, initialVehicleStatus } from '../mock/mockData';
+
+// Habilitar LayoutAnimation no Android
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
+// Constantes da sidebar
+const SIDEBAR_COLLAPSED_WIDTH = 80;
+const SIDEBAR_EXPANDED_WIDTH = 240;
+const SIDEBAR_ICON_COLLAPSED = 30;
+const SIDEBAR_ICON_EXPANDED = 20;
+
+// Constantes do painel de direções
+const PANEL_MIN_WIDTH = 350;
+const PANEL_MAX_WIDTH = 620;
+const PANEL_DEFAULT_WIDTH = 480;
 
 // Lista de clientes simulados para entrega / rota comercial
 const CLIENTS_LIST = [
@@ -76,10 +95,19 @@ const CLIENTS_LIST = [
 ];
 
 export const HomeScreen = ({ onNavigate }) => {
-  const [selectedTransport, setSelectedTransport] = useState('car'); // 'car' | 'walk' | 'bike'
+  const [selectedTransport, setSelectedTransport] = useState('car');
   const [currentClientIndex, setCurrentClientIndex] = useState(0);
   const [isPlayingMusic, setIsPlayingMusic] = useState(true);
-  const [activeMenu, setActiveMenu] = useState('map'); // 'home' | 'map' | 'music' | 'contacts' | 'routes' | 'settings'
+  const [activeMenu, setActiveMenu] = useState('map');
+
+  // Estado da sidebar: começa colapsada (apenas ícones)
+  const [sidebarExpanded, setSidebarExpanded] = useState(false);
+
+  // Estado do painel de direções: largura redimensionável
+  const [panelWidth, setPanelWidth] = useState(PANEL_DEFAULT_WIDTH);
+  const panelWidthRef = useRef(PANEL_DEFAULT_WIDTH);
+  const dragStartX = useRef(0);
+  const dragStartWidth = useRef(PANEL_DEFAULT_WIDTH);
 
   const currentClient = CLIENTS_LIST[currentClientIndex];
 
@@ -87,128 +115,145 @@ export const HomeScreen = ({ onNavigate }) => {
     setCurrentClientIndex((prev) => (prev + 1) % CLIENTS_LIST.length);
   };
 
+  const toggleSidebar = useCallback(() => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setSidebarExpanded((prev) => !prev);
+  }, []);
+
+  // PanResponder para arrastar a borda do painel (nativo)
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        dragStartWidth.current = panelWidthRef.current;
+      },
+      onPanResponderMove: (_, gestureState) => {
+        const newWidth = dragStartWidth.current + gestureState.dx;
+        const clamped = Math.min(PANEL_MAX_WIDTH, Math.max(PANEL_MIN_WIDTH, newWidth));
+        panelWidthRef.current = clamped;
+        setPanelWidth(clamped);
+      },
+      onPanResponderRelease: () => {},
+    })
+  ).current;
+
+  // Handlers para arrastar no web (pointer events)
+  const handleDragHandlePointerDown = useCallback((e) => {
+    if (Platform.OS !== 'web') return;
+    e.preventDefault();
+    dragStartX.current = e.clientX;
+    dragStartWidth.current = panelWidthRef.current;
+
+    const onPointerMove = (ev) => {
+      const delta = ev.clientX - dragStartX.current;
+      const newWidth = dragStartWidth.current + delta;
+      const clamped = Math.min(PANEL_MAX_WIDTH, Math.max(PANEL_MIN_WIDTH, newWidth));
+      panelWidthRef.current = clamped;
+      setPanelWidth(clamped);
+    };
+
+    const onPointerUp = () => {
+      document.removeEventListener('pointermove', onPointerMove);
+      document.removeEventListener('pointerup', onPointerUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    document.addEventListener('pointermove', onPointerMove);
+    document.addEventListener('pointerup', onPointerUp);
+  }, []);
+
+  const sidebarWidth = sidebarExpanded ? SIDEBAR_EXPANDED_WIDTH : SIDEBAR_COLLAPSED_WIDTH;
+  const iconSize = sidebarExpanded ? SIDEBAR_ICON_EXPANDED : SIDEBAR_ICON_COLLAPSED;
+
   return (
     <View style={styles.container}>
-      {/* 1. BARRA LATERAL ESQUERDA (MENU COM AS PÁGINAS DO APP - IMAGEM 1 ADAPTADA) */}
-      <View style={styles.sidebar}>
-        {/* Topo da Sidebar: Logo Maps / GoClient */}
+      {/* 1. BARRA LATERAL ESQUERDA (COLAPSÁVEL) */}
+      <View style={[styles.sidebar, { width: sidebarWidth, paddingHorizontal: sidebarExpanded ? 20 : 10 }]}>
+        {/* Topo da Sidebar: Logo + Botão toggle */}
         <View style={styles.sidebarTop}>
-          <View style={styles.logoRow}>
-            <Ionicons name="speedometer" size={24} color={colors.textPrimary} />
-            <Text style={styles.logoTitle}>Maps</Text>
-            <View style={styles.betaBadge}>
-              <Text style={styles.betaBadgeText}>BETA</Text>
+          {sidebarExpanded ? (
+            <View style={styles.logoRow}>
+              <Ionicons name="speedometer" size={24} color={colors.textPrimary} />
+              <Text style={styles.logoTitle}>Maps</Text>
+              <View style={styles.betaBadge}>
+                <Text style={styles.betaBadgeText}>BETA</Text>
+              </View>
             </View>
-          </View>
-          <TouchableOpacity style={styles.collapseBtn}>
-            <Ionicons name="albums-outline" size={18} color={colors.textSecondary} />
+          ) : null}
+          <TouchableOpacity
+            style={[styles.collapseBtn, !sidebarExpanded && styles.collapseBtnCentered]}
+            onPress={toggleSidebar}
+            activeOpacity={0.7}
+          >
+            <Ionicons
+              name={sidebarExpanded ? 'albums-outline' : 'albums-outline'}
+              size={22}
+              color={colors.textSecondary}
+            />
           </TouchableOpacity>
         </View>
 
-        {/* Menu Principal com TODAS as Páginas do GoClient solicitadas */}
+        {/* Menu Principal */}
         <View style={styles.menuGroup}>
-          <TouchableOpacity
-            style={[styles.menuItem, activeMenu === 'home' && styles.menuItemActive]}
-            onPress={() => setActiveMenu('home')}
-          >
-            <Ionicons
-              name={activeMenu === 'home' ? 'grid' : 'grid-outline'}
-              size={20}
-              color={activeMenu === 'home' ? colors.actionBlue : colors.textSecondary}
-            />
-            <Text style={[styles.menuItemText, activeMenu === 'home' && styles.menuItemTextActive]}>
-              Início
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.menuItem, activeMenu === 'map' && styles.menuItemActive]}
-            onPress={() => setActiveMenu('map')}
-          >
-            <Ionicons
-              name={activeMenu === 'map' ? 'navigate' : 'map-outline'}
-              size={20}
-              color={activeMenu === 'map' ? colors.actionBlue : colors.textSecondary}
-            />
-            <Text style={[styles.menuItemText, activeMenu === 'map' && styles.menuItemTextActive]}>
-              Mapa & Rota
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.menuItem, activeMenu === 'music' && styles.menuItemActive]}
-            onPress={() => setActiveMenu('music')}
-          >
-            <Ionicons
-              name={activeMenu === 'music' ? 'musical-notes' : 'musical-notes-outline'}
-              size={20}
-              color={activeMenu === 'music' ? colors.actionBlue : colors.textSecondary}
-            />
-            <Text style={[styles.menuItemText, activeMenu === 'music' && styles.menuItemTextActive]}>
-              Música
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.menuItem, activeMenu === 'contacts' && styles.menuItemActive]}
-            onPress={() => setActiveMenu('contacts')}
-          >
-            <Ionicons
-              name={activeMenu === 'contacts' ? 'people' : 'people-outline'}
-              size={20}
-              color={activeMenu === 'contacts' ? colors.actionBlue : colors.textSecondary}
-            />
-            <Text style={[styles.menuItemText, activeMenu === 'contacts' && styles.menuItemTextActive]}>
-              Clientes
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.menuItem, activeMenu === 'routes' && styles.menuItemActive]}
-            onPress={() => setActiveMenu('routes')}
-          >
-            <Ionicons
-              name={activeMenu === 'routes' ? 'git-branch' : 'git-branch-outline'}
-              size={20}
-              color={activeMenu === 'routes' ? colors.actionBlue : colors.textSecondary}
-            />
-            <Text style={[styles.menuItemText, activeMenu === 'routes' && styles.menuItemTextActive]}>
-              Rotas
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.menuItem, activeMenu === 'settings' && styles.menuItemActive]}
-            onPress={() => setActiveMenu('settings')}
-          >
-            <Ionicons
-              name={activeMenu === 'settings' ? 'settings' : 'settings-outline'}
-              size={20}
-              color={activeMenu === 'settings' ? colors.actionBlue : colors.textSecondary}
-            />
-            <Text style={[styles.menuItemText, activeMenu === 'settings' && styles.menuItemTextActive]}>
-              Ajustes
-            </Text>
-          </TouchableOpacity>
+          {[
+            { key: 'home', label: 'Início', iconActive: 'grid', iconInactive: 'grid-outline' },
+            { key: 'map', label: 'Mapa & Rota', iconActive: 'navigate', iconInactive: 'map-outline' },
+            { key: 'music', label: 'Música', iconActive: 'musical-notes', iconInactive: 'musical-notes-outline' },
+            { key: 'contacts', label: 'Clientes', iconActive: 'people', iconInactive: 'people-outline' },
+            { key: 'routes', label: 'Rotas', iconActive: 'git-branch', iconInactive: 'git-branch-outline' },
+            { key: 'settings', label: 'Ajustes', iconActive: 'settings', iconInactive: 'settings-outline' },
+          ].map((item) => {
+            const isActive = activeMenu === item.key;
+            return (
+              <TouchableOpacity
+                key={item.key}
+                style={[
+                  styles.menuItem,
+                  isActive && styles.menuItemActive,
+                  !sidebarExpanded && styles.menuItemCollapsed,
+                ]}
+                onPress={() => setActiveMenu(item.key)}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name={isActive ? item.iconActive : item.iconInactive}
+                  size={iconSize}
+                  color={isActive ? colors.actionBlue : colors.textSecondary}
+                />
+                {sidebarExpanded && (
+                  <Text style={[styles.menuItemText, isActive && styles.menuItemTextActive]}>
+                    {item.label}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
-        {/* Seção de Recentes (Recents >) */}
+        {/* Seção de Recentes */}
         <View style={styles.recentsSection}>
-          <View style={styles.recentsHeader}>
-            <Text style={styles.recentsTitle}>Recents</Text>
-            <Ionicons name="chevron-forward" size={14} color={colors.textSecondary} />
-          </View>
+          {sidebarExpanded && (
+            <View style={styles.recentsHeader}>
+              <Text style={styles.recentsTitle}>Recents</Text>
+              <Ionicons name="chevron-forward" size={14} color={colors.textSecondary} />
+            </View>
+          )}
 
           <ScrollView showsVerticalScrollIndicator={false} style={styles.recentsList}>
             {CLIENTS_LIST.map((c, index) => (
               <TouchableOpacity
                 key={c.id}
-                style={styles.recentItem}
+                style={[styles.recentItem, !sidebarExpanded && styles.recentItemCollapsed]}
                 onPress={() => setCurrentClientIndex(index)}
               >
                 <View
                   style={[
                     styles.recentCircle,
+                    !sidebarExpanded && styles.recentCircleCollapsed,
                     {
                       backgroundColor:
                         index === 0
@@ -219,36 +264,50 @@ export const HomeScreen = ({ onNavigate }) => {
                     },
                   ]}
                 >
-                  <Text style={styles.recentEmojiText}>{c.avatarEmoji}</Text>
+                  <Text style={[styles.recentEmojiText, !sidebarExpanded && styles.recentEmojiCollapsed]}>
+                    {c.avatarEmoji}
+                  </Text>
                 </View>
-                <Text style={styles.recentItemText} numberOfLines={1}>
-                  {c.name}
-                </Text>
+                {sidebarExpanded && (
+                  <Text style={styles.recentItemText} numberOfLines={1}>
+                    {c.name}
+                  </Text>
+                )}
               </TouchableOpacity>
             ))}
 
-            <TouchableOpacity style={styles.recentItem}>
-              <View style={[styles.recentCircle, { backgroundColor: colors.accentGreen }]}>
-                <Ionicons name="airplane" size={13} color="#FFFFFF" />
+            <TouchableOpacity style={[styles.recentItem, !sidebarExpanded && styles.recentItemCollapsed]}>
+              <View style={[
+                styles.recentCircle,
+                !sidebarExpanded && styles.recentCircleCollapsed,
+                { backgroundColor: colors.accentGreen },
+              ]}>
+                <Ionicons name="airplane" size={!sidebarExpanded ? 16 : 13} color="#FFFFFF" />
               </View>
-              <Text style={styles.recentItemText} numberOfLines={1}>
-                Aeroporto CGH
-              </Text>
+              {sidebarExpanded && (
+                <Text style={styles.recentItemText} numberOfLines={1}>
+                  Aeroporto CGH
+                </Text>
+              )}
             </TouchableOpacity>
           </ScrollView>
         </View>
 
         {/* Rodapé da Sidebar */}
         <View style={styles.sidebarFooter}>
-          <Text style={styles.footerHelpText}>GoClient Automotive OS</Text>
-          <TouchableOpacity>
-            <Text style={styles.footerLinkText}>Gerenciar Negócios e Rotas ↗</Text>
-          </TouchableOpacity>
+          <Text style={styles.footerHelpText} numberOfLines={1}>
+            {sidebarExpanded ? 'GoClient Automotive OS' : 'GoClient'}
+          </Text>
+          {sidebarExpanded && (
+            <TouchableOpacity>
+              <Text style={styles.footerLinkText}>Gerenciar Negócios e Rotas ↗</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
-      {/* 2. PAINEL CENTRAL FLUTUANTE DE DIREÇÕES & PERFIL DO CLIENTE (EXATAMENTE IGUAL À IMAGEM 3) */}
-      <View style={styles.directionsPanel}>
+      {/* 2. PAINEL CENTRAL FLUTUANTE DE DIREÇÕES & PERFIL DO CLIENTE */}
+      <View style={[styles.directionsPanel, { width: panelWidth }]}>
         {/* Cabeçalho do Painel: Título + Botão Compartilhar e Fechar */}
         <View style={styles.panelHeader}>
           <Text style={styles.panelTitle}>Directions</Text>
@@ -311,62 +370,64 @@ export const HomeScreen = ({ onNavigate }) => {
         </View>
 
         {/* CARD DO PERFIL DO CLIENTE (EXATAMENTE IGUAL À IMAGEM 3) */}
-        <View style={styles.clientProfileCard}>
-          {/* Topo: Avatar + Nome + Ponto Verde Ativo */}
-          <View style={styles.clientProfileHeader}>
-            <View style={styles.clientAvatarContainer}>
-              <Text style={styles.clientAvatarEmojiLarge}>{currentClient.avatarEmoji}</Text>
-            </View>
+        <ScrollView style={styles.clientScrollArea} showsVerticalScrollIndicator={false}>
+          <View style={styles.clientProfileCard}>
+            {/* Topo: Avatar + Nome + Ponto Verde Ativo */}
+            <View style={styles.clientProfileHeader}>
+              <View style={styles.clientAvatarContainer}>
+                <Text style={styles.clientAvatarEmojiLarge}>{currentClient.avatarEmoji}</Text>
+              </View>
 
-            <View style={styles.clientNameAndStatusCol}>
-              <Text style={styles.clientHeaderName}>{currentClient.name}</Text>
-              <View style={styles.statusRowBadge}>
-                <View style={styles.greenStatusDot} />
-                <Text style={styles.statusLabelText}>{currentClient.status}</Text>
+              <View style={styles.clientNameAndStatusCol}>
+                <Text style={styles.clientHeaderName}>{currentClient.name}</Text>
+                <View style={styles.statusRowBadge}>
+                  <View style={styles.greenStatusDot} />
+                  <Text style={styles.statusLabelText}>{currentClient.status}</Text>
+                </View>
               </View>
             </View>
-          </View>
 
-          {/* Seção Pedido com Lista de Produtos */}
-          <View style={styles.orderSection}>
-            <Text style={styles.orderSectionTitle}>{currentClient.orderTitle}</Text>
-            <View style={styles.orderItemsList}>
-              {currentClient.orderItems.map((item, index) => (
-                <Text key={index} style={styles.orderItemRowText}>
-                  {item}
-                </Text>
-              ))}
+            {/* Seção Pedido com Lista de Produtos */}
+            <View style={styles.orderSection}>
+              <Text style={styles.orderSectionTitle}>{currentClient.orderTitle}</Text>
+              <View style={styles.orderItemsList}>
+                {currentClient.orderItems.map((item, index) => (
+                  <Text key={index} style={styles.orderItemRowText}>
+                    {item}
+                  </Text>
+                ))}
+              </View>
             </View>
-          </View>
 
-          {/* Seção de Endereço com Ícone de Pin Preto em Card Arredondado */}
-          <View style={styles.infoPillRow}>
-            <View style={styles.infoIconSquare}>
-              <Ionicons name="location" size={20} color="#111827" />
+            {/* Seção de Endereço */}
+            <View style={styles.infoPillRow}>
+              <View style={styles.infoIconSquare}>
+                <Ionicons name="location" size={20} color="#111827" />
+              </View>
+              <View style={styles.infoTextsCol}>
+                <Text style={styles.addressLine1Text}>{currentClient.addressLine1}</Text>
+                <Text style={styles.addressLine2Text}>{currentClient.addressLine2}</Text>
+              </View>
             </View>
-            <View style={styles.infoTextsCol}>
-              <Text style={styles.addressLine1Text}>{currentClient.addressLine1}</Text>
-              <Text style={styles.addressLine2Text}>{currentClient.addressLine2}</Text>
-            </View>
-          </View>
 
-          {/* Seção de Telefone com Ícone de Telefone Preto */}
-          <View style={styles.infoPillRow}>
-            <View style={styles.infoIconSquare}>
-              <Ionicons name="call" size={20} color="#111827" />
+            {/* Seção de Telefone */}
+            <View style={styles.infoPillRow}>
+              <View style={styles.infoIconSquare}>
+                <Ionicons name="call" size={20} color="#111827" />
+              </View>
+              <Text style={styles.phoneText}>{currentClient.phone}</Text>
             </View>
-            <Text style={styles.phoneText}>{currentClient.phone}</Text>
-          </View>
 
-          {/* Botão Oficial: "PRÓXIMO CLIENTE" (Identico à Imagem 3) */}
-          <TouchableOpacity
-            style={styles.nextClientButton}
-            onPress={handleNextClient}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.nextClientButtonText}>PRÓXIMO CLIENTE</Text>
-          </TouchableOpacity>
-        </View>
+            {/* Botão: "PRÓXIMO CLIENTE" */}
+            <TouchableOpacity
+              style={styles.nextClientButton}
+              onPress={handleNextClient}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.nextClientButtonText}>PRÓXIMO CLIENTE</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
 
         {/* Rodapé de Estimativa de Tempo (ETA) */}
         <View style={styles.etaFooter}>
@@ -379,6 +440,15 @@ export const HomeScreen = ({ onNavigate }) => {
           <TouchableOpacity style={styles.infoCircleBtn}>
             <Ionicons name="information-circle-outline" size={22} color={colors.textSecondary} />
           </TouchableOpacity>
+        </View>
+
+        {/* DRAG HANDLE — borda direita arrastável para redimensionar o painel */}
+        <View
+          style={styles.dragHandle}
+          {...(Platform.OS !== 'web' ? panResponder.panHandlers : {})}
+          onPointerDown={Platform.OS === 'web' ? handleDragHandlePointerDown : undefined}
+        >
+          <View style={styles.dragHandleBar} />
         </View>
       </View>
 
@@ -520,14 +590,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.sidebarBackground,
   },
 
-  // 1. BARRA LATERAL ESQUERDA
+  // ============================================================
+  // 1. BARRA LATERAL ESQUERDA (COLAPSÁVEL)
+  // ============================================================
   sidebar: {
-    width: layout.sidebarWidth,
     height: '100%',
     backgroundColor: colors.sidebarBackground,
     borderRightWidth: 1,
     borderRightColor: colors.border,
-    paddingHorizontal: 20,
     paddingVertical: 18,
     justifyContent: 'space-between',
   },
@@ -541,6 +611,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    flex: 1,
   },
   logoTitle: {
     fontFamily: fontFamilies.bold,
@@ -560,22 +631,35 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   collapseBtn: {
-    padding: 4,
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.04)',
+  },
+  collapseBtnCentered: {
+    alignSelf: 'center',
   },
   menuGroup: {
-    gap: 4,
+    gap: 6,
     marginBottom: 20,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 9,
+    paddingVertical: 10,
     paddingHorizontal: 12,
     borderRadius: layout.radius.small,
     gap: 12,
   },
   menuItemActive: {
     backgroundColor: 'rgba(10, 132, 255, 0.1)',
+  },
+  menuItemCollapsed: {
+    justifyContent: 'center',
+    paddingHorizontal: 0,
+    paddingVertical: 14,
   },
   menuItemText: {
     fontFamily: fontFamilies.regular,
@@ -610,6 +694,10 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     gap: 10,
   },
+  recentItemCollapsed: {
+    justifyContent: 'center',
+    paddingVertical: 8,
+  },
   recentCircle: {
     width: 28,
     height: 28,
@@ -617,8 +705,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  recentCircleCollapsed: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+  },
   recentEmojiText: {
     fontSize: 14,
+  },
+  recentEmojiCollapsed: {
+    fontSize: 18,
   },
   recentItemText: {
     fontFamily: fontFamilies.regular,
@@ -630,22 +726,26 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: colors.border,
+    alignItems: 'center',
   },
   footerHelpText: {
     fontFamily: fontFamilies.medium,
     fontSize: 11,
     color: colors.textMuted,
     marginBottom: 2,
+    textAlign: 'center',
   },
   footerLinkText: {
     fontFamily: fontFamilies.semibold,
     fontSize: 12,
     color: colors.actionBlue,
+    textAlign: 'center',
   },
 
-  // 2. PAINEL CENTRAL DE DIREÇÕES & CARD DO CLIENTE (IMAGEM 3)
+  // ============================================================
+  // 2. PAINEL CENTRAL DE DIREÇÕES & CARD DO CLIENTE
+  // ============================================================
   directionsPanel: {
-    width: 480,
     height: '100%',
     backgroundColor: colors.cardSurface,
     borderRightWidth: 1,
@@ -654,6 +754,7 @@ const styles = StyleSheet.create({
     paddingTop: 18,
     paddingBottom: 16,
     justifyContent: 'space-between',
+    position: 'relative',
     ...Platform.select({
       web: {
         boxShadow: '0 8px 24px rgba(0, 0, 0, 0.08)',
@@ -663,6 +764,30 @@ const styles = StyleSheet.create({
       },
     }),
   },
+
+  // DRAG HANDLE — barra vertical fina na borda direita do painel
+  dragHandle: {
+    position: 'absolute',
+    top: 0,
+    right: -4,
+    bottom: 0,
+    width: 8,
+    zIndex: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Platform.select({
+      web: { cursor: 'col-resize' },
+      default: {},
+    }),
+  },
+  dragHandleBar: {
+    width: 4,
+    height: 48,
+    borderRadius: 2,
+    backgroundColor: colors.border,
+    opacity: 0.7,
+  },
+
   panelHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -704,6 +829,12 @@ const styles = StyleSheet.create({
   },
   transportTabActive: {
     backgroundColor: colors.actionBlue,
+  },
+
+  // Área de scroll do card do cliente (para acomodar painéis menores)
+  clientScrollArea: {
+    flex: 1,
+    marginBottom: 8,
   },
 
   // CARD DO CLIENTE (EXATAMENTE IGUAL À IMAGEM 3)
@@ -871,7 +1002,9 @@ const styles = StyleSheet.create({
     padding: 6,
   },
 
+  // ============================================================
   // 3. MAPA
+  // ============================================================
   mapCanvas: {
     flex: 1,
     backgroundColor: colors.mapBackground,
