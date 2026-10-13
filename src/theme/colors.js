@@ -1,32 +1,42 @@
 // src/theme/colors.js
+// Tokens visuais extraídos do Design System Apple Maps UI/UX do GoClient
+
 export const colors = {
-  // Fundos automotivos (Alto contraste, OLED/LCD amigável para direção noturna)
-  background: '#0B0B0E',
-  backgroundElevated: '#121216',
-  surface: '#1A1A22',
-  surfaceSubtle: '#22222D',
-  surfaceHighlight: '#2C2C3A',
-  surfaceBorder: 'rgba(255, 255, 255, 0.08)',
-  surfaceBorderStrong: 'rgba(255, 255, 255, 0.16)',
-
-  // Acentos de destaque inspirados na linguagem de design Apple / CarPlay
-  primary: '#FF3B30', // Vermelho vibrante Apple (ação principal / Onboarding Continue)
-  primaryDark: '#D72B22',
-  accentBlue: '#0A84FF', // Azul navegação / Apple Maps
-  accentGreen: '#30D158', // Verde status rápido / trânsito livre
-  accentOrange: '#FF9F0A', // Laranja alerta moderado / favoritos
-  accentPurple: '#BF5AF2', // Roxo mídia
-  accentCyan: '#64D2FF', // Ciano sistema
-
-  // Tipografia de alto contraste
-  textPrimary: '#FFFFFF',
-  textSecondary: '#A1A1A9',
-  textMuted: '#686873',
-  textDisabled: '#484852',
-  textOnPrimary: '#FFFFFF',
-
-  // Sombras e Glassmorphism
-  glassBackground: 'rgba(26, 26, 34, 0.85)',
-  glassBorder: 'rgba(255, 255, 255, 0.12)',
-  overlay: 'rgba(0, 0, 0, 0.7)',
+  // Paleta Oficial do Design System (Documento de UI/UX)
+  textPrimary: '#111111',       // Títulos, ícones e conteúdo prioritário
+  textSecondary: '#73777C',     // Descrições, metadados e labels inativos
+  textMuted: '#8E9297',         // Informações secundárias e placeholders
+  
+  actionBlue: '#0A84FF',        // Azul de ação Apple: Links, ações primárias e foco
+  primary: '#0A84FF',           // Compatibilidade de componentes
+  
+  sidebarBackground: '#EBF4F8', // Fundo do painel lateral de navegação (Apple Maps tone)
+  cardSurface: '#FFFFFF',       // Superfície de cartões e painéis flutuantes
+  surface: '#FFFFFF',           // Painéis elevados
+  surfaceSubtle: '#F5F6F7',     // Fundo neutro e áreas auxiliares de apoio
+  surfaceElevated: '#FFFFFF',
+  
+  border: '#D9E0E3',            // Divisórias, separadores e contornos discretos
+  borderSubtle: '#E8ECEF',      // Linhas ultra-finas
+  
+  accentYellow: '#FFB800',      // Marcador/atenção: Categorias e pontos de interesse (Macy's etc)
+  accentGreen: '#34C759',       // Status positivo: Destaques de status e rotas rápidas
+  accentOrange: '#FF9500',      // Avisos de tráfego
+  accentPurple: '#AF52DE',      // Hotéis e categorias especiais
+  accentRed: '#FF3B30',         // Alertas e botão de encerrar rota
+  
+  // Mapa
+  mapBackground: '#F4F3F0',     // Cor da terra do mapa Apple Maps claro
+  mapRiver: '#A5D6F7',          // Cor dos rios e canais Apple Maps
+  mapRoadMajor: '#FFFFFF',      // Vias expressas
+  mapRoadBorder: '#D2D0C8',     // Bordas das vias
+  mapRoadMinor: '#FAF8F5',      // Ruas locais
+  routePrimary: '#0A84FF',      // Traçado da rota principal ativa
+  routeAlternative: '#8CC4FF',  // Traçado da rota alternativa
+  
+  // Sombras Apple
+  shadowColor: '#000000',
+  shadowOpacity: 0.12,
+  shadowRadius: 18,
+  shadowOffset: { width: 0, height: 6 },
 };

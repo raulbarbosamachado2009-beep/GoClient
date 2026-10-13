@@ -1,95 +1,36 @@
 // App.js
 import React, { useState } from 'react';
-import { StyleSheet, View, SafeAreaView, useWindowDimensions } from 'react-native';
+import { StyleSheet, View, SafeAreaView, ActivityIndicator } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { useFonts } from 'expo-font';
 import { colors } from './src/theme/colors';
-import { AutomotiveSidebar } from './src/components/AutomotiveSidebar';
-import { OnboardingScreen } from './src/screens/OnboardingScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
-import { MapScreen } from './src/screens/MapScreen';
-import { MusicScreen } from './src/screens/MusicScreen';
-import { ContactsScreen } from './src/screens/ContactsScreen';
-import { RoutesScreen } from './src/screens/RoutesScreen';
-import { SettingsScreen } from './src/screens/SettingsScreen';
 
 export default function App() {
-  const [isOnboardingActive, setIsOnboardingActive] = useState(false);
   const [currentScreen, setCurrentScreen] = useState('home');
-  const { width, height } = useWindowDimensions();
 
-  // Garante que o layout se ajuste harmoniosamente mantendo proporção de tela automotiva
-  const isLandscape = width >= height;
+  // Carregamento de todas as variantes oficiais de SF Pro Display fornecidas
+  const [fontsLoaded] = useFonts({
+    'SFProDisplay-Bold': require('./src/fonts/SF-Pro-Display-Bold.otf'),
+    'SFProDisplay-Semibold': require('./src/fonts/SF-Pro-Display-Semibold.otf'),
+    'SFProDisplay-Medium': require('./src/fonts/SF-Pro-Display-Medium.otf'),
+    'SFProDisplay-Regular': require('./src/fonts/SF-Pro-Display-Regular.otf'),
+  });
 
-  const handleCompleteOnboarding = () => {
-    setIsOnboardingActive(false);
-    setCurrentScreen('home');
-  };
-
-  const handleOpenOnboarding = () => {
-    setIsOnboardingActive(true);
-  };
-
-  const renderActiveScreen = () => {
-    switch (currentScreen) {
-      case 'home':
-        return (
-          <HomeScreen
-            onNavigate={(screen) => setCurrentScreen(screen)}
-            onOpenOnboarding={handleOpenOnboarding}
-          />
-        );
-      case 'map':
-        return <MapScreen onNavigate={(screen) => setCurrentScreen(screen)} />;
-      case 'music':
-        return <MusicScreen />;
-      case 'contacts':
-        return (
-          <ContactsScreen
-            onNavigateToRoute={(client) => {
-              setCurrentScreen('map');
-            }}
-          />
-        );
-      case 'routes':
-        return (
-          <RoutesScreen
-            onStartRoute={(route) => {
-              setCurrentScreen('map');
-            }}
-          />
-        );
-      case 'settings':
-        return <SettingsScreen onOpenOnboarding={handleOpenOnboarding} />;
-      default:
-        return (
-          <HomeScreen
-            onNavigate={(screen) => setCurrentScreen(screen)}
-            onOpenOnboarding={handleOpenOnboarding}
-          />
-        );
-    }
-  };
+  if (!fontsLoaded) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={colors.actionBlue} />
+      </View>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar style="light" hidden={false} />
+      <StatusBar style="dark" hidden={false} />
       <View style={styles.viewportContainer}>
-        {isOnboardingActive ? (
-          <OnboardingScreen onComplete={handleCompleteOnboarding} />
-        ) : (
-          <View style={styles.mainShell}>
-            {/* Barra de Navegação Lateral Automotiva */}
-            <AutomotiveSidebar
-              currentScreen={currentScreen}
-              onSelectScreen={(screen) => setCurrentScreen(screen)}
-            />
-
-            {/* Painel de Conteúdo da Tela Selecionada */}
-            <View style={styles.contentViewport}>
-              {renderActiveScreen()}
-            </View>
-          </View>
-        )}
+        {/* Renderiza a tela de início fiel ao Design System Apple Maps adaptado para GoClient */}
+        <HomeScreen onNavigate={(screen) => setCurrentScreen(screen)} />
       </View>
     </SafeAreaView>
   );
@@ -98,20 +39,17 @@ export default function App() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.sidebarBackground,
+  },
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: '#EBF4F7',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   viewportContainer: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.sidebarBackground,
     overflow: 'hidden',
-  },
-  mainShell: {
-    flex: 1,
-    flexDirection: 'row',
-    backgroundColor: colors.background,
-  },
-  contentViewport: {
-    flex: 1,
-    backgroundColor: colors.background,
   },
 });
