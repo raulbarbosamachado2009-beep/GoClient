@@ -3,8 +3,8 @@ $env:Path = "$env:LOCALAPPDATA\Microsoft\WinGet\Packages\OpenJS.NodeJS.LTS_Micro
 Set-Location "C:\Users\raul.bmachado\Desktop\GoClient"
 
 Write-Host "============================================================" -ForegroundColor Cyan
-Write-Host "Iniciando GoClient no Expo (Modo Localhost)" -ForegroundColor Cyan
-Write-Host "Se o Firewall do Windows abrir uma janela, clique em CANCELAR." -ForegroundColor Yellow
+Write-Host "  Iniciando GoClient no Expo Go (Web & Mobile)" -ForegroundColor Cyan
+Write-Host "  Pressione 'w' no teclado para abrir no navegador!" -ForegroundColor Green
 Write-Host "============================================================" -ForegroundColor Cyan
 
-npx expo start --localhost
+npx expo start --go
