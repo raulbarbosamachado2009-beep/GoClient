@@ -11,6 +11,7 @@ next-env.d.ts
 .expo/
 expo-env.d.ts
 web-build/
+dist-preview/
 apps/*/ios/
 apps/*/android/
 *.jks

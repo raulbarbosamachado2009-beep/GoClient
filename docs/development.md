@@ -59,6 +59,17 @@ ou o Mobile, suba também o `api`.
 Fora do Claude Desktop, o mesmo efeito: rode `pnpm dev` + `pnpm dev:automotive` e deixe os
 endereços abertos no navegador enquanto trabalha.
 
+### Preview de design compartilhável (Automotive)
+
+```bash
+pnpm --filter @goclient/automotive preview:bundle
+```
+
+Gera `apps/automotive/dist-preview/index.html`: o app inteiro num único arquivo HTML
+(scripts, rotas e fontes de ícones embutidos), que abre sem servidor e funciona dentro de
+páginas isoladas — é assim que o Preview de design é publicado para revisão. As telas atuais
+usam **dados fictícios** (`apps/automotive/src/mocks/`) e não falam com a API.
+
 ### Automotive no emulador Android (fidelidade alta)
 
 1. Android Studio → Device Manager → criar dispositivo → **New Hardware Profile**:
