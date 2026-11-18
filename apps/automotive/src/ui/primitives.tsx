@@ -518,9 +518,10 @@ export function PageHeader({
  */
 export function Blur({ radius = 40, tint }: { radius?: number; tint: 'dark' | 'light' }) {
   if (Platform.OS === 'web') {
-    const f = `blur(${radius}px) saturate(180%)`;
+    const f = `blur(${radius.toFixed(1)}px) saturate(${100 + (80 * Math.min(radius, 40)) / 40}%)`;
     return (
       <View
+        pointerEvents="none"
         style={[StyleSheet.absoluteFill, { backdropFilter: f, WebkitBackdropFilter: f } as object]}
       />
     );
@@ -528,9 +529,10 @@ export function Blur({ radius = 40, tint }: { radius?: number; tint: 'dark' | 'l
   return (
     <BlurView
       tint={tint}
-      intensity={100}
+      intensity={Math.min(100, (radius / 40) * 100)}
       experimentalBlurMethod="dimezisBlurView"
       style={StyleSheet.absoluteFill}
+      pointerEvents="none"
     />
   );
 }
@@ -559,17 +561,25 @@ export function Material({
 }
 
 /** Fundo de janelas e pop-ups: desfoca toda a tela atrás (referência: imagem 1). */
-export function BlurBackdrop({ onPress }: { onPress?: () => void }) {
+/**
+ * Fundo de janelas e pop-ups: desfoca a tela atrás (referência: imagem 1).
+ * `progress` (0→1) aumenta o raio do desfoque e o tom aos poucos, para que o desfoque
+ * entre e saia numa transição — e não de uma vez.
+ */
+export function BlurBackdrop({
+  onPress,
+  progress = 1,
+}: {
+  onPress?: () => void;
+  progress?: number;
+}) {
   const c = useColors();
+  const tint =
+    c.mode === 'dark' ? `rgba(0,0,0,${0.35 * progress})` : `rgba(200,200,206,${0.35 * progress})`;
   return (
     <Pressable accessibilityLabel="Fechar janela" onPress={onPress} style={StyleSheet.absoluteFill}>
-      <Blur radius={22} tint={c.material.tint} />
-      <View
-        style={[
-          StyleSheet.absoluteFill,
-          { backgroundColor: c.mode === 'dark' ? 'rgba(0,0,0,0.35)' : 'rgba(200,200,206,0.35)' },
-        ]}
-      />
+      <Blur radius={22 * progress} tint={c.material.tint} />
+      <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: tint }]} />
     </Pressable>
   );
 }

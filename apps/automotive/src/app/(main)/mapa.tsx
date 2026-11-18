@@ -28,10 +28,12 @@ export default function MapScreen() {
   const target = mode === 'explore' ? USER : mode === 'day' ? DAY_FOCUS : CLIENT_FOCUS;
 
   const routeClients = TODAY_ROUTE.map((cid) => CLIENTS.find((c) => c.id === cid) as MockClient);
+  // Sem rota e sem cliente escolhido (ex.: primeira entrada no app), o cartão convida o
+  // usuário a escolher para onde ir.
   const client =
     mode === 'day'
       ? (routeClients[stop % routeClients.length] as MockClient)
-      : (CLIENTS.find((c) => c.id === id) ?? (CLIENTS[6] as MockClient));
+      : (CLIENTS.find((c) => c.id === id) ?? null);
 
   return (
     <View style={{ flex: 1 }}>
@@ -41,18 +43,29 @@ export default function MapScreen() {
       {mode === 'explore' ? <SearchPill /> : <Guidance />}
       {mode !== 'explore' && <TripBar mode={mode} />}
 
-      <Appear axis="x" distance={40} delay={120} style={styles.cardSlot}>
-        <ClientCard
-          key={client.id}
-          client={client}
-          mode={mode}
-          stopLabel={
-            mode === 'day'
-              ? `Parada ${(stop % routeClients.length) + 1} de ${routeClients.length}`
-              : undefined
-          }
-          onNext={() => setStop((s) => s + 1)}
-        />
+      <Appear
+        axis="x"
+        distance={520}
+        delay={80}
+        duration={520}
+        fade={false}
+        style={styles.cardSlot}
+      >
+        {client ? (
+          <ClientCard
+            key={client.id}
+            client={client}
+            mode={mode}
+            stopLabel={
+              mode === 'day'
+                ? `Parada ${(stop % routeClients.length) + 1} de ${routeClients.length}`
+                : undefined
+            }
+            onNext={() => setStop((s) => s + 1)}
+          />
+        ) : (
+          <WelcomeCard />
+        )}
       </Appear>
     </View>
   );
@@ -61,7 +74,7 @@ export default function MapScreen() {
 function SearchPill() {
   const c = useColors();
   return (
-    <Appear delay={60} style={styles.topLeft}>
+    <Appear delay={60} fade={false} style={styles.topLeft}>
       <Material style={styles.search}>
         <Icon name="search" size={28} color={c.textSecondary} />
         <Text variant="body" tone="secondary">
@@ -75,7 +88,7 @@ function SearchPill() {
 function Guidance() {
   const c = useColors();
   return (
-    <Appear delay={60} style={styles.topLeft}>
+    <Appear delay={60} fade={false} style={styles.topLeft}>
       <Material style={styles.guidance}>
         <Icon name="return-up-forward" size={64} color={c.text} />
         <View>
@@ -94,19 +107,19 @@ function Guidance() {
 function TripBar({ mode }: { mode: MapMode }) {
   const router = useRouter();
   return (
-    <Appear delay={160} style={styles.bottomLeft}>
+    <Appear delay={160} fade={false} distance={40} style={styles.bottomLeft}>
       <Material style={styles.trip}>
-        <View style={{ flexDirection: 'row', gap: spacing[8] }}>
-          <Stat value={mode === 'day' ? '11:58' : '09:59'} label="chegada" />
-          <Stat value={mode === 'day' ? '1:12' : '18'} label={mode === 'day' ? 'hrs' : 'min'} />
-          <Stat value={mode === 'day' ? '24,6' : '7,4'} label="km" />
-        </View>
         <Button
           label="Encerrar"
           variant="destructive"
           size="md"
           onPress={() => router.replace('/mapa')}
         />
+        <View style={{ flexDirection: 'row', gap: spacing[8] }}>
+          <Stat value={mode === 'day' ? '11:58' : '09:59'} label="chegada" />
+          <Stat value={mode === 'day' ? '1:12' : '18'} label={mode === 'day' ? 'hrs' : 'min'} />
+          <Stat value={mode === 'day' ? '24,6' : '7,4'} label="km" />
+        </View>
       </Material>
     </Appear>
   );
@@ -210,6 +223,44 @@ function ClientCard({
   );
 }
 
+/** Cartão inicial: nenhum cliente selecionado ainda. */
+function WelcomeCard() {
+  const c = useColors();
+  const router = useRouter();
+  return (
+    <Material style={styles.welcome}>
+      <View
+        style={[
+          styles.welcomeIcon,
+          { backgroundColor: c.mode === 'dark' ? 'rgba(10,132,255,0.22)' : 'rgba(0,122,255,0.12)' },
+        ]}
+      >
+        <Icon name="navigate" size={52} color={c.accent} />
+      </View>
+      <View style={{ gap: spacing[2] }}>
+        <Text variant="title">Para onde vamos?</Text>
+        <Text variant="body" tone="secondary">
+          Escolha um cliente para traçar o caminho até ele, ou monte as visitas de hoje e o GoClient
+          organiza a rota.
+        </Text>
+      </View>
+      <View style={{ gap: spacing[3] }}>
+        <Button
+          label="Escolher cliente"
+          icon="people"
+          onPress={() => router.replace('/clientes')}
+        />
+        <Button
+          label="Montar rota do dia"
+          icon="git-network"
+          variant="tinted"
+          onPress={() => router.replace('/rotas')}
+        />
+      </View>
+    </Material>
+  );
+}
+
 function InfoLine({
   icon,
   tile,
@@ -277,11 +328,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing[10],
     paddingVertical: spacing[4],
-    paddingLeft: spacing[8],
-    paddingRight: spacing[4],
+    paddingLeft: spacing[4],
+    paddingRight: spacing[8],
     borderRadius: layout.radius.xl,
   },
   card: { flex: 1, borderRadius: 40, padding: spacing[8] },
+  welcome: { borderRadius: 40, padding: spacing[8], gap: spacing[8] },
+  welcomeIcon: {
+    width: 104,
+    height: 104,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   avatarTile: {
     width: 112,
     height: 112,

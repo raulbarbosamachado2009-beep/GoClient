@@ -4,9 +4,10 @@ import { ActivityIndicator, Animated, ScrollView, StyleSheet, View } from 'react
 import { CLIENTS, REGIONS } from '../../mocks/data';
 import { usePrototype } from '../../prototype/state';
 import { layout, nativeDriver, spacing, useColors } from '../../theme';
-import { Appear } from '../../ui/motion';
+import { Appear, useTween } from '../../ui/motion';
 import {
   Avatar,
+  BlurBackdrop,
   Button,
   Chip,
   Group,
@@ -30,6 +31,9 @@ export default function RoutesScreen() {
   const router = useRouter();
   const [region, setRegion] = useState<string>('Todas');
   const [selected, setSelected] = useState<string[]>(['c7', 'c1', 'c6']);
+
+  // Filtro por região (apenas no protótipo).
+  const visibleClients = region === 'Todas' ? CLIENTS : CLIENTS.filter((x) => x.region === region);
 
   const toggle = (id: string) =>
     setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
@@ -70,7 +74,7 @@ export default function RoutesScreen() {
           contentContainerStyle={{ paddingBottom: spacing[10] }}
         >
           <Group inset={112}>
-            {CLIENTS.map((item, i) => {
+            {visibleClients.map((item, i) => {
               const on = selected.includes(item.id);
               return (
                 <Appear key={item.id} delay={i * 30} distance={10}>
@@ -157,15 +161,20 @@ export default function RoutesScreen() {
   );
 }
 
-/** Quadro arredondado de carregamento (estilo HUD do iOS) — "Calculando rota". */
+/**
+ * Quadro arredondado de carregamento (estilo HUD do iOS) — "Calculando rota". O desfoque
+ * do fundo cresce aos poucos e o quadro entra com mola (sem animar a opacidade, que
+ * desligaria o desfoque durante a transição).
+ */
 function Calculating({ count, onDone }: { count: number; onDone: () => void }) {
   const c = useColors();
+  const blur = useTween(1, 360);
   const v = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     Animated.spring(v, {
       toValue: 1,
-      damping: 18,
-      stiffness: 220,
+      damping: 16,
+      stiffness: 200,
       useNativeDriver: nativeDriver,
     }).start();
     const t = setTimeout(onDone, 2400);
@@ -173,18 +182,11 @@ function Calculating({ count, onDone }: { count: number; onDone: () => void }) {
   }, [v, onDone]);
 
   return (
-    <Animated.View
-      style={[
-        styles.hudRoot,
-        {
-          backgroundColor: c.scrim,
-          opacity: v.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 1, 1] }),
-        },
-      ]}
-    >
+    <View style={styles.hudRoot}>
+      <BlurBackdrop progress={blur} />
       <Animated.View
         style={{
-          transform: [{ scale: v.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1] }) }],
+          transform: [{ scale: v.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1] }) }],
         }}
       >
         <Material style={styles.hud}>
@@ -197,7 +199,7 @@ function Calculating({ count, onDone }: { count: number; onDone: () => void }) {
           </View>
         </Material>
       </Animated.View>
-    </Animated.View>
+    </View>
   );
 }
 

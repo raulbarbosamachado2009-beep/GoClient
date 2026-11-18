@@ -30,6 +30,20 @@ vias expressas da imagem. Serve para validar a interação: arrastar (com inérc
 aproximar e limites nas bordas. Não há botões de zoom. O mapa real (tiles, GPS, rotas) substitui
 `MapWorld` numa fase própria, mantendo o mesmo comportamento de navegação.
 
+## Interações do protótipo
+
+Funcionam apenas como demonstração visual (sem API, sem Spotify):
+
+- **Filtros:** categorias de produtos, regiões em Rotas, filtros do Início e da Biblioteca da
+  Música e gêneros da playlist filtram os dados fictícios.
+- **Música:** tocar uma faixa define a fila (lista visível); "próxima"/"anterior" percorrem a fila
+  e o fundo do player troca com transição.
+- **Janelas:** o desfoque do fundo cresce e diminui gradualmente (`useTween` + `BlurBackdrop`).
+  Elementos com desfoque não animam opacidade (`Appear fade={false}`), porque opacidade abaixo de 1
+  desliga o desfoque do navegador durante a animação.
+- **Mapa:** sem cliente escolhido, o cartão mostra "Para onde vamos?" com atalhos para Clientes e
+  Rotas.
+
 ## Capas de música
 
 `assets/covers/` contém capas fornecidas para o protótipo (convertidas para JPG, até 640 px). No
@@ -64,5 +78,5 @@ Por decisão do produto, a interface usa **somente SF Pro** (Display e Text), ob
 | `/clientes` | Lista e ficha do cliente (botão IR) |
 | `/produtos` | Catálogo em cartões ou lista |
 | `/rotas` | Seleção do dia + "Calculando rota" |
-| `/musica`, `/musica/buscar`, `/musica/biblioteca`, `/player` | Música (login, início, busca, biblioteca, player; player minimizado só na Música, acima das abas) |
+| `/musica`, `/musica/buscar`, `/musica/biblioteca`, `/musica/playlist/[id]`, `/player` | Música (login, início, busca, biblioteca, player; player minimizado só na Música, acima das abas) |
 | `/configuracoes` | Ajustes |

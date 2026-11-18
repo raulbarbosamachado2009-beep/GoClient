@@ -2,17 +2,22 @@ import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { COVERS, PLAYLISTS, SHOWS } from '../../../mocks/data';
 import { MusicChip, MusicSection, PlaylistTile } from '../../../music/ui';
-import { usePlay } from '../../../music/use-play';
+import { useOpenPlaylist, usePlay } from '../../../music/use-play';
 import { spacing, useColors } from '../../../theme';
 import { Cover } from '../../../ui/brand';
 import { Appear } from '../../../ui/motion';
-import { Avatar, IconButton, Text, Touchable } from '../../../ui/primitives';
+import { Avatar, Icon, IconButton, Text, Touchable } from '../../../ui/primitives';
 
-/** Início da Música (referência: imagem 3). */
+type Filter = 'Tudo' | 'Músicas' | 'Podcasts' | 'Audiolivros';
+
+/**
+ * Início da Música (referência: imagem 3). Os filtros mudam o conteúdo exibido
+ * (apenas no protótipo).
+ */
 export default function MusicHome() {
-  const c = useColors();
-  const [filter, setFilter] = useState('Tudo');
-  const play = usePlay();
+  const [filter, setFilter] = useState<Filter>('Tudo');
+  const showMusic = filter === 'Tudo' || filter === 'Músicas';
+  const showShows = filter === 'Tudo' || filter === 'Podcasts';
 
   return (
     <ScrollView contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
@@ -39,70 +44,114 @@ export default function MusicHome() {
         />
       </View>
 
-      <View style={styles.grid}>
-        {PLAYLISTS.slice(0, 6).map((p, i) => (
-          <Appear key={p.id} delay={i * 40} distance={12} style={{ width: '49.3%' }}>
-            <PlaylistTile
-              cover={
-                <Cover color={p.cover} image={p.image} size={104} radius={0} liked={p.liked} />
-              }
-              title={p.name}
-              onPress={play}
-            />
-          </Appear>
-        ))}
+      <View key={filter} style={{ gap: spacing[6] }}>
+        {showMusic && <MusicGrid />}
+        {showMusic && <NewRelease />}
+        {showShows && <Shows big={filter === 'Podcasts'} />}
+        {filter === 'Audiolivros' && <EmptyState />}
       </View>
+    </ScrollView>
+  );
+}
 
-      <Appear delay={260} distance={14}>
-        <View
-          style={[
-            styles.release,
-            { backgroundColor: c.music.card, borderColor: c.music.cardBorder },
-          ]}
-        >
-          <Cover color="#8A7A55" image={COVERS.piscina} size={124} radius={62} />
-          <View style={{ width: 400 }}>
-            <Text variant="callout" tone="secondary">
-              Novo lançamento de
-            </Text>
-            <Text variant="largeTitle" numberOfLines={1} style={{ fontSize: 58, lineHeight: 66 }}>
-              MC Kevin
-            </Text>
-          </View>
-          <Cover color="#4A3A2A" image={COVERS.donos} size={136} radius={8} />
-          <View style={{ flex: 1 }}>
-            <Text variant="callout" tone="secondary">
-              Single
-            </Text>
-            <Text variant="title2">Donos da Capital</Text>
-            <Text variant="callout" tone="secondary" numberOfLines={1}>
-              MC Kevin, MC Ryan SP, MC GP, MC Lele JP, MC IG
-            </Text>
-          </View>
-          <IconButton
-            icon="play"
-            variant="inverse"
-            size={92}
-            iconSize={44}
-            accessibilityLabel="Tocar"
-            onPress={play}
+function MusicGrid() {
+  const open = useOpenPlaylist();
+  return (
+    <View style={styles.grid}>
+      {PLAYLISTS.slice(0, 6).map((p, i) => (
+        <Appear key={p.id} delay={i * 40} distance={12} style={{ width: '49.3%' }}>
+          <PlaylistTile
+            cover={<Cover color={p.cover} image={p.image} size={104} radius={0} liked={p.liked} />}
+            title={p.name}
+            onPress={() => open(p.id)}
           />
-          <View style={[styles.vline, { backgroundColor: c.music.cardBorder }]} />
-          <IconButton icon="ellipsis-horizontal" iconSize={40} accessibilityLabel="Mais opções" />
-        </View>
-      </Appear>
+        </Appear>
+      ))}
+    </View>
+  );
+}
 
-      <MusicSection title="Seus programas" action="Ver mais" />
-      <View style={{ flexDirection: 'row', gap: spacing[5] }}>
+function NewRelease() {
+  const c = useColors();
+  const play = usePlay();
+  return (
+    <Appear delay={240} distance={14}>
+      <View
+        style={[styles.release, { backgroundColor: c.music.card, borderColor: c.music.cardBorder }]}
+      >
+        <Cover color="#8A7A55" image={COVERS.piscina} size={124} radius={62} />
+        <View style={{ width: 400 }}>
+          <Text variant="callout" tone="secondary">
+            Novo lançamento de
+          </Text>
+          <Text variant="largeTitle" numberOfLines={1} style={{ fontSize: 58, lineHeight: 66 }}>
+            MC Kevin
+          </Text>
+        </View>
+        <Cover color="#4A3A2A" image={COVERS.donos} size={136} radius={8} />
+        <View style={{ flex: 1 }}>
+          <Text variant="callout" tone="secondary">
+            Single
+          </Text>
+          <Text variant="title2">Donos da Capital</Text>
+          <Text variant="callout" tone="secondary" numberOfLines={1}>
+            MC Kevin, MC Ryan SP, MC GP, MC Lele JP, MC IG
+          </Text>
+        </View>
+        <IconButton
+          icon="play"
+          variant="inverse"
+          size={92}
+          iconSize={44}
+          accessibilityLabel="Tocar"
+          onPress={() => play('t2')}
+        />
+        <View style={[styles.vline, { backgroundColor: c.music.cardBorder }]} />
+        <IconButton icon="ellipsis-horizontal" iconSize={40} accessibilityLabel="Mais opções" />
+      </View>
+    </Appear>
+  );
+}
+
+function Shows({ big }: { big: boolean }) {
+  const play = usePlay();
+  return (
+    <>
+      <MusicSection title={big ? 'Seus podcasts' : 'Seus programas'} action="Ver mais" />
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing[5] }}>
         {SHOWS.map((s, i) => (
-          <Appear key={s.id} delay={320 + i * 50} distance={14} style={{ flex: 1 }}>
-            <Touchable accessibilityRole="button" onPress={play} scaleTo={0.97}>
-              <Cover color={s.cover} size={338} height={190} radius={14} title={s.name} />
+          <Appear
+            key={s.id}
+            delay={300 + i * 50}
+            distance={14}
+            style={{ width: big ? '48.9%' : '23.6%' }}
+          >
+            <Touchable accessibilityRole="button" onPress={() => play()} scaleTo={0.97}>
+              <Cover
+                color={s.cover}
+                size={big ? 704 : 338}
+                height={big ? 260 : 190}
+                radius={14}
+                title={s.name}
+              />
             </Touchable>
           </Appear>
         ))}
       </View>
-    </ScrollView>
+    </>
+  );
+}
+
+function EmptyState() {
+  const c = useColors();
+  return (
+    <Appear distance={12} style={styles.empty}>
+      <Icon name="headset-outline" size={72} color={c.textTertiary} />
+      <Text variant="title2">Nenhum audiolivro ainda</Text>
+      <Text variant="callout" tone="secondary">
+        Os audiolivros que você salvar no Spotify aparecem aqui.
+      </Text>
+    </Appear>
   );
 }
 
@@ -125,4 +174,5 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   vline: { width: 1.5, height: 72 },
+  empty: { alignItems: 'center', gap: spacing[3], paddingVertical: 96 },
 });

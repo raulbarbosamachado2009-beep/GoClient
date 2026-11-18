@@ -16,7 +16,7 @@ export default function MainLayout() {
     <View style={[styles.root, { backgroundColor: c.background }]}>
       {/* No Mapa o conteúdo passa por baixo da barra lateral (que é translúcida). */}
       <View style={{ flex: 1, marginLeft: section === 'mapa' ? 0 : layout.sidebarWidth }}>
-        <ScreenTransition routeKey={section}>
+        <ScreenTransition routeKey={section} fade={section !== 'mapa'}>
           <Slot />
         </ScreenTransition>
       </View>

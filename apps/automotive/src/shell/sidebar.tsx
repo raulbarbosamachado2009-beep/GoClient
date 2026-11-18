@@ -1,3 +1,4 @@
+import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { type Href, usePathname, useRouter } from 'expo-router';
 import { Animated, Pressable, StyleSheet, View } from 'react-native';
 import { spacing, useColors } from '../theme';
@@ -11,6 +12,8 @@ interface Item {
   icon: IconName;
   color: string;
   glyph?: string;
+  /** Ícone de marca no lugar do ícone genérico. */
+  brand?: 'spotify';
 }
 
 const ITEMS: Item[] = [
@@ -23,8 +26,8 @@ const ITEMS: Item[] = [
     match: '/musica',
     label: 'Música',
     icon: 'musical-notes',
-    color: '#1ED760',
-    glyph: '#000000',
+    color: '#000000',
+    brand: 'spotify',
   },
 ];
 
@@ -77,7 +80,11 @@ export function Sidebar() {
             scaleTo={0.9}
             style={styles.item}
           >
-            <AppIcon icon={item.icon} color={item.color} glyph={item.glyph} size={72} />
+            {item.brand === 'spotify' ? (
+              <SpotifyIcon size={72} />
+            ) : (
+              <AppIcon icon={item.icon} color={item.color} glyph={item.glyph} size={72} />
+            )}
           </Touchable>
         ))}
       </View>
@@ -92,6 +99,26 @@ export function Sidebar() {
       >
         <AppIcon icon="settings-sharp" color="#8E8E93" size={72} />
       </Pressable>
+    </View>
+  );
+}
+
+/** Ícone do app do Spotify: logo verde sobre fundo preto, no formato de ícone do CarPlay. */
+function SpotifyIcon({ size }: { size: number }) {
+  return (
+    <View
+      style={{
+        width: size,
+        height: size,
+        borderRadius: size * 0.235,
+        backgroundColor: '#000000',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.12)',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <FontAwesome5 name="spotify" size={size * 0.64} color="#1ED760" />
     </View>
   );
 }

@@ -60,7 +60,7 @@ export default function Search() {
       <View style={{ flexDirection: 'row', gap: spacing[6] }}>
         {WATCH.map((w, i) => (
           <Appear key={w.id} delay={200 + i * 60} distance={14} style={{ flex: 1 }}>
-            <Touchable accessibilityRole="button" onPress={play} scaleTo={0.97}>
+            <Touchable accessibilityRole="button" onPress={() => play()} scaleTo={0.97}>
               <Cover color={w.cover} size={460} height={250} radius={18} title={w.name} />
             </Touchable>
           </Appear>
@@ -73,7 +73,7 @@ export default function Search() {
           <Touchable
             key={s.id}
             accessibilityRole="button"
-            onPress={play}
+            onPress={() => play()}
             scaleTo={0.97}
             style={{ flex: 1 }}
           >

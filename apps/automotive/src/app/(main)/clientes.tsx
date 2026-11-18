@@ -2,7 +2,7 @@ import { useRouter } from 'expo-router';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { CLIENTS, type MockClient } from '../../mocks/data';
 import { usePrototype } from '../../prototype/state';
-import { Sheet } from '../../shell/sheet';
+import { Sheet, useSheetClose } from '../../shell/sheet';
 import { layout, spacing, useColors } from '../../theme';
 import { Appear } from '../../ui/motion';
 import {
@@ -53,17 +53,24 @@ export default function ClientsScreen() {
 
 /** Ficha do cliente no estilo do app Contatos. */
 function ClientDetails({ client }: { client: MockClient }) {
-  const c = useColors();
   const { setOverlay } = usePrototype();
+  return (
+    <Sheet onClose={() => setOverlay(null)} style={{ width: 1120, height: 800 }}>
+      <ClientDetailsContent client={client} />
+    </Sheet>
+  );
+}
+
+function ClientDetailsContent({ client }: { client: MockClient }) {
+  const c = useColors();
   const router = useRouter();
-  const close = () => setOverlay(null);
-  const go = () => {
-    close();
-    router.replace({ pathname: '/mapa', params: { rota: 'cliente', id: client.id } });
-  };
+  const close = useSheetClose();
+  // Fecha a ficha com a animação e só então abre o mapa com a rota.
+  const go = () =>
+    close(() => router.replace({ pathname: '/mapa', params: { rota: 'cliente', id: client.id } }));
 
   return (
-    <Sheet onClose={close} style={{ width: 1120, height: 800 }}>
+    <>
       <View style={styles.sheetTop}>
         <View style={{ width: 76 }} />
         <View style={{ alignItems: 'center', gap: spacing[2] }}>
@@ -79,7 +86,7 @@ function ClientDetails({ client }: { client: MockClient }) {
           size={64}
           iconSize={30}
           accessibilityLabel="Fechar"
-          onPress={close}
+          onPress={() => close()}
         />
       </View>
 
@@ -116,7 +123,7 @@ function ClientDetails({ client }: { client: MockClient }) {
           </Group>
         </View>
       </View>
-    </Sheet>
+    </>
   );
 }
 

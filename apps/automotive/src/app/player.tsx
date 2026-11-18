@@ -2,7 +2,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { type ReactNode, useRef, useState } from 'react';
 import { Animated, Image, type ImageSourcePropType, StyleSheet, View } from 'react-native';
-import { COVERS, NOW_PLAYING, QUEUE } from '../mocks/data';
+import { COVERS, NOW_PLAYING } from '../mocks/data';
 import { usePrototype } from '../prototype/state';
 import { layout, spacing } from '../theme';
 import { Cover } from '../ui/brand';
@@ -20,9 +20,8 @@ const GREEN = '#1ED760';
  */
 export default function Player() {
   const router = useRouter();
-  const { nowPlaying } = usePrototype();
+  const { nowPlaying, upNext, playing, togglePlaying, next, previous } = usePrototype();
   const track = nowPlaying ?? NOW_PLAYING;
-  const [playing, setPlaying] = useState(true);
   const [compactVisible, setCompactVisible] = useState(false);
   const scrollY = useRef(new Animated.Value(0)).current;
 
@@ -41,12 +40,14 @@ export default function Player() {
   return (
     <View style={{ flex: 1, backgroundColor: '#000000', overflow: 'hidden' }}>
       {/* Fundo = a própria capa, ampliada e com desfoque forte (como no player da Apple). */}
-      <Image
-        source={track.image}
-        blurRadius={60}
-        resizeMode="cover"
-        style={[styles.backdrop, { transform: [{ scale: 1.25 }] }]}
-      />
+      <Appear key={`bg-${track.id}`} distance={0} duration={600} style={StyleSheet.absoluteFill}>
+        <Image
+          source={track.image}
+          blurRadius={60}
+          resizeMode="cover"
+          style={[styles.backdrop, { transform: [{ scale: 1.25 }] }]}
+        />
+      </Appear>
       <LinearGradient
         colors={['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.25)', 'rgba(0,0,0,0.6)']}
         locations={[0, 0.55, 1]}
@@ -83,13 +84,18 @@ export default function Player() {
           </View>
 
           <View style={styles.main}>
-            <Appear distance={24} duration={520}>
+            <Appear key={`art-${track.id}`} axis="x" distance={30} duration={420}>
               <View style={styles.artShadow}>
                 <Cover color={track.cover} image={track.image} size={600} radius={20} />
               </View>
             </Appear>
 
-            <Appear delay={120} distance={24} style={{ flex: 1, gap: spacing[10] }}>
+            <Appear
+              key={`info-${track.id}`}
+              delay={80}
+              distance={16}
+              style={{ flex: 1, gap: spacing[10] }}
+            >
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[4] }}>
                 <View style={{ flex: 1, gap: spacing[2] }}>
                   <Text
@@ -136,6 +142,7 @@ export default function Player() {
                   iconSize={68}
                   color={W}
                   accessibilityLabel="Anterior"
+                  onPress={previous}
                 />
                 <IconButton
                   icon={playing ? 'pause' : 'play'}
@@ -145,7 +152,7 @@ export default function Player() {
                   color="#000"
                   style={{ backgroundColor: W }}
                   accessibilityLabel={playing ? 'Pausar' : 'Tocar'}
-                  onPress={() => setPlaying((p) => !p)}
+                  onPress={togglePlaying}
                 />
                 <IconButton
                   icon="play-skip-forward"
@@ -153,6 +160,7 @@ export default function Player() {
                   iconSize={68}
                   color={W}
                   accessibilityLabel="Próxima"
+                  onPress={next}
                 />
                 <IconButton
                   icon="repeat"
@@ -276,7 +284,7 @@ export default function Player() {
                 </Text>
               }
             >
-              {QUEUE.slice(0, 1).map((q) => (
+              {(upNext ? [upNext] : []).map((q) => (
                 <View
                   key={q.title}
                   style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[4] }}
@@ -380,7 +388,7 @@ export default function Player() {
           iconSize={56}
           color={W}
           accessibilityLabel={playing ? 'Pausar' : 'Tocar'}
-          onPress={() => setPlaying((p) => !p)}
+          onPress={togglePlaying}
         />
       </Animated.View>
     </View>

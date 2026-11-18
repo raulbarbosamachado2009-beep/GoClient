@@ -346,7 +346,11 @@ export const COVERS = {
   ninguem: require('../../assets/covers/ninguem-ta-puro.jpg'),
 } satisfies Record<string, ImageSourcePropType>;
 
+export const GENRES = ['Beats', 'Trap', 'Cabaré', 'Suave', 'Hip hop', 'Funk'] as const;
+export type Genre = (typeof GENRES)[number];
+
 export interface MockTrack {
+  id: string;
   title: string;
   artists: string;
   album: string;
@@ -354,25 +358,109 @@ export interface MockTrack {
   cover: string;
   image: ImageSourcePropType;
   duration: string;
+  explicit?: boolean;
+  downloaded?: boolean;
+  genres: Genre[];
 }
 
-export const NOW_PLAYING: MockTrack = {
-  title: 'Isolado no Quarto',
-  artists: 'MC Kevin, DJ Nene MPC',
-  album: 'Isolado no Quarto',
-  cover: '#3A2A6B',
-  image: COVERS.isolado,
-  duration: '3:42',
-};
+// Artistas não identificados nas capas ficam como "Vários artistas" até serem informados.
+export const TRACKS: MockTrack[] = [
+  {
+    id: 't1',
+    title: 'Isolado no Quarto',
+    artists: 'MC Kevin, DJ Nene MPC',
+    album: 'Isolado no Quarto',
+    cover: '#3A2A6B',
+    image: COVERS.isolado,
+    duration: '3:42',
+    explicit: true,
+    genres: ['Funk', 'Trap'],
+  },
+  {
+    id: 't2',
+    title: 'Donos da Capital',
+    artists: 'MC Kevin, MC Ryan SP, MC GP, MC Lele JP, MC IG',
+    album: 'Donos da Capital',
+    cover: '#4A3A2A',
+    image: COVERS.donos,
+    duration: '4:12',
+    explicit: true,
+    downloaded: true,
+    genres: ['Funk', 'Hip hop'],
+  },
+  {
+    id: 't3',
+    title: 'Piscina de Diamante',
+    artists: 'MC Kevin',
+    album: 'Piscina de Diamante',
+    cover: '#8A7A55',
+    image: COVERS.piscina,
+    duration: '3:13',
+    genres: ['Funk', 'Suave'],
+  },
+  {
+    id: 't4',
+    title: 'Revoada do Tubarão 3',
+    artists: 'Vários artistas',
+    album: 'Revoada do Tubarão 3',
+    cover: '#2E5E7A',
+    image: COVERS.revoada,
+    duration: '3:58',
+    genres: ['Funk'],
+  },
+  {
+    id: 't5',
+    title: 'Pouco Tecido',
+    artists: 'Vários artistas',
+    album: 'Pouco Tecido',
+    cover: '#7A2E4A',
+    image: COVERS.poucoTecido,
+    duration: '2:47',
+    explicit: true,
+    downloaded: true,
+    genres: ['Funk', 'Cabaré'],
+  },
+  {
+    id: 't6',
+    title: 'Seminua 2',
+    artists: 'Vários artistas',
+    album: 'Seminua 2',
+    cover: '#6B2E5A',
+    image: COVERS.seminua,
+    duration: '3:21',
+    explicit: true,
+    genres: ['Cabaré', 'Funk'],
+  },
+  {
+    id: 't7',
+    title: 'Ninguém Tá Puro',
+    artists: 'Vários artistas',
+    album: 'Ninguém Tá Puro',
+    cover: '#2E4A6B',
+    image: COVERS.ninguem,
+    duration: '3:05',
+    genres: ['Trap', 'Hip hop'],
+  },
+];
+
+export const ALL_TRACK_IDS = TRACKS.map((t) => t.id);
+
+export function trackById(id: string): MockTrack {
+  return TRACKS.find((t) => t.id === id) ?? (TRACKS[0] as MockTrack);
+}
+
+export const NOW_PLAYING: MockTrack = TRACKS[0] as MockTrack;
 
 export interface MockPlaylist {
   id: string;
   name: string;
   /** Linha de apoio na biblioteca (ex.: "Single • MC Kevin"). */
   detail: string;
+  kind: 'Playlist' | 'Single' | 'Podcast';
   cover: string;
   image?: ImageSourcePropType;
   liked?: boolean;
+  tracks: string[];
 }
 
 export const PLAYLISTS: MockPlaylist[] = [
@@ -380,40 +468,85 @@ export const PLAYLISTS: MockPlaylist[] = [
     id: 'l1',
     name: 'Músicas Curtidas',
     detail: 'Playlist • Raul Barbosa',
-    cover: '#5B4BDB',
+    kind: 'Playlist',
+    cover: '#1F3FD9',
     liked: true,
+    tracks: ALL_TRACK_IDS,
   },
   {
     id: 'l2',
     name: 'Piscina de Diamante',
     detail: 'Single • MC Kevin',
+    kind: 'Single',
     cover: '#8A7A55',
     image: COVERS.piscina,
+    tracks: ['t3'],
   },
   {
     id: 'l3',
     name: 'Donos da Capital',
     detail: 'Single • MC Kevin e outros',
+    kind: 'Single',
     cover: '#4A3A2A',
     image: COVERS.donos,
+    tracks: ['t2'],
   },
   {
     id: 'l4',
     name: 'Revoada do Tubarão 3',
     detail: 'Single',
+    kind: 'Single',
     cover: '#2E5E7A',
     image: COVERS.revoada,
+    tracks: ['t4'],
   },
-  { id: 'l5', name: 'Pouco Tecido', detail: 'Single', cover: '#7A2E4A', image: COVERS.poucoTecido },
-  { id: 'l6', name: 'Seminua 2', detail: 'Single', cover: '#6B2E5A', image: COVERS.seminua },
+  {
+    id: 'l5',
+    name: 'Pouco Tecido',
+    detail: 'Single',
+    kind: 'Single',
+    cover: '#7A2E4A',
+    image: COVERS.poucoTecido,
+    tracks: ['t5'],
+  },
+  {
+    id: 'l6',
+    name: 'Seminua 2',
+    detail: 'Single',
+    kind: 'Single',
+    cover: '#6B2E5A',
+    image: COVERS.seminua,
+    tracks: ['t6'],
+  },
   {
     id: 'l7',
     name: 'Isolado no Quarto',
     detail: 'Single • MC Kevin, DJ Nene MPC',
+    kind: 'Single',
     cover: '#3A2A6B',
     image: COVERS.isolado,
+    tracks: ['t1'],
   },
-  { id: 'l8', name: 'Ninguém Tá Puro', detail: 'Single', cover: '#2E4A6B', image: COVERS.ninguem },
+  {
+    id: 'l8',
+    name: 'Ninguém Tá Puro',
+    detail: 'Single',
+    kind: 'Single',
+    cover: '#2E4A6B',
+    image: COVERS.ninguem,
+    tracks: ['t7'],
+  },
+];
+
+export function playlistById(id: string): MockPlaylist {
+  return PLAYLISTS.find((p) => p.id === id) ?? (PLAYLISTS[0] as MockPlaylist);
+}
+
+export const ARTISTS = [
+  { id: 'a1', name: 'MC Kevin', image: COVERS.piscina },
+  { id: 'a2', name: 'MC Ryan SP', image: undefined },
+  { id: 'a3', name: 'DJ Nene MPC', image: undefined },
+  { id: 'a4', name: 'MC IG', image: undefined },
 ];
 
 export const SHOWS = [
@@ -428,14 +561,4 @@ export const BROWSE = [
   { id: 'b2', name: 'Podcasts', color: '#4E8A1E', image: undefined },
   { id: 'b3', name: 'Audiolivros', color: '#2C4FB0', image: undefined },
   { id: 'b4', name: 'Eventos ao vivo', color: '#8E5AA8', image: COVERS.revoada },
-];
-
-export const QUEUE = [
-  {
-    title: 'Donos da Capital',
-    artists: 'MC Kevin, MC Ryan SP, MC GP, MC Lele JP, MC IG',
-    cover: '#4A3A2A',
-    image: COVERS.donos,
-  },
-  { title: 'Piscina de Diamante', artists: 'MC Kevin', cover: '#8A7A55', image: COVERS.piscina },
 ];

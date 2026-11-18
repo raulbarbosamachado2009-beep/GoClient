@@ -1,13 +1,18 @@
 import { useRouter } from 'expo-router';
-import { NOW_PLAYING } from '../mocks/data';
 import { usePrototype } from '../prototype/state';
 
-/** Simula "tocar" no protótipo: define a faixa atual e abre o player. */
+/** Toca uma faixa (com a fila opcional) e abre o player. */
 export function usePlay() {
-  const { setNowPlaying } = usePrototype();
+  const { playTrack } = usePrototype();
   const router = useRouter();
-  return () => {
-    setNowPlaying(NOW_PLAYING);
+  return (trackId = 't1', queue?: string[]) => {
+    playTrack(trackId, queue);
     router.push('/player');
   };
+}
+
+/** Abre a página de uma playlist/single. */
+export function useOpenPlaylist() {
+  const router = useRouter();
+  return (id: string) => router.push({ pathname: '/musica/playlist/[id]', params: { id } });
 }
