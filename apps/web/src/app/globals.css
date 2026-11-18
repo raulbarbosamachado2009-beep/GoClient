@@ -1,0 +1,25 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--gc-color-background);
+  color: var(--gc-color-text);
+  font-family: var(--gc-font-sans);
+  -webkit-font-smoothing: antialiased;
+  color-scheme: dark;
+}
+
+/* Respeita a preferência do sistema por menos movimento; !important é intencional aqui. */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    /* biome-ignore lint/complexity/noImportantStyles: precisa vencer estilos de componentes */
+    transition-duration: 0ms !important;
+    /* biome-ignore lint/complexity/noImportantStyles: precisa vencer estilos de componentes */
+    animation-duration: 0ms !important;
+  }
+}

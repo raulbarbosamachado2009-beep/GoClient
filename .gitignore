@@ -1,0 +1,31 @@
+node_modules/
+.turbo/
+dist/
+coverage/
+
+# Next.js
+.next/
+next-env.d.ts
+
+# Expo / React Native
+.expo/
+expo-env.d.ts
+web-build/
+apps/*/ios/
+apps/*/android/
+*.jks
+*.keystore
+*.p8
+*.p12
+*.mobileprovision
+
+# Banco local de desenvolvimento (PGlite)
+apps/api/.data/
+
+# Ambiente
+.env
+.env.*
+!.env.example
+
+.DS_Store
+*.log

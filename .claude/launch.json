@@ -1,0 +1,30 @@
+{
+  "version": "0.0.1",
+  "autoVerify": true,
+  "configurations": [
+    {
+      "name": "api",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@goclient/api", "dev"],
+      "port": 4000
+    },
+    {
+      "name": "web",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@goclient/web", "dev"],
+      "port": 3000
+    },
+    {
+      "name": "mobile",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@goclient/mobile", "web"],
+      "port": 8081
+    },
+    {
+      "name": "automotive",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@goclient/automotive", "web"],
+      "port": 8082
+    }
+  ]
+}

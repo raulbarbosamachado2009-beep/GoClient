@@ -1,0 +1,30 @@
+{
+  "name": "@goclient/native",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Fundação compartilhada pelos apps React Native (Mobile e Automotive): componentes base, escala visual por plataforma e cliente da API.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@goclient/api": "workspace:*",
+    "@goclient/core": "workspace:*",
+    "@goclient/design-tokens": "workspace:*"
+  },
+  "peerDependencies": {
+    "expo-constants": "*",
+    "react": "*",
+    "react-native": "*"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.6",
+    "@types/react": "~19.3.0",
+    "expo-constants": "~58.0.0",
+    "react": "19.3.0",
+    "react-native": "0.88.1",
+    "typescript": "~6.0.3"
+  }
+}

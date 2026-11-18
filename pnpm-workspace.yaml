@@ -1,0 +1,12 @@
+packages:
+  - apps/*
+  - packages/*
+
+# Uma única versão de React em todo o monorepo (exigência do React Native/Expo).
+overrides:
+  react: 19.3.0
+  react-dom: 19.3.0
+
+# Dependências autorizadas a executar scripts de instalação.
+onlyBuiltDependencies:
+  - esbuild
