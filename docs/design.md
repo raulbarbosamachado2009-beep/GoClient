@@ -81,14 +81,16 @@ Por decisão do produto, a interface usa **somente SF Pro** (Display e Text), ob
 | `/musica`, `/musica/buscar`, `/musica/biblioteca`, `/musica/playlist/[id]`, `/player` | Música (login, início, busca, biblioteca, player; player minimizado só na Música, acima das abas) |
 | `/configuracoes` | Ajustes |
 
-## Havena (balão da IA)
+## Havena (orbe da IA)
 
-- O orbe azul fica na barra lateral, logo abaixo do Spotify. Tocar nele abre o balão da Havena pela direita.
-- Atrás do balão, o desfoque nasce na borda direita e esvanece para a esquerda. Na Web é um único
+- O orbe fica na barra lateral, logo abaixo do Spotify. Tocar nele faz o círculo aparecer grande no canto
+  direito da tela, sem painel nem texto. Tocar fora fecha; tocar no círculo alterna os estados da animação.
+- Atrás do círculo, o desfoque nasce na borda direita e esvanece para a esquerda. Na Web é um único
   `backdrop-filter` com `mask-image` em degradê; no Android/iOS são faixas de `BlurView` sobrepostas
   (o BlurView não aceita máscara). O desfoque cresce com `useTween`, sem animar opacidade.
-- O orbe (`src/havena/orb.tsx`) é inspirado no componente OrbBloop, que usa WebGPU (pacote `vgpu`) num
-  `<canvas>` e depende de arquivos que não vieram junto (shader WGSL, `gpu-runtime`, `use-orb-audio`).
-  WebGPU não roda na central multimídia em React Native, então a versão aqui usa SVG com gradientes
-  radiais. Os estados `idle`, `listen`, `think` e `speak` só mudam o ritmo da animação.
-- Protótipo: as sugestões têm respostas fixas e não há comando de voz.
+- Visual do orbe copiado da referência enviada: aquarela com creme no topo, azul-claro no meio e azul forte
+  embaixo, sem brilho de vidro nem sombra. As manchas derivam em volta de pontos fixos.
+- O componente OrbBloop recebido usa WebGPU (pacote `vgpu`) e depende de arquivos que não vieram junto
+  (shader WGSL, `gpu-runtime`, `use-orb-audio`). WebGPU não roda na central multimídia em React Native,
+  então `src/havena/orb.tsx` usa SVG. Os estados `idle`, `listen`, `think` e `speak` só mudam o ritmo.
+- Protótipo: não há comando de voz.
