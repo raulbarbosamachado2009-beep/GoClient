@@ -2,7 +2,7 @@ import { type Href, usePathname, useRouter } from 'expo-router';
 import { Animated, Pressable, StyleSheet, View } from 'react-native';
 import { spacing, useColors } from '../theme';
 import { useSpring } from '../ui/motion';
-import { AppIcon, Icon, type IconName, Text, Touchable } from '../ui/primitives';
+import { AppIcon, Blur, Icon, type IconName, Text, Touchable } from '../ui/primitives';
 
 interface Item {
   href: Href;
@@ -43,7 +43,14 @@ export function Sidebar() {
   const settingsActive = pathname.startsWith('/configuracoes');
 
   return (
-    <View style={[styles.bar, { backgroundColor: c.sidebar }]}>
+    <View style={[styles.bar, { borderRightColor: c.material.border }]}>
+      <Blur radius={40} tint={c.material.tint} />
+      <View
+        style={[
+          StyleSheet.absoluteFill,
+          { backgroundColor: c.mode === 'dark' ? 'rgba(18,18,20,0.62)' : 'rgba(236,236,241,0.66)' },
+        ]}
+      />
       <View style={styles.status}>
         <Text variant="headline">09:41</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -90,7 +97,17 @@ export function Sidebar() {
 }
 
 const styles = StyleSheet.create({
-  bar: { width: 120, paddingVertical: spacing[5], alignItems: 'center' },
+  bar: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 120,
+    paddingVertical: spacing[5],
+    alignItems: 'center',
+    overflow: 'hidden',
+    borderRightWidth: StyleSheet.hairlineWidth,
+  },
   status: { alignItems: 'center', gap: 2, marginBottom: spacing[5] },
   plate: { position: 'absolute', left: 4, top: 0, width: 96, height: 96, borderRadius: 24 },
   item: { width: 104, height: SLOT, alignItems: 'center', justifyContent: 'center' },

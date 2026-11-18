@@ -1,4 +1,4 @@
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, View } from 'react-native';
 import { BROWSE, SHOWS } from '../../../mocks/data';
 import { MusicSection } from '../../../music/ui';
 import { usePlay } from '../../../music/use-play';
@@ -48,7 +48,9 @@ export default function Search() {
               <Text variant="title2" color="#FFFFFF" style={{ fontSize: 34, lineHeight: 40 }}>
                 {b.name}
               </Text>
-              <View style={[styles.tileArt, { backgroundColor: shade(b.color, 0.3) }]} />
+              <View style={[styles.tileArt, { backgroundColor: shade(b.color, 0.3) }]}>
+                {b.image && <Image source={b.image} style={{ width: '100%', height: '100%' }} />}
+              </View>
             </Touchable>
           </Appear>
         ))}
@@ -101,6 +103,7 @@ const styles = StyleSheet.create({
     width: 116,
     height: 116,
     borderRadius: 10,
+    overflow: 'hidden',
     transform: [{ rotate: '25deg' }],
   },
 });

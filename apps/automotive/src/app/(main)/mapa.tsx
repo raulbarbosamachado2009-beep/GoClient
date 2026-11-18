@@ -2,7 +2,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { PannableMap } from '../../map/pannable-map';
-import { type MapMode, USER } from '../../map/world';
+import { CLIENT_FOCUS, DAY_FOCUS, type MapMode, USER } from '../../map/world';
 import { CLIENTS, type MockClient, TODAY_ROUTE } from '../../mocks/data';
 import { layout, spacing, useColors } from '../../theme';
 import { Appear } from '../../ui/motion';
@@ -25,6 +25,7 @@ export default function MapScreen() {
   const { rota, id } = useLocalSearchParams<{ rota?: string; id?: string }>();
   const mode: MapMode = rota === 'dia' ? 'day' : rota === 'cliente' ? 'client' : 'explore';
   const [stop, setStop] = useState(0);
+  const target = mode === 'explore' ? USER : mode === 'day' ? DAY_FOCUS : CLIENT_FOCUS;
 
   const routeClients = TODAY_ROUTE.map((cid) => CLIENTS.find((c) => c.id === cid) as MockClient);
   const client =
@@ -35,10 +36,7 @@ export default function MapScreen() {
   return (
     <View style={{ flex: 1 }}>
       {/* O foco é deslocado para a direita para que o conteúdo fique centrado na área livre à esquerda do cartão. */}
-      <PannableMap
-        mode={mode}
-        focus={mode === 'explore' ? { x: USER.x + 250, y: USER.y } : { x: 2230, y: 1180 }}
-      />
+      <PannableMap mode={mode} focus={{ x: target.x + FOCUS_SHIFT, y: target.y }} />
 
       {mode === 'explore' ? <SearchPill /> : <Guidance />}
       {mode !== 'explore' && <TripBar mode={mode} />}
@@ -143,7 +141,7 @@ function ClientCard({
   const tile = c.mode === 'dark' ? 'rgba(255,255,255,0.1)' : '#FFFFFF';
 
   return (
-    <Material style={styles.card} intensity={70}>
+    <Material style={styles.card}>
       <Appear distance={10}>
         {stopLabel && (
           <Text variant="footnote" tone="secondary" style={{ marginBottom: spacing[3] }}>
@@ -242,9 +240,13 @@ function InfoLine({
   );
 }
 
+/** Desloca a câmera para centralizar o conteúdo na área livre entre a barra lateral e o cartão. */
+const FOCUS_SHIFT = 190;
+const LEFT = layout.sidebarWidth + layout.gutter;
+
 const styles = StyleSheet.create({
-  topLeft: { position: 'absolute', top: layout.gutter, left: layout.gutter },
-  bottomLeft: { position: 'absolute', bottom: layout.gutter, left: layout.gutter },
+  topLeft: { position: 'absolute', top: layout.gutter, left: LEFT },
+  bottomLeft: { position: 'absolute', bottom: layout.gutter, left: LEFT },
   cardSlot: {
     position: 'absolute',
     top: layout.gutter,

@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Text as RNText, View } from 'react-native';
+import { Image, type ImageSourcePropType, Text as RNText, View } from 'react-native';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { FONT } from '../theme';
 
@@ -35,7 +35,9 @@ export function Cover({
   radius = 8,
   title,
   liked,
+  image,
 }: {
+  image?: ImageSourcePropType;
   color: string;
   size: number;
   height?: number;
@@ -60,6 +62,43 @@ export function Cover({
       >
         <Ionicons name="heart" size={Math.min(size, h) * 0.42} color="#FFFFFF" />
       </LinearGradient>
+    );
+  }
+
+  if (image) {
+    return (
+      <View
+        style={{
+          width: size,
+          height: h,
+          borderRadius: radius,
+          overflow: 'hidden',
+          backgroundColor: color,
+        }}
+      >
+        <Image source={image} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+        {title && Math.min(size, h) >= 150 && (
+          <>
+            <LinearGradient
+              colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.6)']}
+              style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: h * 0.55 }}
+            />
+            <View style={{ position: 'absolute', left: 22, right: 22, bottom: 18 }}>
+              <RNText
+                numberOfLines={2}
+                style={{
+                  fontFamily: FONT.displayBold,
+                  color: '#FFFFFF',
+                  fontSize: 30,
+                  lineHeight: 34,
+                }}
+              >
+                {title}
+              </RNText>
+            </View>
+          </>
+        )}
+      </View>
     );
   }
 

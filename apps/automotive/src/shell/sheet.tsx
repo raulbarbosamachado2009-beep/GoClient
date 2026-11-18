@@ -1,6 +1,7 @@
 import { type ReactNode, useEffect, useRef } from 'react';
-import { Animated, Pressable, StyleSheet, View, type ViewStyle } from 'react-native';
+import { Animated, StyleSheet, View, type ViewStyle } from 'react-native';
 import { nativeDriver, useColors } from '../theme';
+import { BlurBackdrop } from '../ui/primitives';
 
 /**
  * Janela sobreposta (estilo "form sheet" do iOS): fundo escurece e a janela sobe com mola.
@@ -31,11 +32,7 @@ export function Sheet({
   return (
     <View style={styles.root}>
       <Animated.View style={[StyleSheet.absoluteFill, { opacity: fade }]}>
-        <Pressable
-          accessibilityLabel="Fechar janela"
-          style={[StyleSheet.absoluteFill, { backgroundColor: c.scrim }]}
-          onPress={onClose}
-        />
+        <BlurBackdrop onPress={onClose} />
       </Animated.View>
       <Animated.View
         style={[

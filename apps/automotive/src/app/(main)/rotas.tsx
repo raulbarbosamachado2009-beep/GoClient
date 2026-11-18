@@ -187,7 +187,7 @@ function Calculating({ count, onDone }: { count: number; onDone: () => void }) {
           transform: [{ scale: v.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1] }) }],
         }}
       >
-        <Material style={styles.hud} intensity={80}>
+        <Material style={styles.hud}>
           <ActivityIndicator size="large" color={c.text} style={{ transform: [{ scale: 1.8 }] }} />
           <View style={{ alignItems: 'center', gap: 4 }}>
             <Text variant="title2">Calculando rota</Text>

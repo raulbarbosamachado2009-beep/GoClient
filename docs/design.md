@@ -10,7 +10,11 @@ Estado: protótipo navegável de design (sem funcionalidades). Dados fictícios 
   Ajustes → Tema (Claro, Escuro, Automático), e todas as telas leem a paleta via `useColors()`.
   Nenhuma cor fixa fora do tema, exceto na Música, onde a referência pede verde e o player é
   sempre imersivo/escuro.
-- **Materiais:** painéis sobre o mapa usam desfoque (`Material`, baseado em `expo-blur`).
+- **Materiais (desfoque):** `Material` (cartão do mapa, quadro de carregamento), `Blur` (barra
+  lateral) e `BlurBackdrop` (fundo de toda janela/pop-up) em `src/ui/primitives.tsx`. Na Web usam
+  `backdrop-filter` com raio forte (40 px); no Android/iOS, o BlurView nativo. A barra lateral fica
+  por cima do conteúdo e, no Mapa, o mapa passa por baixo dela.
+- **Player:** o fundo é a própria capa da música, ampliada e com desfoque forte.
 - **Listas:** padrão "inset grouped" do iOS (`Group` + `Row`).
 - **Movimento** (`src/ui/motion.tsx`): entrada escalonada de listas (`Appear`), transição entre
   telas, resposta por mola ao toque, controles com "polegar" deslizante (segmentado, interruptor,
@@ -19,10 +23,23 @@ Estado: protótipo navegável de design (sem funcionalidades). Dados fictícios 
 
 ## Mapa
 
-`src/map/pannable-map.tsx` + `src/map/world.tsx`. O mapa atual é uma **ilustração em SVG** usada
-para validar a interação: arrastar (com inércia), pinça e roda do mouse para zoom, toque duplo para
+`src/map/pannable-map.tsx` + `src/map/world.tsx`. O mapa atual é uma **imagem de exemplo**
+(`assets/map/map-light.jpg`, recortada sem os controles e ampliada 2,4×; `map-dark.jpg` é derivada
+dela para o tema escuro), com rotas, paradas e veículo desenhados por cima em SVG, alinhados às
+vias expressas da imagem. Serve para validar a interação: arrastar (com inércia), pinça e roda do mouse para zoom, toque duplo para
 aproximar e limites nas bordas. Não há botões de zoom. O mapa real (tiles, GPS, rotas) substitui
 `MapWorld` numa fase própria, mantendo o mesmo comportamento de navegação.
+
+## Capas de música
+
+`assets/covers/` contém capas fornecidas para o protótipo (convertidas para JPG, até 640 px). No
+app final, capas, faixas e artistas vêm do Spotify; essas imagens são apenas conteúdo de exemplo e
+pertencem aos respectivos titulares.
+
+## Testes visuais (observação)
+
+O Chrome sem interface usado nas capturas automáticas ignora `backdrop-filter` em capturas grandes
+(tela inteira). Para revisar o desfoque, capture a tela em blocos menores ou confira no navegador.
 
 ## Tipografia — SF Pro (atenção à licença)
 

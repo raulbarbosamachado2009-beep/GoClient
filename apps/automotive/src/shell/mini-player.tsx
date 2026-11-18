@@ -48,7 +48,7 @@ export function MiniPlayer() {
         scaleTo={0.985}
         style={styles.open}
       >
-        <Cover color={nowPlaying.cover} size={72} radius={8} />
+        <Cover color={nowPlaying.cover} image={nowPlaying.image} size={72} radius={8} />
         <View style={{ flex: 1 }}>
           <Text variant="bodyStrong" color="#FFFFFF" numberOfLines={1}>
             {nowPlaying.title}

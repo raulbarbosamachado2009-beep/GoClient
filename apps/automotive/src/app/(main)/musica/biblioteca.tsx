@@ -61,14 +61,16 @@ export default function Library() {
           <Appear key={p.id} delay={i * 40} distance={12}>
             <PlaylistTile
               height={104}
-              cover={<Cover color={p.cover} size={150} height={104} radius={0} liked={p.liked} />}
+              cover={
+                <Cover color={p.cover} image={p.image} size={104} radius={0} liked={p.liked} />
+              }
               title={p.name}
               onPress={play}
               subtitle={
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[2] }}>
                   <Icon name="pin" size={24} color={c.music.accent} />
                   <Text variant="callout" tone="secondary" numberOfLines={1}>
-                    {p.kind} • {p.owner}
+                    {p.detail}
                   </Text>
                 </View>
               }

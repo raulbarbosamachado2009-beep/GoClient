@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { type ComponentProps, type ReactNode, useRef, useState } from 'react';
 import {
   Animated,
+  Platform,
   Pressable,
   type PressableProps,
   Text as RNText,
@@ -511,28 +512,65 @@ export function PageHeader({
   );
 }
 
-/** Material translúcido (desfoque do conteúdo de trás), usado sobre o mapa. */
+/**
+ * Desfoque do que está atrás. Na Web usa `backdrop-filter` com raio forte (o expo-blur
+ * limita a ~20 px); no Android/iOS usa o BlurView nativo na intensidade máxima.
+ */
+export function Blur({ radius = 40, tint }: { radius?: number; tint: 'dark' | 'light' }) {
+  if (Platform.OS === 'web') {
+    const f = `blur(${radius}px) saturate(180%)`;
+    return (
+      <View
+        style={[StyleSheet.absoluteFill, { backdropFilter: f, WebkitBackdropFilter: f } as object]}
+      />
+    );
+  }
+  return (
+    <BlurView
+      tint={tint}
+      intensity={100}
+      experimentalBlurMethod="dimezisBlurView"
+      style={StyleSheet.absoluteFill}
+    />
+  );
+}
+
+/**
+ * Material translúcido (estilo iOS): desfoque forte + camada de cor quase opaca, como na
+ * referência do cartão do cliente. Usado sobre o mapa e na barra lateral.
+ */
 export function Material({
   style,
   children,
-  intensity = 60,
+  radius = 44,
   ...rest
-}: ViewProps & { intensity?: number }) {
+}: ViewProps & { radius?: number }) {
   const c = useColors();
   return (
     <View
       style={[{ overflow: 'hidden', borderWidth: 1, borderColor: c.material.border }, style]}
       {...rest}
     >
-      <BlurView
-        tint={c.material.tint}
-        intensity={intensity}
-        experimentalBlurMethod="dimezisBlurView"
-        style={StyleSheet.absoluteFill}
-      />
+      <Blur radius={radius} tint={c.material.tint} />
       <View style={[StyleSheet.absoluteFill, { backgroundColor: c.material.fallback }]} />
       {children}
     </View>
+  );
+}
+
+/** Fundo de janelas e pop-ups: desfoca toda a tela atrás (referência: imagem 1). */
+export function BlurBackdrop({ onPress }: { onPress?: () => void }) {
+  const c = useColors();
+  return (
+    <Pressable accessibilityLabel="Fechar janela" onPress={onPress} style={StyleSheet.absoluteFill}>
+      <Blur radius={22} tint={c.material.tint} />
+      <View
+        style={[
+          StyleSheet.absoluteFill,
+          { backgroundColor: c.mode === 'dark' ? 'rgba(0,0,0,0.35)' : 'rgba(200,200,206,0.35)' },
+        ]}
+      />
+    </Pressable>
   );
 }
 

@@ -1,11 +1,11 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { type ReactNode, useRef, useState } from 'react';
-import { Animated, StyleSheet, View } from 'react-native';
-import { NOW_PLAYING, QUEUE } from '../mocks/data';
+import { Animated, Image, type ImageSourcePropType, StyleSheet, View } from 'react-native';
+import { COVERS, NOW_PLAYING, QUEUE } from '../mocks/data';
 import { usePrototype } from '../prototype/state';
 import { layout, spacing } from '../theme';
-import { Cover, shade } from '../ui/brand';
+import { Cover } from '../ui/brand';
 import { Appear } from '../ui/motion';
 import { Avatar, Icon, IconButton, Text, Touchable } from '../ui/primitives';
 
@@ -39,12 +39,17 @@ export default function Player() {
   });
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#050B07' }}>
+    <View style={{ flex: 1, backgroundColor: '#000000', overflow: 'hidden' }}>
+      {/* Fundo = a própria capa, ampliada e com desfoque forte (como no player da Apple). */}
+      <Image
+        source={track.image}
+        blurRadius={60}
+        resizeMode="cover"
+        style={[styles.backdrop, { transform: [{ scale: 1.25 }] }]}
+      />
       <LinearGradient
-        colors={[shade(track.cover, -0.05), shade(track.cover, -0.55), '#050B07']}
-        locations={[0, 0.5, 1]}
-        start={{ x: 0.1, y: 0 }}
-        end={{ x: 0.6, y: 1 }}
+        colors={['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.25)', 'rgba(0,0,0,0.6)']}
+        locations={[0, 0.55, 1]}
         style={StyleSheet.absoluteFill}
       />
 
@@ -80,7 +85,7 @@ export default function Player() {
           <View style={styles.main}>
             <Appear distance={24} duration={520}>
               <View style={styles.artShadow}>
-                <Cover color={track.cover} size={600} radius={20} title={track.album} />
+                <Cover color={track.cover} image={track.image} size={600} radius={20} />
               </View>
             </Appear>
 
@@ -182,7 +187,7 @@ export default function Player() {
           <View style={styles.row}>
             <Card style={{ flex: 2, padding: 0, flexDirection: 'row', overflow: 'hidden' }}>
               <View style={{ flex: 1 }}>
-                <Cover color="#5A2430" size={520} height={250} radius={0} />
+                <Cover color="#8A7A55" image={COVERS.piscina} size={520} height={250} radius={0} />
                 <Text variant="headline" color={W} style={styles.cardLabel}>
                   Sobre o artista
                 </Text>
@@ -191,7 +196,7 @@ export default function Player() {
                 style={{ flex: 1, padding: spacing[6], justifyContent: 'center', gap: spacing[2] }}
               >
                 <Text variant="title2" color={W}>
-                  Lua Ventura
+                  MC Kevin
                 </Text>
                 <Text variant="callout" color={W2}>
                   1,2 mi ouvintes mensais
@@ -202,11 +207,15 @@ export default function Player() {
             <Card style={{ flex: 1 }} title="Artistas na faixa">
               <View style={{ flexDirection: 'row', justifyContent: 'space-around' }}>
                 {[
-                  ['Lua Ventura', 'Artista principal'],
-                  ['Os Marés', 'Artista principal'],
+                  ['MC Kevin', 'Artista principal'],
+                  ['DJ Nene MPC', 'Artista'],
                 ].map(([n, r]) => (
                   <View key={n} style={{ alignItems: 'center', gap: 4 }}>
-                    <Avatar name={n as string} size={128} />
+                    {n === 'MC Kevin' ? (
+                      <Cover color="#8A7A55" image={COVERS.piscina} size={128} radius={64} />
+                    ) : (
+                      <Avatar name={n as string} size={128} />
+                    )}
                     <Text variant="bodyStrong" color={W}>
                       {n}
                     </Text>
@@ -227,15 +236,21 @@ export default function Player() {
             >
               <View style={{ flexDirection: 'row', gap: spacing[6] }}>
                 {[
-                  ['Horizonte Aberto (ao vivo)', 'Lua Ventura, Os Marés', '#2E6E8E', '04:12'],
-                  ['Rota 66 Graus', 'Os Marés', '#6C4FA3', '03:13'],
+                  ['Donos da Capital', 'MC Kevin e outros', COVERS.donos, '04:12'],
+                  ['Piscina de Diamante', 'MC Kevin', COVERS.piscina, '03:13'],
                 ].map(([t, a, col, d]) => (
                   <View
                     key={t}
                     style={{ flex: 1, flexDirection: 'row', gap: spacing[4], alignItems: 'center' }}
                   >
                     <View>
-                      <Cover color={col as string} size={250} height={140} radius={10} />
+                      <Cover
+                        color="#222"
+                        image={col as ImageSourcePropType}
+                        size={250}
+                        height={140}
+                        radius={10}
+                      />
                       <Text variant="footnote" color={W} style={styles.duration}>
                         {d}
                       </Text>
@@ -266,7 +281,7 @@ export default function Player() {
                   key={q.title}
                   style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[4] }}
                 >
-                  <Cover color={q.cover} size={128} height={96} radius={8} />
+                  <Cover color={q.cover} image={q.image} size={96} radius={8} />
                   <View style={{ flex: 1 }}>
                     <Text variant="bodyStrong" color={W}>
                       {q.title}
@@ -289,9 +304,8 @@ export default function Player() {
             }
           >
             {[
-              ['Lua Ventura', 'Artista principal • Autora • Letrista'],
-              ['Os Marés', 'Artista principal'],
-              ['DJ Calango', 'Produção'],
+              ['MC Kevin', 'Artista principal'],
+              ['DJ Nene MPC', 'Artista'],
             ].map(([n, r]) => (
               <View key={n} style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Text variant="bodyStrong" color={W} style={{ width: 300 }}>
@@ -305,15 +319,22 @@ export default function Player() {
             ))}
           </Card>
 
-          <Card title="Conheça Lua Ventura">
+          <Card title="Conheça MC Kevin">
             <View style={{ flexDirection: 'row', gap: spacing[5] }}>
               {[
-                ['Músicas de Lua Ventura', '#2E6E8E'],
-                ['Parecidas com Lua Ventura', '#6C4FA3'],
-                ['Parecidas com Horizonte Aberto', '#8A5A3C'],
+                ['Músicas de MC Kevin', COVERS.piscina],
+                ['Parecidas com MC Kevin', COVERS.donos],
+                ['Parecidas com Isolado no Quarto', COVERS.ninguem],
               ].map(([label, col]) => (
                 <View key={label} style={{ flex: 1 }}>
-                  <Cover color={col as string} size={460} height={200} radius={14} title={label} />
+                  <Cover
+                    color="#222"
+                    image={col as ImageSourcePropType}
+                    size={460}
+                    height={200}
+                    radius={14}
+                    title={label as string}
+                  />
                 </View>
               ))}
             </View>
@@ -326,10 +347,13 @@ export default function Player() {
         pointerEvents={compactVisible ? 'auto' : 'none'}
         style={[styles.compact, { opacity: compactOpacity }]}
       >
-        <LinearGradient
-          colors={[shade(track.cover, -0.35), shade(track.cover, -0.5)]}
-          style={StyleSheet.absoluteFill}
+        <Image
+          source={track.image}
+          blurRadius={60}
+          resizeMode="cover"
+          style={[styles.backdrop, { transform: [{ scale: 1.25 }] }]}
         />
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.45)' }]} />
         <IconButton
           icon="chevron-down"
           iconSize={48}
@@ -402,6 +426,7 @@ function Pill({ label, small }: { label: string; small?: boolean }) {
 }
 
 const styles = StyleSheet.create({
+  backdrop: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' },
   hero: { height: layout.height, paddingHorizontal: 56, paddingTop: 20, paddingBottom: 40 },
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   main: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 72 },
@@ -457,6 +482,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   compact: {
+    backgroundColor: '#101014',
     position: 'absolute',
     top: 0,
     left: 0,

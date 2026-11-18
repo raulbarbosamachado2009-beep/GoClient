@@ -75,7 +75,7 @@ const dark: Palette = {
   danger: '#FF453A',
   warning: '#FFD60A',
   scrim: 'rgba(0,0,0,0.55)',
-  material: { tint: 'dark', fallback: 'rgba(30,30,32,0.72)', border: 'rgba(255,255,255,0.08)' },
+  material: { tint: 'dark', fallback: 'rgba(28,28,30,0.74)', border: 'rgba(255,255,255,0.1)' },
   sidebar: '#0C0C0D',
   map: {
     ground: '#1B1D21',
@@ -121,7 +121,7 @@ const light: Palette = {
   danger: '#FF3B30',
   warning: '#FFCC00',
   scrim: 'rgba(0,0,0,0.28)',
-  material: { tint: 'light', fallback: 'rgba(246,246,248,0.78)', border: 'rgba(0,0,0,0.06)' },
+  material: { tint: 'light', fallback: 'rgba(244,244,247,0.84)', border: 'rgba(255,255,255,0.6)' },
   sidebar: '#E6E6EB',
   map: {
     ground: '#F1EEE8',

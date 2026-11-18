@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { PLAYLISTS, SHOWS } from '../../../mocks/data';
+import { COVERS, PLAYLISTS, SHOWS } from '../../../mocks/data';
 import { MusicChip, MusicSection, PlaylistTile } from '../../../music/ui';
 import { usePlay } from '../../../music/use-play';
 import { spacing, useColors } from '../../../theme';
@@ -43,7 +43,9 @@ export default function MusicHome() {
         {PLAYLISTS.slice(0, 6).map((p, i) => (
           <Appear key={p.id} delay={i * 40} distance={12} style={{ width: '49.3%' }}>
             <PlaylistTile
-              cover={<Cover color={p.cover} size={104} radius={0} liked={p.liked} />}
+              cover={
+                <Cover color={p.cover} image={p.image} size={104} radius={0} liked={p.liked} />
+              }
               title={p.name}
               onPress={play}
             />
@@ -58,23 +60,23 @@ export default function MusicHome() {
             { backgroundColor: c.music.card, borderColor: c.music.cardBorder },
           ]}
         >
-          <Avatar name="Lua Ventura" size={124} />
+          <Cover color="#8A7A55" image={COVERS.piscina} size={124} radius={62} />
           <View style={{ width: 400 }}>
             <Text variant="callout" tone="secondary">
               Novo lançamento de
             </Text>
             <Text variant="largeTitle" numberOfLines={1} style={{ fontSize: 58, lineHeight: 66 }}>
-              Lua Ventura
+              MC Kevin
             </Text>
           </View>
-          <Cover color="#B5652B" size={136} radius={8} />
+          <Cover color="#4A3A2A" image={COVERS.donos} size={136} radius={8} />
           <View style={{ flex: 1 }}>
             <Text variant="callout" tone="secondary">
               Single
             </Text>
-            <Text variant="title2">Poeira e Sol</Text>
+            <Text variant="title2">Donos da Capital</Text>
             <Text variant="callout" tone="secondary" numberOfLines={1}>
-              Lua Ventura, Os Marés
+              MC Kevin, MC Ryan SP, MC GP, MC Lele JP, MC IG
             </Text>
           </View>
           <IconButton

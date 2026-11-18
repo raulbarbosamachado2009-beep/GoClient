@@ -1,3 +1,5 @@
+import type { ImageSourcePropType } from 'react-native';
+
 /**
  * Dados FICTÍCIOS, usados só para o design das telas. Nenhuma tela lê a API nesta fase.
  */
@@ -331,30 +333,45 @@ export const PRODUCTS: MockProduct[] = [
   },
 ];
 
-/* ---------- Música (fictício) ---------- */
+/* ---------- Música ---------- */
+// Capas fornecidas para o protótipo. No app final, capas e faixas vêm do Spotify.
+
+export const COVERS = {
+  piscina: require('../../assets/covers/piscina-de-diamante.jpg'),
+  revoada: require('../../assets/covers/revoada-do-tubarao-3.jpg'),
+  donos: require('../../assets/covers/donos-da-capital.jpg'),
+  isolado: require('../../assets/covers/isolado-no-quarto.jpg'),
+  poucoTecido: require('../../assets/covers/pouco-tecido.jpg'),
+  seminua: require('../../assets/covers/seminua-2.jpg'),
+  ninguem: require('../../assets/covers/ninguem-ta-puro.jpg'),
+} satisfies Record<string, ImageSourcePropType>;
 
 export interface MockTrack {
   title: string;
   artists: string;
   album: string;
+  /** Cor de apoio (fallback e detalhes). */
   cover: string;
+  image: ImageSourcePropType;
   duration: string;
 }
 
 export const NOW_PLAYING: MockTrack = {
-  title: 'Horizonte Aberto',
-  artists: 'Lua Ventura, Os Marés, DJ Calango',
-  album: 'Estrada Livre',
-  cover: '#1F7A45',
+  title: 'Isolado no Quarto',
+  artists: 'MC Kevin, DJ Nene MPC',
+  album: 'Isolado no Quarto',
+  cover: '#3A2A6B',
+  image: COVERS.isolado,
   duration: '3:42',
 };
 
 export interface MockPlaylist {
   id: string;
   name: string;
-  owner: string;
+  /** Linha de apoio na biblioteca (ex.: "Single • MC Kevin"). */
+  detail: string;
   cover: string;
-  kind: 'Playlist' | 'Podcast' | 'Álbum';
+  image?: ImageSourcePropType;
   liked?: boolean;
 }
 
@@ -362,29 +379,41 @@ export const PLAYLISTS: MockPlaylist[] = [
   {
     id: 'l1',
     name: 'Músicas Curtidas',
-    owner: 'Raul Barbosa',
+    detail: 'Playlist • Raul Barbosa',
     cover: '#5B4BDB',
-    kind: 'Playlist',
     liked: true,
   },
-  { id: 'l2', name: 'Estrada Livre', owner: 'Raul Barbosa', cover: '#1F7A45', kind: 'Playlist' },
-  { id: 'l3', name: 'Foco no Trânsito', owner: 'Raul Barbosa', cover: '#2E6E8E', kind: 'Playlist' },
+  {
+    id: 'l2',
+    name: 'Piscina de Diamante',
+    detail: 'Single • MC Kevin',
+    cover: '#8A7A55',
+    image: COVERS.piscina,
+  },
+  {
+    id: 'l3',
+    name: 'Donos da Capital',
+    detail: 'Single • MC Kevin e outros',
+    cover: '#4A3A2A',
+    image: COVERS.donos,
+  },
   {
     id: 'l4',
-    name: 'Sertanejo de Bolso',
-    owner: 'Raul Barbosa',
-    cover: '#A2475E',
-    kind: 'Playlist',
+    name: 'Revoada do Tubarão 3',
+    detail: 'Single',
+    cover: '#2E5E7A',
+    image: COVERS.revoada,
   },
-  { id: 'l5', name: 'Treino', owner: 'Raul Barbosa', cover: '#3B3F46', kind: 'Playlist' },
-  { id: 'l6', name: 'Noite de Sexta', owner: 'Raul Barbosa', cover: '#8A3FA0', kind: 'Playlist' },
+  { id: 'l5', name: 'Pouco Tecido', detail: 'Single', cover: '#7A2E4A', image: COVERS.poucoTecido },
+  { id: 'l6', name: 'Seminua 2', detail: 'Single', cover: '#6B2E5A', image: COVERS.seminua },
   {
     id: 'l7',
-    name: 'Seus episódios',
-    owner: 'Episódios salvos e baixados',
-    cover: '#1E6B44',
-    kind: 'Podcast',
+    name: 'Isolado no Quarto',
+    detail: 'Single • MC Kevin, DJ Nene MPC',
+    cover: '#3A2A6B',
+    image: COVERS.isolado,
   },
+  { id: 'l8', name: 'Ninguém Tá Puro', detail: 'Single', cover: '#2E4A6B', image: COVERS.ninguem },
 ];
 
 export const SHOWS = [
@@ -395,13 +424,18 @@ export const SHOWS = [
 ];
 
 export const BROWSE = [
-  { id: 'b1', name: 'Música', color: '#D63A7A' },
-  { id: 'b2', name: 'Podcasts', color: '#4E8A1E' },
-  { id: 'b3', name: 'Audiolivros', color: '#2C4FB0' },
-  { id: 'b4', name: 'Eventos ao vivo', color: '#8E5AA8' },
+  { id: 'b1', name: 'Música', color: '#D63A7A', image: COVERS.donos },
+  { id: 'b2', name: 'Podcasts', color: '#4E8A1E', image: undefined },
+  { id: 'b3', name: 'Audiolivros', color: '#2C4FB0', image: undefined },
+  { id: 'b4', name: 'Eventos ao vivo', color: '#8E5AA8', image: COVERS.revoada },
 ];
 
 export const QUEUE = [
-  { title: 'Rota 66 Graus', artists: 'Os Marés', cover: '#2E6E8E' },
-  { title: 'Poeira e Sol', artists: 'Lua Ventura', cover: '#B5652B' },
+  {
+    title: 'Donos da Capital',
+    artists: 'MC Kevin, MC Ryan SP, MC GP, MC Lele JP, MC IG',
+    cover: '#4A3A2A',
+    image: COVERS.donos,
+  },
+  { title: 'Piscina de Diamante', artists: 'MC Kevin', cover: '#8A7A55', image: COVERS.piscina },
 ];
