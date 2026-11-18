@@ -80,3 +80,15 @@ Por decisão do produto, a interface usa **somente SF Pro** (Display e Text), ob
 | `/rotas` | Seleção do dia + "Calculando rota" |
 | `/musica`, `/musica/buscar`, `/musica/biblioteca`, `/musica/playlist/[id]`, `/player` | Música (login, início, busca, biblioteca, player; player minimizado só na Música, acima das abas) |
 | `/configuracoes` | Ajustes |
+
+## Havena (balão da IA)
+
+- O orbe azul fica na barra lateral, logo abaixo do Spotify. Tocar nele abre o balão da Havena pela direita.
+- Atrás do balão, o desfoque nasce na borda direita e esvanece para a esquerda. Na Web é um único
+  `backdrop-filter` com `mask-image` em degradê; no Android/iOS são faixas de `BlurView` sobrepostas
+  (o BlurView não aceita máscara). O desfoque cresce com `useTween`, sem animar opacidade.
+- O orbe (`src/havena/orb.tsx`) é inspirado no componente OrbBloop, que usa WebGPU (pacote `vgpu`) num
+  `<canvas>` e depende de arquivos que não vieram junto (shader WGSL, `gpu-runtime`, `use-orb-audio`).
+  WebGPU não roda na central multimídia em React Native, então a versão aqui usa SVG com gradientes
+  radiais. Os estados `idle`, `listen`, `think` e `speak` só mudam o ritmo da animação.
+- Protótipo: as sugestões têm respostas fixas e não há comando de voz.

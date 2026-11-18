@@ -1,6 +1,9 @@
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { type Href, usePathname, useRouter } from 'expo-router';
 import { Animated, Pressable, StyleSheet, View } from 'react-native';
+import { HavenaOrb } from '../havena/orb';
+import { HavenaPanel } from '../havena/panel';
+import { usePrototype } from '../prototype/state';
 import { spacing, useColors } from '../theme';
 import { useSpring } from '../ui/motion';
 import { AppIcon, Blur, Icon, type IconName, Text, Touchable } from '../ui/primitives';
@@ -44,6 +47,8 @@ export function Sidebar() {
   const activeIndex = ITEMS.findIndex((i) => pathname.startsWith(i.match));
   const y = useSpring(Math.max(activeIndex, 0) * SLOT);
   const settingsActive = pathname.startsWith('/configuracoes');
+  const { setOverlay } = usePrototype();
+  const openHavena = () => setOverlay(<HavenaPanel onClose={() => setOverlay(null)} />);
 
   return (
     <View style={[styles.bar, { borderRightColor: c.material.border }]}>
@@ -87,6 +92,15 @@ export function Sidebar() {
             )}
           </Touchable>
         ))}
+        <Touchable
+          accessibilityRole="button"
+          accessibilityLabel="Falar com a Havena"
+          onPress={openHavena}
+          scaleTo={0.88}
+          style={styles.item}
+        >
+          <HavenaOrb size={62} />
+        </Touchable>
       </View>
 
       <View style={{ flex: 1 }} />
