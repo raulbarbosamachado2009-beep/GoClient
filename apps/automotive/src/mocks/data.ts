@@ -28,6 +28,9 @@ export interface MockClient {
   lastVisit: string;
   lastPurchaseTotal: string;
   purchases: MockPurchase[];
+  /** Pedido em aberto para a próxima visita. */
+  order: string[];
+  status: 'Ativo' | 'Inativo';
 }
 
 export const CLIENTS: MockClient[] = [
@@ -41,6 +44,13 @@ export const CLIENTS: MockClient[] = [
     phone: '(19) 99812-4410',
     lastVisit: 'há 12 dias',
     lastPurchaseTotal: 'R$ 4.820,00',
+    order: [
+      '12x Camiseta Básica Algodão',
+      '6x Calça Jeans Slim',
+      '4x Vestido Midi Linho',
+      '8x Blusa Canelada',
+    ],
+    status: 'Ativo',
     purchases: [
       { date: '06 nov', items: '24 peças · Coleção Verão', total: 'R$ 4.820,00' },
       { date: '14 out', items: '18 peças · Jeans e básicos', total: 'R$ 3.150,00' },
@@ -57,6 +67,8 @@ export const CLIENTS: MockClient[] = [
     phone: '(19) 98140-2277',
     lastVisit: 'há 5 dias',
     lastPurchaseTotal: 'R$ 2.960,00',
+    order: ['10x Camisa Social Oxford', '6x Bermuda Sarja', '4x Tênis Casual Lona'],
+    status: 'Ativo',
     purchases: [
       { date: '13 nov', items: '16 peças · Camisaria', total: 'R$ 2.960,00' },
       { date: '20 out', items: '12 peças · Bermudas', total: 'R$ 1.740,00' },
@@ -72,6 +84,8 @@ export const CLIENTS: MockClient[] = [
     phone: '(19) 99655-0193',
     lastVisit: 'há 3 semanas',
     lastPurchaseTotal: 'R$ 6.410,00',
+    order: ['8x Vestido Midi Linho', '6x Saia Plissada', '10x Blusa Canelada'],
+    status: 'Ativo',
     purchases: [
       { date: '28 out', items: '35 peças · Vestidos', total: 'R$ 6.410,00' },
       { date: '30 set', items: '20 peças · Saias', total: 'R$ 3.020,00' },
@@ -87,6 +101,8 @@ export const CLIENTS: MockClient[] = [
     phone: '(19) 99201-8834',
     lastVisit: 'ontem',
     lastPurchaseTotal: 'R$ 1.890,00',
+    order: ['15x Conjunto Moletom', '10x Camiseta Básica Algodão', '5x Boné Aba Curva'],
+    status: 'Ativo',
     purchases: [{ date: '17 nov', items: '10 peças · Moletons', total: 'R$ 1.890,00' }],
   },
   {
@@ -99,6 +115,8 @@ export const CLIENTS: MockClient[] = [
     phone: '(19) 98877-3020',
     lastVisit: 'há 1 mês',
     lastPurchaseTotal: 'R$ 2.240,00',
+    order: ['20x Body Bebê Algodão', '12x Conjunto Moletom Kids'],
+    status: 'Inativo',
     purchases: [{ date: '15 out', items: '28 peças · Infantil', total: 'R$ 2.240,00' }],
   },
   {
@@ -111,6 +129,8 @@ export const CLIENTS: MockClient[] = [
     phone: '(19) 99733-6612',
     lastVisit: 'há 8 dias',
     lastPurchaseTotal: 'R$ 3.570,00',
+    order: ['12x Tênis Casual Lona', '6x Cinto Couro'],
+    status: 'Ativo',
     purchases: [{ date: '10 nov', items: '22 pares · Tênis', total: 'R$ 3.570,00' }],
   },
   {
@@ -123,6 +143,13 @@ export const CLIENTS: MockClient[] = [
     phone: '(19) 99120-7741',
     lastVisit: 'há 2 dias',
     lastPurchaseTotal: 'R$ 7.300,00',
+    order: [
+      '1x Bolsa Tiracolo Couro',
+      '5x Óculos de Sol Acetato',
+      '10x Camiseta Básica Algodão',
+      '20x Blusa Canelada',
+    ],
+    status: 'Ativo',
     purchases: [{ date: '16 nov', items: '40 peças · Mix completo', total: 'R$ 7.300,00' }],
   },
   {
@@ -135,6 +162,8 @@ export const CLIENTS: MockClient[] = [
     phone: '(19) 98455-1208',
     lastVisit: 'há 6 dias',
     lastPurchaseTotal: 'R$ 9.120,00',
+    order: ['60x Camisa Polo Uniforme', '40x Calça Sarja Uniforme'],
+    status: 'Ativo',
     purchases: [{ date: '12 nov', items: '120 peças · Uniformes', total: 'R$ 9.120,00' }],
   },
   {
@@ -147,6 +176,8 @@ export const CLIENTS: MockClient[] = [
     phone: '(19) 99302-5546',
     lastVisit: 'há 4 dias',
     lastPurchaseTotal: 'R$ 1.260,00',
+    order: ['10x Óculos de Sol Acetato', '8x Relógio Minimal', '15x Cinto Couro'],
+    status: 'Ativo',
     purchases: [{ date: '14 nov', items: '45 itens · Acessórios', total: 'R$ 1.260,00' }],
   },
 ];

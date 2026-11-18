@@ -43,7 +43,7 @@ for (const p of allJs) {
 const fontData = new Map(
   [...fontRefs].map((ref) => [
     ref,
-    `data:font/ttf;base64,${readFileSync(join(dist, ref)).toString('base64')}`,
+    `data:font/${ref.endsWith('.otf') ? 'otf' : 'ttf'};base64,${readFileSync(join(dist, ref)).toString('base64')}`,
   ]),
 );
 

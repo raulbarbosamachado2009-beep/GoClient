@@ -1,265 +1,239 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ScrollView, StyleSheet, View } from 'react-native';
-import { type MapMode, StylizedMap } from '../../map/stylized-map';
+import { useState } from 'react';
+import { StyleSheet, View } from 'react-native';
+import { PannableMap } from '../../map/pannable-map';
+import { type MapMode, USER } from '../../map/world';
 import { CLIENTS, type MockClient, TODAY_ROUTE } from '../../mocks/data';
-import { colors, layout, radius, spacing } from '../../theme';
+import { layout, spacing, useColors } from '../../theme';
+import { Appear } from '../../ui/motion';
 import {
   Avatar,
   Button,
-  Card,
-  Divider,
   Icon,
-  IconButton,
-  Tag,
+  type IconName,
+  Material,
   Text,
   Touchable,
 } from '../../ui/primitives';
 
 /**
- * Tela inicial: mapa no centro e painel do cliente à direita (referência: imagem 1).
- * `?rota=cliente&id=c1` mostra a rota até um cliente; `?rota=dia` mostra a rota do dia.
+ * Tela inicial (Mapa): o mapa ocupa todo o fundo e os painéis flutuam por cima com
+ * material translúcido. `?rota=cliente&id=c1` mostra a rota até um cliente;
+ * `?rota=dia` mostra a rota do dia.
  */
 export default function MapScreen() {
   const { rota, id } = useLocalSearchParams<{ rota?: string; id?: string }>();
   const mode: MapMode = rota === 'dia' ? 'day' : rota === 'cliente' ? 'client' : 'explore';
-  const client = CLIENTS.find((c) => c.id === id) ?? (CLIENTS[6] as MockClient);
+  const [stop, setStop] = useState(0);
+
+  const routeClients = TODAY_ROUTE.map((cid) => CLIENTS.find((c) => c.id === cid) as MockClient);
+  const client =
+    mode === 'day'
+      ? (routeClients[stop % routeClients.length] as MockClient)
+      : (CLIENTS.find((c) => c.id === id) ?? (CLIENTS[6] as MockClient));
 
   return (
-    <View style={styles.page}>
-      <View style={styles.mapPanel}>
-        <StylizedMap mode={mode} />
-        <MapOverlay mode={mode} client={client} />
-      </View>
-      <View style={styles.side}>
-        {mode === 'day' ? (
-          <DayRoutePanel />
-        ) : (
-          <ClientPanel client={client} navigating={mode === 'client'} />
-        )}
-      </View>
+    <View style={{ flex: 1 }}>
+      {/* O foco é deslocado para a direita para que o conteúdo fique centrado na área livre à esquerda do cartão. */}
+      <PannableMap
+        mode={mode}
+        focus={mode === 'explore' ? { x: USER.x + 250, y: USER.y } : { x: 2230, y: 1180 }}
+      />
+
+      {mode === 'explore' ? <SearchPill /> : <Guidance />}
+      {mode !== 'explore' && <TripBar mode={mode} />}
+
+      <Appear axis="x" distance={40} delay={120} style={styles.cardSlot}>
+        <ClientCard
+          key={client.id}
+          client={client}
+          mode={mode}
+          stopLabel={
+            mode === 'day'
+              ? `Parada ${(stop % routeClients.length) + 1} de ${routeClients.length}`
+              : undefined
+          }
+          onNext={() => setStop((s) => s + 1)}
+        />
+      </Appear>
     </View>
   );
 }
 
-function MapOverlay({ mode, client }: { mode: MapMode; client: MockClient }) {
-  const router = useRouter();
+function SearchPill() {
+  const c = useColors();
   return (
-    <>
-      {mode === 'explore' ? (
-        <Touchable style={[styles.floating, styles.searchPill]} accessibilityRole="search">
-          <Icon name="search" size={30} color={colors.textSecondary} />
-          <Text variant="body" tone="tertiary">
-            Buscar cliente ou endereço
-          </Text>
-        </Touchable>
-      ) : (
-        <View style={[styles.floating, styles.maneuver]}>
-          <View style={styles.maneuverIcon}>
-            <Icon name="return-up-forward" size={52} color="#FFFFFF" />
-          </View>
-          <View style={{ gap: 2 }}>
-            <Text variant="display" style={{ fontSize: 48, lineHeight: 54 }}>
-              350 m
-            </Text>
-            <Text variant="headline" tone="secondary">
-              Vire à direita na Av. das Palmeiras
-            </Text>
-          </View>
-        </View>
-      )}
-
-      <View style={[styles.controls]}>
-        <IconButton
-          icon="add"
-          variant="filled"
-          style={styles.controlBtn}
-          accessibilityLabel="Aproximar"
-        />
-        <IconButton
-          icon="remove"
-          variant="filled"
-          style={styles.controlBtn}
-          accessibilityLabel="Afastar"
-        />
-        <IconButton
-          icon="locate"
-          variant="filled"
-          style={styles.controlBtn}
-          accessibilityLabel="Centralizar"
-        />
-      </View>
-
-      {mode !== 'explore' && (
-        <View style={[styles.floating, styles.trip]}>
-          <View>
-            <Text variant="title" tone="success">
-              {mode === 'day' ? '1 h 12 min' : '18 min'}
-            </Text>
-            <Text variant="callout" tone="secondary">
-              {mode === 'day'
-                ? '24,6 km · 5 paradas · término 11:58'
-                : `7,4 km · chegada 09:59 · ${client.tradeName}`}
-            </Text>
-          </View>
-          <Button
-            label="Encerrar"
-            variant="danger"
-            size="md"
-            onPress={() => router.replace('/mapa')}
-          />
-        </View>
-      )}
-    </>
+    <Appear delay={60} style={styles.topLeft}>
+      <Material style={styles.search}>
+        <Icon name="search" size={28} color={c.textSecondary} />
+        <Text variant="body" tone="secondary">
+          Buscar cliente ou endereço
+        </Text>
+      </Material>
+    </Appear>
   );
 }
 
-function ClientPanel({ client, navigating }: { client: MockClient; navigating: boolean }) {
+function Guidance() {
+  const c = useColors();
+  return (
+    <Appear delay={60} style={styles.topLeft}>
+      <Material style={styles.guidance}>
+        <Icon name="return-up-forward" size={64} color={c.text} />
+        <View>
+          <Text variant="largeTitle" style={{ fontSize: 48, lineHeight: 54 }}>
+            350 m
+          </Text>
+          <Text variant="headline" tone="secondary">
+            Av. das Palmeiras
+          </Text>
+        </View>
+      </Material>
+    </Appear>
+  );
+}
+
+function TripBar({ mode }: { mode: MapMode }) {
   const router = useRouter();
   return (
-    <>
-      <Card style={styles.clientCard}>
-        <View
-          style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
-        >
-          <Text variant="label" tone={navigating ? 'accent' : 'tertiary'}>
-            {navigating ? 'A CAMINHO' : 'PRÓXIMA VISITA · 10:30'}
-          </Text>
-          <Tag label={client.region} icon="location-outline" />
+    <Appear delay={160} style={styles.bottomLeft}>
+      <Material style={styles.trip}>
+        <View style={{ flexDirection: 'row', gap: spacing[8] }}>
+          <Stat value={mode === 'day' ? '11:58' : '09:59'} label="chegada" />
+          <Stat value={mode === 'day' ? '1:12' : '18'} label={mode === 'day' ? 'hrs' : 'min'} />
+          <Stat value={mode === 'day' ? '24,6' : '7,4'} label="km" />
         </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[4] }}>
-          <Avatar name={client.name} size={88} />
-          <View style={{ flex: 1 }}>
-            <Text variant="headline" numberOfLines={1}>
-              {client.tradeName}
-            </Text>
-            <Text variant="callout" tone="secondary" numberOfLines={1}>
+        <Button
+          label="Encerrar"
+          variant="destructive"
+          size="md"
+          onPress={() => router.replace('/mapa')}
+        />
+      </Material>
+    </Appear>
+  );
+}
+
+function Stat({ value, label }: { value: string; label: string }) {
+  return (
+    <View>
+      <Text variant="title2">{value}</Text>
+      <Text variant="caption" tone="secondary">
+        {label}
+      </Text>
+    </View>
+  );
+}
+
+/** Cartão do cliente (referência: imagem 2) — flutua sobre o mapa com fundo desfocado. */
+function ClientCard({
+  client,
+  mode,
+  stopLabel,
+  onNext,
+}: {
+  client: MockClient;
+  mode: MapMode;
+  stopLabel?: string;
+  onNext: () => void;
+}) {
+  const c = useColors();
+  const router = useRouter();
+  const active = client.status === 'Ativo';
+  const tile = c.mode === 'dark' ? 'rgba(255,255,255,0.1)' : '#FFFFFF';
+
+  return (
+    <Material style={styles.card} intensity={70}>
+      <Appear distance={10}>
+        {stopLabel && (
+          <Text variant="footnote" tone="secondary" style={{ marginBottom: spacing[3] }}>
+            {stopLabel}
+          </Text>
+        )}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[5] }}>
+          <View style={[styles.avatarTile, { backgroundColor: tile }]}>
+            <Avatar name={client.name} size={84} square />
+          </View>
+          <View style={{ flex: 1, gap: 4 }}>
+            <Text variant="title2" numberOfLines={2}>
               {client.name}
             </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[2] }}>
+              <View
+                style={[styles.dot, { backgroundColor: active ? c.success : c.textTertiary }]}
+              />
+              <Text variant="headline">{client.status}</Text>
+            </View>
           </View>
         </View>
-        <View style={{ gap: spacing[2] }}>
-          <InfoRow icon="location-outline" text={client.address} sub={client.district} />
-          <InfoRow icon="time-outline" text={`Última visita ${client.lastVisit}`} />
-          <InfoRow icon="receipt-outline" text={`Última compra ${client.lastPurchaseTotal}`} />
-        </View>
-        <View style={{ flex: 1 }} />
-        <View style={{ flexDirection: 'row', gap: spacing[3] }}>
-          {[
-            ['Ticket médio', 'R$ 5.140'],
-            ['Pedidos no ano', '14'],
-          ].map(([label, value]) => (
-            <View key={label} style={styles.stat}>
-              <Text variant="caption" tone="tertiary">
-                {label}
-              </Text>
-              <Text variant="headline">{value}</Text>
-            </View>
+
+        <View style={{ marginTop: spacing[8], gap: spacing[2] }}>
+          <Text variant="title2">Pedido</Text>
+          {client.order.map((line) => (
+            <Text key={line} variant="body" numberOfLines={1}>
+              {line}
+            </Text>
           ))}
         </View>
-        <View style={{ flexDirection: 'row', gap: spacing[3] }}>
-          {navigating ? (
-            <Button label="Cheguei" icon="flag" style={{ flex: 1 }} />
-          ) : (
-            <Button
-              label="IR"
-              icon="navigate"
-              style={{ flex: 1 }}
-              onPress={() =>
-                router.replace({ pathname: '/mapa', params: { rota: 'cliente', id: client.id } })
-              }
-            />
-          )}
-          <IconButton
-            icon="logo-whatsapp"
-            size={88}
-            iconSize={40}
-            color={colors.success}
-            accessibilityLabel="WhatsApp"
+
+        <View style={{ marginTop: spacing[8], gap: spacing[4] }}>
+          <InfoLine
+            icon="location"
+            tile={tile}
+            text={client.address}
+            sub={client.district.split(' · ')[0]}
           />
+          <InfoLine icon="call" tile={tile} text={client.phone.replace(/^\(/, '(+55) (')} />
         </View>
-      </Card>
+      </Appear>
 
-      <Card style={{ padding: spacing[5], gap: spacing[3] }}>
-        <Text variant="label" tone="tertiary">
-          AGENDA DE HOJE
-        </Text>
-        {[
-          ['10:30', 'Rocha Concept Store'],
-          ['11:40', 'Boutique Albuquerque'],
-          ['14:00', 'Santana Calçados & Cia'],
-        ].map(([time, name], i) => (
-          <View key={name}>
-            {i > 0 && <Divider />}
-            <View style={{ flexDirection: 'row', gap: spacing[4], paddingVertical: spacing[2] }}>
-              <Text variant="bodyStrong" tone="accent" style={{ width: 80 }}>
-                {time}
-              </Text>
-              <Text variant="body" numberOfLines={1} style={{ flex: 1 }}>
-                {name}
-              </Text>
-            </View>
-          </View>
-        ))}
-      </Card>
-    </>
+      <View style={{ flex: 1, minHeight: spacing[6] }} />
+
+      {mode === 'explore' ? (
+        <Button
+          label="IR"
+          icon="navigate"
+          onPress={() =>
+            router.replace({ pathname: '/mapa', params: { rota: 'cliente', id: client.id } })
+          }
+        />
+      ) : (
+        <Touchable
+          accessibilityRole="button"
+          onPress={onNext}
+          style={[styles.next, { backgroundColor: tile }]}
+        >
+          <Text variant="title2" style={{ letterSpacing: 0.5 }}>
+            PRÓXIMO CLIENTE
+          </Text>
+        </Touchable>
+      )}
+    </Material>
   );
 }
 
-function DayRoutePanel() {
-  const stops = TODAY_ROUTE.map((id) => CLIENTS.find((c) => c.id === id) as MockClient);
-  const etas = ['09:58', '10:34', '11:02', '11:31', '11:58'];
-  return (
-    <Card style={{ flex: 1, padding: spacing[6], gap: spacing[4] }}>
-      <View>
-        <Text variant="label" tone="accent">
-          ROTA DE HOJE
-        </Text>
-        <Text variant="headline">5 paradas · 24,6 km</Text>
-      </View>
-      <ScrollView contentContainerStyle={{ gap: spacing[1] }} showsVerticalScrollIndicator={false}>
-        {stops.map((c, i) => (
-          <View key={c.id} style={[styles.stop, i === 0 && { backgroundColor: colors.panelHigh }]}>
-            <View style={[styles.stopNumber, i === 0 && { backgroundColor: colors.accent }]}>
-              <Text variant="bodyStrong" color={i === 0 ? '#FFFFFF' : colors.text}>
-                {i + 1}
-              </Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text variant="bodyStrong" numberOfLines={1}>
-                {c.tradeName}
-              </Text>
-              <Text variant="caption" tone="secondary" numberOfLines={1}>
-                {c.address}
-              </Text>
-            </View>
-            <Text variant="callout" tone={i === 0 ? 'accent' : 'secondary'}>
-              {etas[i]}
-            </Text>
-          </View>
-        ))}
-      </ScrollView>
-    </Card>
-  );
-}
-
-function InfoRow({
+function InfoLine({
   icon,
+  tile,
   text,
   sub,
 }: {
-  icon: Parameters<typeof Icon>[0]['name'];
+  icon: IconName;
+  tile: string;
   text: string;
   sub?: string;
 }) {
   return (
-    <View style={{ flexDirection: 'row', gap: spacing[3] }}>
-      <Icon name={icon} size={26} color={colors.textTertiary} />
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[4] }}>
+      <View style={[styles.iconTile, { backgroundColor: tile }]}>
+        <Icon name={icon} size={30} />
+      </View>
       <View style={{ flex: 1 }}>
-        <Text variant="callout" numberOfLines={1}>
+        <Text variant="body" numberOfLines={1}>
           {text}
         </Text>
         {sub && (
-          <Text variant="caption" tone="tertiary" numberOfLines={1}>
+          <Text variant="body" numberOfLines={1}>
             {sub}
           </Text>
         )}
@@ -269,86 +243,57 @@ function InfoRow({
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, flexDirection: 'row', padding: layout.gutter, gap: layout.gutter },
-  mapPanel: {
-    flex: 1,
-    borderRadius: 32,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  side: { width: 470, gap: layout.gutter },
-  floating: {
+  topLeft: { position: 'absolute', top: layout.gutter, left: layout.gutter },
+  bottomLeft: { position: 'absolute', bottom: layout.gutter, left: layout.gutter },
+  cardSlot: {
     position: 'absolute',
-    backgroundColor: 'rgba(20,20,22,0.94)',
-    borderRadius: radius.xl,
-    borderWidth: 1,
-    borderColor: colors.border,
+    top: layout.gutter,
+    right: layout.gutter,
+    bottom: layout.gutter,
+    width: 480,
   },
-  searchPill: {
-    top: 24,
-    left: 24,
-    height: 84,
-    width: 520,
+  search: {
+    height: 80,
+    width: 500,
+    borderRadius: 40,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[3],
     paddingHorizontal: spacing[6],
   },
-  maneuver: {
-    top: 24,
-    left: 24,
+  guidance: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing[5],
-    padding: spacing[5],
-    paddingRight: spacing[8],
-  },
-  maneuverIcon: {
-    width: 96,
-    height: 96,
-    borderRadius: 24,
-    backgroundColor: colors.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  controls: { position: 'absolute', right: 24, top: '50%', marginTop: -126, gap: spacing[3] },
-  controlBtn: {
-    backgroundColor: 'rgba(31,31,34,0.94)',
-    borderWidth: 1,
-    borderColor: colors.border,
+    gap: spacing[6],
+    paddingVertical: spacing[5],
+    paddingLeft: spacing[6],
+    paddingRight: spacing[10],
+    borderRadius: layout.radius.xl,
   },
   trip: {
-    left: 24,
-    right: 24,
-    bottom: 24,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing[6],
+    gap: spacing[10],
     paddingVertical: spacing[4],
+    paddingLeft: spacing[8],
+    paddingRight: spacing[4],
+    borderRadius: layout.radius.xl,
   },
-  clientCard: { flex: 1, padding: spacing[6], gap: spacing[5] },
-  stat: {
-    flex: 1,
-    padding: spacing[4],
-    borderRadius: 20,
-    backgroundColor: colors.panelHigh,
-    gap: 2,
-  },
-  stop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[4],
-    padding: spacing[3],
-    borderRadius: 20,
-  },
-  stopNumber: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: colors.surfaceOverlay,
+  card: { flex: 1, borderRadius: 40, padding: spacing[8] },
+  avatarTile: {
+    width: 112,
+    height: 112,
+    borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  dot: { width: 22, height: 22, borderRadius: 11 },
+  iconTile: {
+    width: 64,
+    height: 64,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  next: { height: 96, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
 });

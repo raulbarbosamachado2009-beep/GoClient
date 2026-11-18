@@ -1,117 +1,117 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { useRef, useState } from 'react';
+import { type ReactNode, useRef, useState } from 'react';
 import { Animated, StyleSheet, View } from 'react-native';
 import { NOW_PLAYING, QUEUE } from '../mocks/data';
 import { usePrototype } from '../prototype/state';
-import { colors, layout, spacing } from '../theme';
-import { Artwork, shade } from '../ui/brand';
-import { Avatar, IconButton, Text, Touchable } from '../ui/primitives';
+import { layout, spacing } from '../theme';
+import { Cover, shade } from '../ui/brand';
+import { Appear } from '../ui/motion';
+import { Avatar, Icon, IconButton, Text, Touchable } from '../ui/primitives';
+
+const W = '#FFFFFF';
+const W2 = 'rgba(255,255,255,0.72)';
+const GREEN = '#1ED760';
 
 /**
- * Player de música em tela cheia (referências: imagens 4 e 6).
- * Rolando para baixo aparecem mais informações e um cabeçalho compacto fixo.
- * A seta para baixo minimiza o player para o rodapé (imagem 8).
+ * Player em tela cheia (referências: imagens 4 e 6). Rolando para baixo aparecem mais
+ * informações e um cabeçalho compacto fixo. A seta para baixo minimiza o player para o
+ * rodapé da Música (imagem 8).
  */
 export default function Player() {
   const router = useRouter();
   const { nowPlaying } = usePrototype();
   const track = nowPlaying ?? NOW_PLAYING;
   const [playing, setPlaying] = useState(true);
-  // O cabeçalho compacto só recebe toques quando está visível.
   const [compactVisible, setCompactVisible] = useState(false);
   const scrollY = useRef(new Animated.Value(0)).current;
 
   const minimize = () => (router.canGoBack() ? router.back() : router.replace('/musica'));
-
   const compactOpacity = scrollY.interpolate({
-    inputRange: [520, 640],
+    inputRange: [560, 680],
     outputRange: [0, 1],
+    extrapolate: 'clamp',
+  });
+  const heroFade = scrollY.interpolate({
+    inputRange: [0, 600],
+    outputRange: [1, 0.3],
     extrapolate: 'clamp',
   });
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#050806' }}>
+    <View style={{ flex: 1, backgroundColor: '#050B07' }}>
       <LinearGradient
-        colors={[shade(track.cover, -0.25), shade(track.cover, -0.75), '#050806']}
-        locations={[0, 0.45, 1]}
+        colors={[shade(track.cover, -0.05), shade(track.cover, -0.55), '#050B07']}
+        locations={[0, 0.5, 1]}
+        start={{ x: 0.1, y: 0 }}
+        end={{ x: 0.6, y: 1 }}
         style={StyleSheet.absoluteFill}
       />
 
       <Animated.ScrollView
         scrollEventThrottle={16}
+        showsVerticalScrollIndicator={false}
         onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
           useNativeDriver: false,
           listener: (e: { nativeEvent: { contentOffset: { y: number } } }) =>
-            setCompactVisible(e.nativeEvent.contentOffset.y > 580),
+            setCompactVisible(e.nativeEvent.contentOffset.y > 620),
         })}
-        showsVerticalScrollIndicator={false}
       >
-        {/* Parte principal — ocupa a tela inteira */}
-        <View style={styles.hero}>
+        <Animated.View style={[styles.hero, { opacity: heroFade }]}>
           <View style={styles.topBar}>
             <IconButton
               icon="chevron-down"
-              variant="plain"
-              iconSize={44}
+              iconSize={52}
+              color={W}
               accessibilityLabel="Minimizar player"
               onPress={minimize}
             />
-            <View style={{ alignItems: 'center' }}>
-              <Text variant="label" tone="secondary">
-                TOCANDO DA PLAYLIST
-              </Text>
-              <Text variant="bodyStrong">{track.album}</Text>
-            </View>
+            <Text variant="headline" color={W}>
+              “{track.album}” na Biblioteca
+            </Text>
             <IconButton
               icon="ellipsis-horizontal"
-              variant="plain"
-              iconSize={36}
+              iconSize={44}
+              color={W}
               accessibilityLabel="Mais opções"
             />
           </View>
 
           <View style={styles.main}>
-            <Artwork color={track.cover} size={600} radius={24} />
-            <View style={{ flex: 1, gap: spacing[8] }}>
-              <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: spacing[4] }}>
+            <Appear distance={24} duration={520}>
+              <View style={styles.artShadow}>
+                <Cover color={track.cover} size={600} radius={20} title={track.album} />
+              </View>
+            </Appear>
+
+            <Appear delay={120} distance={24} style={{ flex: 1, gap: spacing[10] }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[4] }}>
                 <View style={{ flex: 1, gap: spacing[2] }}>
                   <Text
-                    variant="display"
-                    style={{ fontSize: 68, lineHeight: 76 }}
+                    variant="largeTitle"
+                    color={W}
+                    style={{ fontSize: 76, lineHeight: 84, letterSpacing: -1 }}
                     numberOfLines={2}
                   >
                     {track.title}
                   </Text>
-                  <Text
-                    variant="body"
-                    tone="secondary"
-                    style={{ fontSize: 28, lineHeight: 36 }}
-                    numberOfLines={1}
-                  >
+                  <Text variant="title2" color={W2} numberOfLines={1}>
                     {track.artists}
                   </Text>
                 </View>
-                <IconButton
-                  icon="checkmark-circle"
-                  variant="plain"
-                  size={88}
-                  iconSize={64}
-                  color={colors.music.accent}
-                  accessibilityLabel="Salva"
-                />
+                <Icon name="checkmark-circle" size={84} color={GREEN} />
               </View>
 
-              <View style={{ gap: spacing[2] }}>
+              <View style={{ gap: spacing[3] }}>
                 <View style={styles.track}>
                   <View style={styles.trackFill} />
                   <View style={styles.thumb} />
                 </View>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                  <Text variant="callout" tone="secondary">
+                  <Text variant="callout" color={W2}>
                     1:16
                   </Text>
-                  <Text variant="callout" tone="secondary">
+                  <Text variant="callout" color={W2}>
                     -2:26
                   </Text>
                 </View>
@@ -120,196 +120,241 @@ export default function Player() {
               <View style={styles.controls}>
                 <IconButton
                   icon="shuffle"
-                  variant="plain"
-                  size={88}
-                  iconSize={46}
-                  color={colors.music.accent}
+                  size={96}
+                  iconSize={54}
+                  color={W}
                   accessibilityLabel="Aleatório"
                 />
                 <IconButton
                   icon="play-skip-back"
-                  variant="plain"
-                  size={96}
-                  iconSize={60}
+                  size={110}
+                  iconSize={68}
+                  color={W}
                   accessibilityLabel="Anterior"
                 />
                 <IconButton
                   icon={playing ? 'pause' : 'play'}
                   variant="inverse"
-                  size={144}
-                  iconSize={68}
+                  size={168}
+                  iconSize={80}
+                  color="#000"
+                  style={{ backgroundColor: W }}
                   accessibilityLabel={playing ? 'Pausar' : 'Tocar'}
                   onPress={() => setPlaying((p) => !p)}
                 />
                 <IconButton
                   icon="play-skip-forward"
-                  variant="plain"
-                  size={96}
-                  iconSize={60}
+                  size={110}
+                  iconSize={68}
+                  color={W}
                   accessibilityLabel="Próxima"
                 />
                 <IconButton
                   icon="repeat"
-                  variant="plain"
-                  size={88}
-                  iconSize={46}
+                  size={96}
+                  iconSize={54}
+                  color={W}
                   accessibilityLabel="Repetir"
                 />
               </View>
 
-              <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: spacing[4] }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: spacing[6] }}>
                 <IconButton
                   icon="phone-portrait-outline"
-                  variant="plain"
+                  iconSize={40}
+                  color={W}
                   accessibilityLabel="Dispositivos"
                 />
                 <IconButton
                   icon="share-outline"
-                  variant="plain"
+                  iconSize={40}
+                  color={W}
                   accessibilityLabel="Compartilhar"
                 />
-                <IconButton icon="list" variant="plain" accessibilityLabel="Fila" />
+                <IconButton icon="list" iconSize={44} color={W} accessibilityLabel="Fila" />
               </View>
-            </View>
+            </Appear>
           </View>
-        </View>
+        </Animated.View>
 
-        {/* Parte de baixo — mais informações (imagem 6) */}
+        {/* Parte de baixo (imagem 6) */}
         <View style={styles.more}>
           <View style={styles.row}>
-            <View
-              style={[
-                styles.card,
-                { flex: 1.9, flexDirection: 'row', overflow: 'hidden', padding: 0 },
-              ]}
-            >
-              <Artwork color="#7A2E3A" size={520} height={260} radius={0} />
+            <Card style={{ flex: 2, padding: 0, flexDirection: 'row', overflow: 'hidden' }}>
+              <View style={{ flex: 1 }}>
+                <Cover color="#5A2430" size={520} height={250} radius={0} />
+                <Text variant="headline" color={W} style={styles.cardLabel}>
+                  Sobre o artista
+                </Text>
+              </View>
               <View
                 style={{ flex: 1, padding: spacing[6], justifyContent: 'center', gap: spacing[2] }}
               >
-                <Text variant="label" tone="secondary">
-                  SOBRE O ARTISTA
+                <Text variant="title2" color={W}>
+                  Lua Ventura
                 </Text>
-                <Text variant="title">Lua Ventura</Text>
-                <Text variant="callout" tone="secondary">
+                <Text variant="callout" color={W2}>
                   1,2 mi ouvintes mensais
                 </Text>
-                <Touchable style={styles.follow}>
-                  <Text variant="bodyStrong">Seguir</Text>
-                </Touchable>
+                <Pill label="Seguir" />
               </View>
-            </View>
-            <View style={[styles.card, { flex: 1 }]}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                <Text variant="headline">Próximas</Text>
-                <Text variant="bodyStrong" color={colors.music.accent}>
+            </Card>
+            <Card style={{ flex: 1 }} title="Artistas na faixa">
+              <View style={{ flexDirection: 'row', justifyContent: 'space-around' }}>
+                {[
+                  ['Lua Ventura', 'Artista principal'],
+                  ['Os Marés', 'Artista principal'],
+                ].map(([n, r]) => (
+                  <View key={n} style={{ alignItems: 'center', gap: 4 }}>
+                    <Avatar name={n as string} size={128} />
+                    <Text variant="bodyStrong" color={W}>
+                      {n}
+                    </Text>
+                    <Text variant="caption" color={W2}>
+                      {r}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            </Card>
+          </View>
+
+          <View style={styles.row}>
+            <Card
+              style={{ flex: 2 }}
+              title="Vídeos relacionados"
+              action={<Icon name="arrow-forward" size={32} color={W} />}
+            >
+              <View style={{ flexDirection: 'row', gap: spacing[6] }}>
+                {[
+                  ['Horizonte Aberto (ao vivo)', 'Lua Ventura, Os Marés', '#2E6E8E', '04:12'],
+                  ['Rota 66 Graus', 'Os Marés', '#6C4FA3', '03:13'],
+                ].map(([t, a, col, d]) => (
+                  <View
+                    key={t}
+                    style={{ flex: 1, flexDirection: 'row', gap: spacing[4], alignItems: 'center' }}
+                  >
+                    <View>
+                      <Cover color={col as string} size={250} height={140} radius={10} />
+                      <Text variant="footnote" color={W} style={styles.duration}>
+                        {d}
+                      </Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text variant="bodyStrong" color={W} numberOfLines={2}>
+                        {t}
+                      </Text>
+                      <Text variant="caption" color={W2} numberOfLines={1}>
+                        {a}
+                      </Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </Card>
+            <Card
+              style={{ flex: 1 }}
+              title="Próximas"
+              action={
+                <Text variant="bodyStrong" color={GREEN}>
                   Abrir fila
                 </Text>
-              </View>
-              {QUEUE.map((q) => (
+              }
+            >
+              {QUEUE.slice(0, 1).map((q) => (
                 <View
                   key={q.title}
                   style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[4] }}
                 >
-                  <Artwork color={q.cover} size={76} radius={10} />
+                  <Cover color={q.cover} size={128} height={96} radius={8} />
                   <View style={{ flex: 1 }}>
-                    <Text variant="bodyStrong" numberOfLines={1}>
+                    <Text variant="bodyStrong" color={W}>
                       {q.title}
                     </Text>
-                    <Text variant="caption" tone="secondary">
+                    <Text variant="caption" color={W2}>
                       {q.artists}
                     </Text>
                   </View>
                 </View>
               ))}
-            </View>
+            </Card>
           </View>
 
-          <View style={styles.card}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text variant="headline">Créditos</Text>
-              <Text variant="bodyStrong" color={colors.music.accent}>
+          <Card
+            title="Créditos"
+            action={
+              <Text variant="bodyStrong" color={GREEN}>
                 Mostrar tudo
               </Text>
-            </View>
+            }
+          >
             {[
               ['Lua Ventura', 'Artista principal • Autora • Letrista'],
               ['Os Marés', 'Artista principal'],
               ['DJ Calango', 'Produção'],
-            ].map(([name, role]) => (
-              <View
-                key={name}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[5] }}
-              >
-                <Avatar name={name as string} size={56} />
-                <Text variant="bodyStrong" style={{ width: 260 }}>
-                  {name}
+            ].map(([n, r]) => (
+              <View key={n} style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Text variant="bodyStrong" color={W} style={{ width: 300 }}>
+                  {n}
                 </Text>
-                <Text variant="callout" tone="secondary" style={{ flex: 1 }}>
-                  {role}
+                <Text variant="callout" color={W2} style={{ flex: 1 }}>
+                  {r}
                 </Text>
-                <Touchable style={[styles.follow, { marginTop: 0 }]}>
-                  <Text variant="callout">Seguir</Text>
-                </Touchable>
+                <Pill label="Seguir" small />
               </View>
             ))}
-          </View>
+          </Card>
 
-          <View style={styles.card}>
-            <Text variant="headline">Conheça Lua Ventura</Text>
+          <Card title="Conheça Lua Ventura">
             <View style={{ flexDirection: 'row', gap: spacing[5] }}>
               {[
                 ['Músicas de Lua Ventura', '#2E6E8E'],
                 ['Parecidas com Lua Ventura', '#6C4FA3'],
                 ['Parecidas com Horizonte Aberto', '#8A5A3C'],
-              ].map(([label, c]) => (
+              ].map(([label, col]) => (
                 <View key={label} style={{ flex: 1 }}>
-                  <Artwork color={c as string} size={460} height={220} radius={20} label={label} />
+                  <Cover color={col as string} size={460} height={200} radius={14} title={label} />
                 </View>
               ))}
             </View>
-          </View>
+          </Card>
         </View>
       </Animated.ScrollView>
 
-      {/* Cabeçalho compacto que aparece ao rolar */}
+      {/* Cabeçalho compacto (imagem 6) */}
       <Animated.View
         pointerEvents={compactVisible ? 'auto' : 'none'}
         style={[styles.compact, { opacity: compactOpacity }]}
       >
         <LinearGradient
-          colors={[shade(track.cover, -0.55), shade(track.cover, -0.7)]}
+          colors={[shade(track.cover, -0.35), shade(track.cover, -0.5)]}
           style={StyleSheet.absoluteFill}
         />
         <IconButton
           icon="chevron-down"
-          variant="plain"
-          iconSize={40}
+          iconSize={48}
+          color={W}
           accessibilityLabel="Minimizar player"
           onPress={minimize}
         />
-        <View style={{ flex: 1, gap: 6 }}>
-          <Text variant="headline" numberOfLines={1}>
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text variant="headline" color={W} numberOfLines={1}>
             {track.title}
           </Text>
-          <Text variant="caption" tone="secondary" numberOfLines={1}>
+          <Text variant="caption" color={W2} numberOfLines={1}>
             {track.artists}
           </Text>
-          <View style={[styles.track, { height: 4, marginTop: 6 }]}>
+          <View
+            style={[styles.track, { height: 4, marginTop: spacing[3], marginRight: spacing[10] }]}
+          >
             <View style={[styles.trackFill, { height: 4 }]} />
           </View>
         </View>
-        <IconButton
-          icon="checkmark-circle"
-          variant="plain"
-          iconSize={44}
-          color={colors.music.accent}
-          accessibilityLabel="Salva"
-        />
+        <Icon name="checkmark-circle" size={52} color={GREEN} />
         <IconButton
           icon={playing ? 'pause' : 'play'}
-          variant="plain"
-          iconSize={48}
+          iconSize={56}
+          color={W}
           accessibilityLabel={playing ? 'Pausar' : 'Tocar'}
           onPress={() => setPlaying((p) => !p)}
         />
@@ -318,43 +363,97 @@ export default function Player() {
   );
 }
 
+function Card({
+  title,
+  action,
+  children,
+  style,
+}: {
+  title?: string;
+  action?: ReactNode;
+  children: ReactNode;
+  style?: object;
+}) {
+  return (
+    <View style={[styles.card, style]}>
+      {title && (
+        <View
+          style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
+        >
+          <Text variant="title2" color={W}>
+            {title}
+          </Text>
+          {action}
+        </View>
+      )}
+      {children}
+    </View>
+  );
+}
+
+function Pill({ label, small }: { label: string; small?: boolean }) {
+  return (
+    <Touchable style={[styles.pill, small && { height: 48, paddingHorizontal: spacing[5] }]}>
+      <Text variant={small ? 'caption' : 'bodyStrong'} color={W}>
+        {label}
+      </Text>
+    </Touchable>
+  );
+}
+
 const styles = StyleSheet.create({
-  hero: { height: layout.height, paddingHorizontal: 64, paddingTop: 24, paddingBottom: 48 },
+  hero: { height: layout.height, paddingHorizontal: 56, paddingTop: 20, paddingBottom: 40 },
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  main: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 80 },
+  main: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 72 },
+  artShadow: {
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOpacity: 0.45,
+    shadowRadius: 40,
+    shadowOffset: { width: 0, height: 24 },
+  },
   track: {
-    height: 8,
+    height: 7,
     borderRadius: 4,
-    backgroundColor: 'rgba(255,255,255,0.22)',
+    backgroundColor: 'rgba(255,255,255,0.25)',
     justifyContent: 'center',
   },
-  trackFill: { width: '34%', height: 8, borderRadius: 4, backgroundColor: '#FFFFFF' },
+  trackFill: { width: '34%', height: 7, borderRadius: 4, backgroundColor: W },
   thumb: {
     position: 'absolute',
     left: '34%',
-    marginLeft: -14,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#FFFFFF',
+    marginLeft: -16,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: W,
   },
   controls: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  more: { paddingHorizontal: 64, paddingBottom: 64, gap: spacing[6] },
+  more: { paddingHorizontal: 56, paddingBottom: 64, gap: spacing[6] },
   row: { flexDirection: 'row', gap: spacing[6] },
   card: {
-    backgroundColor: 'rgba(30,30,33,0.92)',
+    backgroundColor: 'rgba(28,28,30,0.78)',
     borderRadius: 28,
     padding: spacing[6],
     gap: spacing[5],
   },
-  follow: {
+  cardLabel: { position: 'absolute', top: spacing[5], left: spacing[6] },
+  duration: {
+    position: 'absolute',
+    right: 8,
+    bottom: 8,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    paddingHorizontal: 8,
+    borderRadius: 6,
+    overflow: 'hidden',
+  },
+  pill: {
     alignSelf: 'flex-start',
-    marginTop: spacing[2],
-    paddingHorizontal: spacing[6],
-    height: 56,
-    borderRadius: 28,
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.7)',
+    height: 60,
+    paddingHorizontal: spacing[8],
+    borderRadius: 30,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.75)',
     justifyContent: 'center',
   },
   compact: {
@@ -362,10 +461,10 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: 132,
+    height: 150,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing[5],
+    gap: spacing[6],
     paddingHorizontal: 40,
     overflow: 'hidden',
   },

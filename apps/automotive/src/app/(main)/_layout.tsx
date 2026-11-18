@@ -1,25 +1,24 @@
-import { Slot } from 'expo-router';
+import { Slot, usePathname } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 import { usePrototype } from '../../prototype/state';
-import { MiniPlayer } from '../../shell/mini-player';
 import { Sidebar } from '../../shell/sidebar';
-import { colors, layout } from '../../theme';
+import { useColors } from '../../theme';
+import { ScreenTransition } from '../../ui/motion';
 
-/** Estrutura das telas principais: menu lateral + conteúdo + player minimizado. */
+/** Estrutura das telas principais: barra lateral do CarPlay + conteúdo com transição. */
 export default function MainLayout() {
-  const { overlay, nowPlaying } = usePrototype();
+  const c = useColors();
+  const { overlay } = usePrototype();
+  const pathname = usePathname();
+  // Dentro da Música, as abas trocam o conteúdo sem refazer a transição da seção inteira.
+  const section = pathname.split('/')[1] ?? '';
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, { backgroundColor: c.background }]}>
       <Sidebar />
-      <View style={styles.content}>
-        <View style={{ flex: 1 }}>
+      <View style={{ flex: 1 }}>
+        <ScreenTransition routeKey={section}>
           <Slot />
-        </View>
-        {nowPlaying && (
-          <View style={styles.player}>
-            <MiniPlayer />
-          </View>
-        )}
+        </ScreenTransition>
       </View>
       {overlay && <View style={StyleSheet.absoluteFill}>{overlay}</View>}
     </View>
@@ -27,7 +26,5 @@ export default function MainLayout() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, flexDirection: 'row', backgroundColor: colors.background },
-  content: { flex: 1 },
-  player: { paddingHorizontal: layout.gutter, paddingBottom: layout.gutter, paddingTop: 8 },
+  root: { flex: 1, flexDirection: 'row' },
 });

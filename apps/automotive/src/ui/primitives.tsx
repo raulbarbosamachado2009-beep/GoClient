@@ -1,6 +1,9 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import type { ComponentProps, ReactNode } from 'react';
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
+import { type ComponentProps, type ReactNode, useRef, useState } from 'react';
 import {
+  Animated,
   Pressable,
   type PressableProps,
   Text as RNText,
@@ -12,32 +15,27 @@ import {
   type ViewProps,
   type ViewStyle,
 } from 'react-native';
-import { colors, layout, radius, spacing, swatchFor, type TypeVariant, type } from '../theme';
+import { layout, nativeDriver, spacing, type TypeVariant, type, useColors } from '../theme';
+import { useSpring } from './motion';
 
 export type IconName = ComponentProps<typeof Ionicons>['name'];
 
 export function Icon({
   name,
-  size = 32,
-  color = colors.text,
+  size = 30,
+  color,
 }: {
   name: IconName;
   size?: number;
   color?: string;
 }) {
-  return <Ionicons name={name} size={size} color={color} />;
+  const c = useColors();
+  return <Ionicons name={name} size={size} color={color ?? c.text} />;
 }
 
-type Tone = 'primary' | 'secondary' | 'tertiary' | 'accent' | 'success' | 'danger' | 'inverse';
-const toneColor: Record<Tone, string> = {
-  primary: colors.text,
-  secondary: colors.textSecondary,
-  tertiary: colors.textTertiary,
-  accent: colors.accent,
-  success: colors.success,
-  danger: colors.danger,
-  inverse: '#000000',
-};
+/* ---------------- Texto ---------------- */
+
+type Tone = 'primary' | 'secondary' | 'tertiary' | 'accent' | 'success' | 'danger';
 
 export interface TextProps extends RNTextProps {
   variant?: TypeVariant;
@@ -46,50 +44,66 @@ export interface TextProps extends RNTextProps {
 }
 
 export function Text({ variant = 'body', tone = 'primary', color, style, ...rest }: TextProps) {
-  return <RNText style={[type[variant], { color: color ?? toneColor[tone] }, style]} {...rest} />;
+  const c = useColors();
+  const toneColor = {
+    primary: c.text,
+    secondary: c.textSecondary,
+    tertiary: c.textTertiary,
+    accent: c.accent,
+    success: c.success,
+    danger: c.danger,
+  }[tone];
+  return <RNText style={[type[variant], { color: color ?? toneColor }, style]} {...rest} />;
 }
 
+/* ---------------- Toque ---------------- */
+
 /**
- * Área tocável com resposta visual discreta (opacidade + leve redução). Usada por todos
- * os controles para manter o mesmo comportamento em toda a interface.
+ * Área tocável com a resposta do CarPlay: leve redução por mola ao pressionar e retorno
+ * elástico ao soltar.
  */
 export function Touchable({
   style,
   children,
-  pressedOpacity = 0.72,
+  scaleTo = 0.96,
   ...rest
-}: PressableProps & {
-  style?: StyleProp<ViewStyle>;
-  children: ReactNode;
-  pressedOpacity?: number;
-}) {
+}: PressableProps & { style?: StyleProp<ViewStyle>; children: ReactNode; scaleTo?: number }) {
+  const s = useRef(new Animated.Value(1)).current;
+  const to = (v: number) =>
+    Animated.spring(s, {
+      toValue: v,
+      damping: 18,
+      stiffness: 420,
+      useNativeDriver: nativeDriver,
+    }).start();
   return (
-    <Pressable
+    <AnimatedPressable
       {...rest}
-      style={({ pressed }) => [
-        style,
-        pressed && { opacity: pressedOpacity, transform: [{ scale: 0.985 }] },
-      ]}
+      onPressIn={(e) => {
+        to(scaleTo);
+        rest.onPressIn?.(e);
+      }}
+      onPressOut={(e) => {
+        to(1);
+        rest.onPressOut?.(e);
+      }}
+      style={[style, { transform: [{ scale: s }] }]}
     >
       {children}
-    </Pressable>
+    </AnimatedPressable>
   );
 }
 
-type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'music';
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-const buttonStyles: Record<ButtonVariant, { bg: string; fg: string; border?: string }> = {
-  primary: { bg: colors.accent, fg: colors.onAccent },
-  secondary: { bg: colors.panelHigh, fg: colors.text, border: colors.border },
-  ghost: { bg: 'transparent', fg: colors.text },
-  danger: { bg: 'rgba(255,69,58,0.14)', fg: colors.danger },
-  music: { bg: colors.music.accent, fg: colors.music.onAccent },
-};
+/* ---------------- Botões ---------------- */
+
+type ButtonVariant = 'filled' | 'tinted' | 'gray' | 'plain' | 'destructive' | 'music';
 
 export function Button({
   label,
   icon,
-  variant = 'primary',
+  variant = 'filled',
   size = 'lg',
   style,
   ...rest
@@ -100,8 +114,22 @@ export function Button({
   size?: 'md' | 'lg';
   style?: StyleProp<ViewStyle>;
 }) {
-  const s = buttonStyles[variant];
-  const height = size === 'lg' ? 88 : layout.touch;
+  const c = useColors();
+  const look: Record<ButtonVariant, { bg: string; fg: string }> = {
+    filled: { bg: c.accent, fg: c.onAccent },
+    tinted: {
+      bg: c.mode === 'dark' ? 'rgba(10,132,255,0.22)' : 'rgba(0,122,255,0.12)',
+      fg: c.accent,
+    },
+    gray: { bg: c.fill, fg: c.text },
+    plain: { bg: 'transparent', fg: c.accent },
+    destructive: {
+      bg: c.mode === 'dark' ? 'rgba(255,69,58,0.2)' : 'rgba(255,59,48,0.12)',
+      fg: c.danger,
+    },
+    music: { bg: c.music.accent, fg: c.music.onAccent },
+  };
+  const l = look[variant];
   return (
     <Touchable
       accessibilityRole="button"
@@ -109,16 +137,15 @@ export function Button({
       style={[
         styles.button,
         {
-          height,
-          backgroundColor: s.bg,
-          borderColor: s.border ?? 'transparent',
-          borderWidth: s.border ? 1 : 0,
+          height: size === 'lg' ? 84 : layout.touch - 4,
+          backgroundColor: l.bg,
+          opacity: rest.disabled ? 0.4 : 1,
         },
         style,
       ]}
     >
-      {icon && <Icon name={icon} size={size === 'lg' ? 34 : 30} color={s.fg} />}
-      <Text variant={size === 'lg' ? 'headline' : 'bodyStrong'} color={s.fg}>
+      {icon && <Icon name={icon} size={size === 'lg' ? 32 : 28} color={l.fg} />}
+      <Text variant="headline" color={l.fg}>
         {label}
       </Text>
     </Touchable>
@@ -129,7 +156,7 @@ export function IconButton({
   icon,
   size = layout.touch,
   iconSize = 32,
-  variant = 'filled',
+  variant = 'plain',
   color,
   style,
   ...rest
@@ -137,16 +164,17 @@ export function IconButton({
   icon: IconName;
   size?: number;
   iconSize?: number;
-  variant?: 'filled' | 'plain' | 'inverse';
+  variant?: 'plain' | 'gray' | 'inverse';
   color?: string;
   style?: StyleProp<ViewStyle>;
 }) {
-  const bg =
-    variant === 'filled' ? colors.panelHigh : variant === 'inverse' ? colors.text : 'transparent';
-  const fg = color ?? (variant === 'inverse' ? '#000' : colors.text);
+  const c = useColors();
+  const bg = variant === 'gray' ? c.fill : variant === 'inverse' ? c.text : 'transparent';
+  const fg = color ?? (variant === 'inverse' ? (c.mode === 'dark' ? '#000' : '#FFF') : c.text);
   return (
     <Touchable
       accessibilityRole="button"
+      scaleTo={0.9}
       {...rest}
       style={[
         { width: size, height: size, borderRadius: size / 2, backgroundColor: bg },
@@ -159,88 +187,17 @@ export function IconButton({
   );
 }
 
-export function Card({ style, ...rest }: ViewProps) {
-  return <View style={[styles.card, style]} {...rest} />;
-}
+/* ---------------- Identidade ---------------- */
 
-export function Chip({
-  label,
-  icon,
-  selected = false,
-  accent = colors.text,
-  onAccent = '#000',
-  onPress,
-}: {
-  label: string;
-  icon?: IconName;
-  selected?: boolean;
-  accent?: string;
-  onAccent?: string;
-  onPress?: () => void;
-}) {
-  const fg = selected ? onAccent : colors.text;
-  return (
-    <Touchable
-      accessibilityRole="button"
-      accessibilityState={{ selected }}
-      onPress={onPress}
-      style={[
-        styles.chip,
-        {
-          backgroundColor: selected ? accent : colors.panelHigh,
-          borderColor: selected ? accent : colors.border,
-        },
-      ]}
-    >
-      {icon && <Icon name={icon} size={28} color={fg} />}
-      <Text variant="bodyStrong" color={fg}>
-        {label}
-      </Text>
-    </Touchable>
-  );
-}
-
-export function SearchField({
-  placeholder,
-  light = false,
-  style,
-}: {
-  placeholder: string;
-  light?: boolean;
-  style?: StyleProp<ViewStyle>;
-}) {
-  const fg = light ? '#1C1C1E' : colors.text;
-  return (
-    <View
-      style={[
-        styles.search,
-        light
-          ? { backgroundColor: '#E5E5EA' }
-          : { backgroundColor: colors.panelHigh, borderColor: colors.border, borderWidth: 1 },
-        style,
-      ]}
-    >
-      <Icon name="search" size={30} color={light ? '#3A3A3C' : colors.textSecondary} />
-      <TextInput
-        placeholder={placeholder}
-        placeholderTextColor={light ? '#6C6C70' : colors.textTertiary}
-        style={[type.body, { flex: 1, color: fg, height: '100%' }, webNoOutline]}
-      />
-    </View>
-  );
-}
-
-// Remove o contorno de foco padrão do navegador (o campo já tem fundo destacado).
-const webNoOutline = { outlineStyle: 'none' } as object;
-
+/** Avatar no estilo do app Contatos: iniciais brancas sobre degradê cinza. */
 export function Avatar({
   name,
-  size = 72,
-  color,
+  size = 64,
+  square = false,
 }: {
   name: string;
   size?: number;
-  color?: string;
+  square?: boolean;
 }) {
   const initials = name
     .split(' ')
@@ -250,97 +207,288 @@ export function Avatar({
     .join('')
     .toUpperCase();
   return (
-    <View
+    <LinearGradient
+      colors={['#A6ABB8', '#858994']}
       style={[
         styles.center,
-        {
-          width: size,
-          height: size,
-          borderRadius: size / 2,
-          backgroundColor: color ?? swatchFor(name),
-        },
+        { width: size, height: size, borderRadius: square ? size * 0.26 : size / 2 },
       ]}
     >
-      <Text
-        variant="bodyStrong"
-        color="#FFFFFF"
-        style={{ fontSize: size * 0.36, lineHeight: size * 0.44 }}
+      <RNText
+        style={[
+          type.headline,
+          { color: '#FFFFFF', fontSize: size * 0.38, lineHeight: size * 0.46 },
+        ]}
       >
         {initials}
-      </Text>
-    </View>
+      </RNText>
+    </LinearGradient>
   );
 }
 
-export function Segmented<T extends string>({
-  options,
-  value,
-  onChange,
+/** Ícone de app (squircle colorido com glifo branco), como no CarPlay e nos Ajustes. */
+export function AppIcon({
+  icon,
+  color,
+  size = 64,
+  glyph = '#FFFFFF',
 }: {
-  options: { value: T; label?: string; icon?: IconName }[];
-  value: T;
-  onChange: (value: T) => void;
+  icon: IconName;
+  color: string;
+  size?: number;
+  glyph?: string;
 }) {
   return (
-    <View style={styles.segmented}>
-      {options.map((o) => {
-        const active = o.value === value;
-        return (
-          <Touchable
-            key={o.value}
-            accessibilityRole="button"
-            accessibilityState={{ selected: active }}
-            onPress={() => onChange(o.value)}
-            style={[styles.segment, active && { backgroundColor: colors.surfaceOverlay }]}
-          >
-            {o.icon && (
-              <Icon name={o.icon} size={28} color={active ? colors.text : colors.textSecondary} />
-            )}
-            {o.label && (
-              <Text variant="bodyStrong" tone={active ? 'primary' : 'secondary'}>
-                {o.label}
-              </Text>
-            )}
-          </Touchable>
-        );
-      })}
-    </View>
+    <LinearGradient
+      colors={[lighten(color, 0.18), color]}
+      style={[styles.center, { width: size, height: size, borderRadius: size * 0.235 }]}
+    >
+      <Ionicons name={icon} size={size * 0.56} color={glyph} />
+    </LinearGradient>
   );
 }
 
-export function Switch({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
+/* ---------------- Controles ---------------- */
+
+export function Chip({
+  label,
+  icon,
+  selected = false,
+  accent,
+  onAccent,
+  onPress,
+}: {
+  label: string;
+  icon?: IconName;
+  selected?: boolean;
+  accent?: string;
+  onAccent?: string;
+  onPress?: () => void;
+}) {
+  const c = useColors();
+  const bg = selected ? (accent ?? c.text) : c.fill;
+  const fg = selected ? (onAccent ?? (c.mode === 'dark' ? '#000' : '#FFF')) : c.text;
   return (
     <Touchable
-      accessibilityRole="switch"
-      accessibilityState={{ checked: value }}
-      onPress={() => onChange(!value)}
-      style={[styles.switch, { backgroundColor: value ? colors.success : colors.surfaceOverlay }]}
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      onPress={onPress}
+      style={[styles.chip, { backgroundColor: bg }]}
     >
-      <View style={[styles.knob, { alignSelf: value ? 'flex-end' : 'flex-start' }]} />
+      {icon && <Icon name={icon} size={26} color={fg} />}
+      <Text variant="bodyStrong" color={fg}>
+        {label}
+      </Text>
     </Touchable>
   );
 }
 
-export function Tag({
-  label,
-  icon,
-  color = colors.textSecondary,
+export function SearchField({
+  placeholder,
+  style,
+  background,
+  foreground,
 }: {
-  label: string;
-  icon?: IconName;
-  color?: string;
+  placeholder: string;
+  style?: StyleProp<ViewStyle>;
+  background?: string;
+  foreground?: string;
 }) {
+  const c = useColors();
+  const fg = foreground ?? c.text;
   return (
-    <View style={styles.tag}>
-      {icon && <Icon name={icon} size={20} color={color} />}
-      <Text variant="label" color={color}>
-        {label}
-      </Text>
+    <View style={[styles.search, { backgroundColor: background ?? c.fill }, style]}>
+      <Icon name="search" size={28} color={foreground ? `${foreground}99` : c.textSecondary} />
+      <TextInput
+        placeholder={placeholder}
+        placeholderTextColor={foreground ? `${foreground}88` : c.textSecondary}
+        style={[type.body, { flex: 1, color: fg, height: '100%' }, webNoOutline]}
+      />
     </View>
   );
 }
 
-/** Cabeçalho padrão das páginas: título, subtítulo e ações à direita. */
+const webNoOutline = { outlineStyle: 'none' } as object;
+
+/** Controle segmentado do iOS, com o "polegar" deslizando entre as opções. */
+export function Segmented<T extends string>({
+  options,
+  value,
+  onChange,
+  segmentWidth = 170,
+}: {
+  options: { value: T; label?: string; icon?: IconName }[];
+  value: T;
+  onChange: (value: T) => void;
+  segmentWidth?: number;
+}) {
+  const c = useColors();
+  const index = Math.max(
+    0,
+    options.findIndex((o) => o.value === value),
+  );
+  const x = useSpring(index * segmentWidth);
+  return (
+    <View
+      style={[
+        styles.segmented,
+        { backgroundColor: c.fill, width: segmentWidth * options.length + 8 },
+      ]}
+    >
+      <Animated.View
+        style={[
+          styles.thumb,
+          {
+            width: segmentWidth,
+            backgroundColor: c.mode === 'dark' ? '#636366' : '#FFFFFF',
+            transform: [{ translateX: x }],
+          },
+        ]}
+      />
+      {options.map((o) => (
+        <Pressable
+          key={o.value}
+          accessibilityRole="button"
+          accessibilityState={{ selected: o.value === value }}
+          onPress={() => onChange(o.value)}
+          style={[styles.segment, { width: segmentWidth }]}
+        >
+          {o.icon && <Icon name={o.icon} size={24} />}
+          {o.label && <Text variant="subhead">{o.label}</Text>}
+        </Pressable>
+      ))}
+    </View>
+  );
+}
+
+/** Interruptor do iOS com o botão deslizando por mola. */
+export function Switch({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
+  const c = useColors();
+  const x = useSpring(value ? 36 : 0);
+  return (
+    <Pressable
+      accessibilityRole="switch"
+      accessibilityState={{ checked: value }}
+      onPress={() => onChange(!value)}
+      style={[styles.switch, { backgroundColor: value ? c.success : c.fillStrong }]}
+    >
+      <Animated.View style={[styles.knob, { transform: [{ translateX: x }] }]} />
+    </Pressable>
+  );
+}
+
+/* ---------------- Listas (inset grouped) ---------------- */
+
+export function Group({
+  children,
+  style,
+  inset = 24,
+}: {
+  children: ReactNode;
+  style?: StyleProp<ViewStyle>;
+  /** Recuo do separador (alinha com o texto quando há ícone/avatar à esquerda). */
+  inset?: number;
+}) {
+  const c = useColors();
+  const items = (Array.isArray(children) ? children : [children]).filter(Boolean);
+  return (
+    <View
+      style={[
+        { backgroundColor: c.grouped, borderRadius: layout.radius.lg, overflow: 'hidden' },
+        style,
+      ]}
+    >
+      {items.map((child, i) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: filhos estáticos
+        <View key={i}>
+          {i > 0 && <Separator inset={inset} />}
+          {child}
+        </View>
+      ))}
+    </View>
+  );
+}
+
+export function Row({
+  leading,
+  title,
+  subtitle,
+  value,
+  trailing,
+  chevron,
+  onPress,
+  titleColor,
+}: {
+  leading?: ReactNode;
+  title: string;
+  subtitle?: string;
+  value?: string;
+  trailing?: ReactNode;
+  chevron?: boolean;
+  onPress?: () => void;
+  titleColor?: string;
+}) {
+  const c = useColors();
+  const [pressed, setPressed] = useState(false);
+  const content = (
+    <>
+      {leading}
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text variant="body" color={titleColor} numberOfLines={1}>
+          {title}
+        </Text>
+        {subtitle && (
+          <Text variant="caption" tone="secondary" numberOfLines={1}>
+            {subtitle}
+          </Text>
+        )}
+      </View>
+      {value && (
+        <Text variant="body" tone="secondary" numberOfLines={1}>
+          {value}
+        </Text>
+      )}
+      {trailing}
+      {chevron && <Icon name="chevron-forward" size={26} color={c.textTertiary} />}
+    </>
+  );
+  // Sem ação, a linha é só um contêiner: controles dentro dela (interruptor, seletor)
+  // continuam recebendo toques normalmente.
+  if (!onPress) return <View style={styles.row}>{content}</View>;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      onPressIn={() => setPressed(true)}
+      onPressOut={() => setPressed(false)}
+      style={[styles.row, pressed && { backgroundColor: c.fill }]}
+    >
+      {content}
+    </Pressable>
+  );
+}
+
+export function SectionHeader({ title, action }: { title: string; action?: ReactNode }) {
+  return (
+    <View style={styles.sectionHeader}>
+      <Text variant="subhead" tone="secondary">
+        {title}
+      </Text>
+      {action}
+    </View>
+  );
+}
+
+export function Separator({ inset = 0 }: { inset?: number }) {
+  const c = useColors();
+  return (
+    <View
+      style={{ height: StyleSheet.hairlineWidth, backgroundColor: c.separator, marginLeft: inset }}
+    />
+  );
+}
+
+/** Cabeçalho de página: título grande e subtítulo, ações à direita. */
 export function PageHeader({
   title,
   subtitle,
@@ -352,8 +500,8 @@ export function PageHeader({
 }) {
   return (
     <View style={styles.header}>
-      <View style={{ flex: 1, gap: spacing[1] }}>
-        <Text variant="title">{title}</Text>
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text variant="largeTitle">{title}</Text>
         <Text variant="callout" tone="secondary">
           {subtitle}
         </Text>
@@ -363,19 +511,43 @@ export function PageHeader({
   );
 }
 
-export function Divider({ inset = 0 }: { inset?: number }) {
+/** Material translúcido (desfoque do conteúdo de trás), usado sobre o mapa. */
+export function Material({
+  style,
+  children,
+  intensity = 60,
+  ...rest
+}: ViewProps & { intensity?: number }) {
+  const c = useColors();
   return (
     <View
-      style={{
-        height: StyleSheet.hairlineWidth,
-        backgroundColor: colors.border,
-        marginLeft: inset,
-      }}
-    />
+      style={[{ overflow: 'hidden', borderWidth: 1, borderColor: c.material.border }, style]}
+      {...rest}
+    >
+      <BlurView
+        tint={c.material.tint}
+        intensity={intensity}
+        experimentalBlurMethod="dimezisBlurView"
+        style={StyleSheet.absoluteFill}
+      />
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: c.material.fallback }]} />
+      {children}
+    </View>
   );
 }
 
-export const styles = StyleSheet.create({
+function lighten(hex: string, amount: number): string {
+  const n = Number.parseInt(hex.slice(1), 16);
+  const ch = (shift: number) => {
+    const v = (n >> shift) & 0xff;
+    return Math.round(v + (255 - v) * amount)
+      .toString(16)
+      .padStart(2, '0');
+  };
+  return `#${ch(16)}${ch(8)}${ch(0)}`;
+}
+
+const styles = StyleSheet.create({
   center: { alignItems: 'center', justifyContent: 'center' },
   button: {
     flexDirection: 'row',
@@ -383,60 +555,67 @@ export const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: spacing[3],
     paddingHorizontal: spacing[8],
-    borderRadius: radius.lg,
-  },
-  card: {
-    backgroundColor: colors.panel,
-    borderRadius: 28,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderRadius: layout.radius.md,
   },
   chip: {
-    height: layout.touch - 4,
+    height: 64,
     paddingHorizontal: spacing[6],
-    borderRadius: radius.full,
-    borderWidth: 1,
+    borderRadius: 32,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[2],
   },
   search: {
-    height: layout.touch + 4,
-    borderRadius: radius.lg,
+    height: 72,
+    borderRadius: layout.radius.md,
     paddingHorizontal: spacing[5],
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[3],
   },
-  segmented: {
-    flexDirection: 'row',
-    padding: 4,
-    gap: 4,
-    backgroundColor: colors.panelHigh,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
+  segmented: { height: 68, borderRadius: 16, padding: 4, flexDirection: 'row' },
+  thumb: {
+    position: 'absolute',
+    top: 4,
+    left: 4,
+    bottom: 4,
+    borderRadius: 13,
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
   },
   segment: {
-    minWidth: layout.touch - 8,
-    height: layout.touch - 8,
-    paddingHorizontal: spacing[4],
-    borderRadius: radius.md,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing[2],
   },
-  switch: { width: 92, height: 52, borderRadius: 26, padding: 4, justifyContent: 'center' },
-  knob: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#FFFFFF' },
-  tag: {
+  switch: { width: 92, height: 56, borderRadius: 28, padding: 4 },
+  knob: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: spacing[3],
-    height: 36,
-    borderRadius: radius.full,
-    backgroundColor: colors.panelHigh,
+    gap: spacing[5],
+    minHeight: 88,
+    paddingHorizontal: spacing[6],
+    paddingVertical: spacing[3],
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    paddingHorizontal: spacing[6],
+    marginBottom: spacing[2],
   },
   header: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing[6] },
 });

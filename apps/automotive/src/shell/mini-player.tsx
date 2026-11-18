@@ -1,73 +1,97 @@
 import { useRouter } from 'expo-router';
-import { StyleSheet, View } from 'react-native';
+import { useEffect, useRef } from 'react';
+import { Animated, StyleSheet, View } from 'react-native';
 import { usePrototype } from '../prototype/state';
-import { colors, layout, spacing } from '../theme';
-import { Artwork } from '../ui/brand';
+import { layout, nativeDriver, spacing, useColors } from '../theme';
+import { Cover } from '../ui/brand';
 import { IconButton, Text, Touchable } from '../ui/primitives';
 
-/** Player minimizado no rodapé (referência: imagem 8). Toque abre o player completo. */
+/**
+ * Player minimizado (referência: imagem 8). Só aparece dentro da Música, logo acima das
+ * abas. Entra subindo; toque na área da faixa abre o player completo.
+ */
 export function MiniPlayer() {
+  const c = useColors();
   const { nowPlaying } = usePrototype();
   const router = useRouter();
+  const enter = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (nowPlaying)
+      Animated.spring(enter, {
+        toValue: 1,
+        damping: 20,
+        stiffness: 220,
+        useNativeDriver: nativeDriver,
+      }).start();
+  }, [nowPlaying, enter]);
+
   if (!nowPlaying) return null;
 
   return (
-    <View style={styles.bar}>
-      {/* Área principal: abre o player completo. Os botões ficam fora dela. */}
+    <Animated.View
+      style={[
+        styles.bar,
+        { backgroundColor: c.music.miniPlayer },
+        {
+          opacity: enter,
+          transform: [
+            { translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) },
+          ],
+        },
+      ]}
+    >
       <Touchable
         accessibilityRole="button"
         accessibilityLabel={`Abrir player: ${nowPlaying.title}`}
         onPress={() => router.push('/player')}
-        pressedOpacity={0.85}
+        scaleTo={0.985}
         style={styles.open}
       >
-        <Artwork color={nowPlaying.cover} size={76} radius={10} />
-        <View style={{ flex: 1, gap: 2 }}>
-          <Text variant="bodyStrong" numberOfLines={1}>
+        <Cover color={nowPlaying.cover} size={72} radius={8} />
+        <View style={{ flex: 1 }}>
+          <Text variant="bodyStrong" color="#FFFFFF" numberOfLines={1}>
             {nowPlaying.title}
           </Text>
-          <Text variant="caption" tone="secondary" numberOfLines={1}>
+          <Text variant="caption" color="rgba(255,255,255,0.7)" numberOfLines={1}>
             {nowPlaying.artists}
           </Text>
         </View>
       </Touchable>
-      <IconButton icon="phone-portrait-outline" variant="plain" accessibilityLabel="Dispositivos" />
+      <IconButton icon="phone-portrait-outline" color="#FFFFFF" accessibilityLabel="Dispositivos" />
       <IconButton
         icon="checkmark-circle"
-        variant="plain"
-        color={colors.music.accent}
-        iconSize={38}
+        iconSize={40}
+        color={c.music.accent}
         accessibilityLabel="Salva na biblioteca"
       />
-      <IconButton icon="pause" variant="plain" iconSize={40} accessibilityLabel="Pausar" />
-      <View style={styles.progressTrack}>
-        <View style={styles.progressFill} />
+      <IconButton icon="pause" iconSize={40} color="#FFFFFF" accessibilityLabel="Pausar" />
+      <View style={styles.track}>
+        <View style={styles.fill} />
       </View>
-    </View>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
   bar: {
     height: layout.miniPlayerHeight,
-    borderRadius: 22,
-    backgroundColor: colors.music.miniPlayer,
+    borderRadius: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing[4],
-    paddingLeft: 14,
+    gap: spacing[2],
+    paddingLeft: 12,
     paddingRight: spacing[3],
     overflow: 'hidden',
   },
-  open: { flex: 1, height: '100%', flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
-  progressTrack: {
+  open: { flex: 1, height: '100%', flexDirection: 'row', alignItems: 'center', gap: spacing[5] },
+  track: {
     position: 'absolute',
-    left: 22,
-    right: 22,
+    left: 16,
+    right: 16,
     bottom: 0,
-    height: 4,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    borderRadius: 2,
+    height: 3,
+    backgroundColor: 'rgba(255,255,255,0.22)',
   },
-  progressFill: { width: '34%', height: 4, backgroundColor: '#FFFFFF', borderRadius: 2 },
+  fill: { width: '34%', height: 3, backgroundColor: '#FFFFFF' },
 });

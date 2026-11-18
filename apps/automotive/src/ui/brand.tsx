@@ -1,14 +1,14 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { View } from 'react-native';
+import { Text as RNText, View } from 'react-native';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
-import { colors } from '../theme';
-import { Text } from './primitives';
+import { FONT } from '../theme';
 
-/** Marca do GoClient: quadrado arredondado com um percurso que termina num ponto. */
+/** Marca do GoClient: percurso que termina num ponto, sobre o azul do sistema. */
 export function LogoMark({ size = 96 }: { size?: number }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 96 96">
-      <Rect x="0" y="0" width="96" height="96" rx="26" fill={colors.accent} />
+      <Rect x="0" y="0" width="96" height="96" rx="22" fill="#0A84FF" />
       <Path
         d="M26 66 C26 46 46 50 48 36 C50 24 62 24 70 30"
         stroke="#FFFFFF"
@@ -18,79 +18,124 @@ export function LogoMark({ size = 96 }: { size?: number }) {
       />
       <Circle cx="26" cy="66" r="7" fill="#FFFFFF" />
       <Circle cx="70" cy="30" r="10" fill="#FFFFFF" />
-      <Circle cx="70" cy="30" r="4" fill={colors.accent} />
+      <Circle cx="70" cy="30" r="4" fill="#0A84FF" />
     </Svg>
   );
 }
 
-export function Wordmark({ size = 40 }: { size?: number }) {
-  return (
-    <Text variant="title" style={{ fontSize: size, lineHeight: size * 1.15, letterSpacing: -0.5 }}>
-      GoClient
-    </Text>
-  );
-}
-
 /**
- * Capa gerada para playlists/músicas fictícias: cor sólida com um leve degradê e formas
- * geométricas. Evita imagens de terceiros no design.
+ * Capa de playlist/álbum fictício. Estilo editorial: cor de fundo com degradê sutil,
+ * um padrão geométrico (varia pela cor) e, em tamanhos grandes, o título em tipografia
+ * forte — como capas de playlists editoriais. Sem imagens de terceiros.
  */
-export function Artwork({
+export function Cover({
   color,
   size,
   height,
-  radius = 12,
-  label,
+  radius = 8,
+  title,
   liked,
 }: {
   color: string;
-  /** Largura; a altura é igual, salvo se `height` for informado. */
   size: number;
   height?: number;
   radius?: number;
-  label?: string;
+  title?: string;
   liked?: boolean;
 }) {
-  return (
-    <View style={{ width: size, height: height ?? size, borderRadius: radius, overflow: 'hidden' }}>
+  const h = height ?? size;
+  if (liked) {
+    return (
       <LinearGradient
-        colors={[color, shade(color, -0.45)]}
+        colors={['#4B2BD9', '#8FC9D6']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={{ flex: 1 }}
+        style={{
+          width: size,
+          height: h,
+          borderRadius: radius,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
       >
-        <Svg
-          width="100%"
-          height="100%"
-          viewBox="0 0 100 100"
-          preserveAspectRatio="xMidYMid slice"
-          style={{ position: 'absolute' }}
-        >
-          {liked ? (
-            <Path d="M50 72 L30 52 A11 11 0 0 1 50 36 A11 11 0 0 1 70 52 Z" fill="#FFFFFF" />
-          ) : (
-            <>
-              <Circle cx="78" cy="22" r="30" fill="rgba(255,255,255,0.10)" />
-              <Circle cx="18" cy="88" r="22" fill="rgba(0,0,0,0.18)" />
-              <Path d="M0 70 Q50 40 100 64 L100 100 L0 100 Z" fill="rgba(255,255,255,0.06)" />
-            </>
-          )}
-        </Svg>
-        {label && size >= 120 && (
-          <View style={{ position: 'absolute', left: 24, bottom: 20, right: 24 }}>
-            <Text
-              variant="headline"
-              color="#FFFFFF"
-              style={{ fontSize: 32, lineHeight: 38 }}
-              numberOfLines={2}
-            >
-              {label}
-            </Text>
-          </View>
-        )}
+        <Ionicons name="heart" size={Math.min(size, h) * 0.42} color="#FFFFFF" />
       </LinearGradient>
+    );
+  }
+
+  const pattern = seed(color) % 3;
+  const big = Math.min(size, h) >= 150;
+
+  return (
+    <View
+      style={{
+        width: size,
+        height: h,
+        borderRadius: radius,
+        overflow: 'hidden',
+        backgroundColor: color,
+      }}
+    >
+      <Svg
+        width="100%"
+        height="100%"
+        viewBox="0 0 100 100"
+        preserveAspectRatio="xMidYMid slice"
+        style={{ position: 'absolute' }}
+      >
+        {pattern === 0 && (
+          <>
+            <Circle cx="74" cy="70" r="46" fill={shade(color, 0.16)} />
+            <Circle cx="74" cy="70" r="24" fill={shade(color, -0.22)} />
+          </>
+        )}
+        {pattern === 1 &&
+          [0, 1, 2, 3, 4, 5].map((i) => (
+            <Rect
+              key={i}
+              x={-20 + i * 22}
+              y="-10"
+              width="9"
+              height="140"
+              fill={shade(color, 0.12)}
+              transform="rotate(28 50 50)"
+            />
+          ))}
+        {pattern === 2 && (
+          <>
+            <Path d="M0 100 L100 30 L100 100 Z" fill={shade(color, -0.25)} />
+            <Circle cx="28" cy="34" r="14" fill={shade(color, 0.3)} />
+          </>
+        )}
+      </Svg>
+      <LinearGradient
+        colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.28)']}
+        style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: h * 0.6 }}
+      />
+      {title && big && (
+        <View style={{ position: 'absolute', left: 22, right: 22, bottom: 18 }}>
+          <RNText
+            numberOfLines={2}
+            style={{
+              fontFamily: FONT.displayBold,
+              color: '#FFFFFF',
+              fontSize: 34,
+              lineHeight: 38,
+              letterSpacing: -0.5,
+            }}
+          >
+            {title}
+          </RNText>
+        </View>
+      )}
     </View>
   );
+}
+
+function seed(s: string): number {
+  let h = 0;
+  for (const ch of s) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return h;
 }
 
 /** Escurece (amount < 0) ou clareia (amount > 0) uma cor hex. */

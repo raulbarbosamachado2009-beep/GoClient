@@ -1,30 +1,31 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, FlatList, ScrollView, StyleSheet, View } from 'react-native';
-import Svg, { Circle } from 'react-native-svg';
+import { ActivityIndicator, Animated, ScrollView, StyleSheet, View } from 'react-native';
 import { CLIENTS, REGIONS } from '../../mocks/data';
 import { usePrototype } from '../../prototype/state';
-import { colors, nativeDriver, spacing } from '../../theme';
+import { layout, nativeDriver, spacing, useColors } from '../../theme';
+import { Appear } from '../../ui/motion';
 import {
   Avatar,
   Button,
-  Card,
   Chip,
+  Group,
   Icon,
   IconButton,
+  Material,
   PageHeader,
+  Row,
   SearchField,
-  Tag,
   Text,
-  Touchable,
 } from '../../ui/primitives';
 
 /**
- * Página de Rotas: escolher os clientes do dia (esquerda), ver a seleção (direita) e
- * calcular a rota. A seleção é apenas estado visual; o "cálculo" é uma animação que
- * leva ao mapa com uma rota de exemplo.
+ * Página de Rotas: escolher os clientes do dia (esquerda), revisar a seleção (direita) e
+ * calcular a rota. A seleção é apenas estado visual; o cálculo é uma animação que leva ao
+ * mapa com uma rota de exemplo.
  */
 export default function RoutesScreen() {
+  const c = useColors();
   const { setOverlay } = usePrototype();
   const router = useRouter();
   const [region, setRegion] = useState<string>('Todas');
@@ -32,32 +33,30 @@ export default function RoutesScreen() {
 
   const toggle = (id: string) =>
     setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
+  const chosen = selected
+    .map((id) => CLIENTS.find((x) => x.id === id))
+    .filter((x) => x !== undefined);
 
-  const calculate = () => {
+  const calculate = () =>
     setOverlay(
       <Calculating
-        count={selected.length}
+        count={chosen.length}
         onDone={() => {
           setOverlay(null);
           router.replace({ pathname: '/mapa', params: { rota: 'dia' } });
         }}
       />,
     );
-  };
-
-  const chosen = selected
-    .map((id) => CLIENTS.find((c) => c.id === id))
-    .filter((c) => c !== undefined);
 
   return (
     <View style={styles.page}>
-      <PageHeader title="Rotas" subtitle="Selecione os clientes que você vai visitar hoje" />
-      <SearchField placeholder="Buscar cliente para adicionar à rota" />
+      <PageHeader title="Rotas" subtitle="Escolha os clientes que você vai visitar hoje" />
+      <SearchField placeholder="Buscar cliente" />
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ gap: spacing[3] }}
         style={{ flexGrow: 0, flexShrink: 0 }}
+        contentContainerStyle={{ gap: spacing[3], alignItems: 'center' }}
       >
         {REGIONS.map((r) => (
           <Chip key={r} label={r} selected={region === r} onPress={() => setRegion(r)} />
@@ -65,89 +64,83 @@ export default function RoutesScreen() {
       </ScrollView>
 
       <View style={styles.columns}>
-        <View style={{ flex: 1 }}>
-          <FlatList
-            data={CLIENTS}
-            keyExtractor={(c) => c.id}
-            contentContainerStyle={{ gap: spacing[2], paddingBottom: spacing[6] }}
-            showsVerticalScrollIndicator={false}
-            renderItem={({ item }) => {
+        <ScrollView
+          style={{ flex: 1 }}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: spacing[10] }}
+        >
+          <Group inset={112}>
+            {CLIENTS.map((item, i) => {
               const on = selected.includes(item.id);
               return (
-                <Touchable
-                  accessibilityRole="checkbox"
-                  accessibilityState={{ checked: on }}
-                  onPress={() => toggle(item.id)}
-                  style={[styles.pickRow, on && styles.pickRowOn]}
-                >
-                  <Avatar name={item.name} size={68} />
-                  <View style={{ flex: 1 }}>
-                    <Text variant="bodyStrong" numberOfLines={1}>
-                      {item.tradeName}
-                    </Text>
-                    <Text variant="caption" tone="secondary" numberOfLines={1}>
-                      {item.address} · {item.region}
-                    </Text>
-                  </View>
-                  <View style={[styles.check, on && styles.checkOn]}>
-                    {on && <Icon name="checkmark" size={30} color="#FFFFFF" />}
-                  </View>
-                </Touchable>
+                <Appear key={item.id} delay={i * 30} distance={10}>
+                  <Row
+                    leading={<Avatar name={item.name} size={64} />}
+                    title={item.tradeName}
+                    subtitle={`${item.address} · ${item.region}`}
+                    onPress={() => toggle(item.id)}
+                    trailing={
+                      <Icon
+                        name={on ? 'checkmark-circle' : 'ellipse-outline'}
+                        size={48}
+                        color={on ? c.accent : c.textTertiary}
+                      />
+                    }
+                  />
+                </Appear>
               );
-            }}
-          />
-        </View>
+            })}
+          </Group>
+        </ScrollView>
 
-        <Card style={styles.selection}>
-          <View
-            style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
-          >
-            <View>
-              <Text variant="label" tone="tertiary">
-                ROTA DE HOJE
-              </Text>
-              <Text variant="headline">
-                {chosen.length}{' '}
-                {chosen.length === 1 ? 'cliente selecionado' : 'clientes selecionados'}
-              </Text>
-            </View>
-            <Tag label="Qua, 18 nov" icon="calendar-outline" />
+        <View style={[styles.selection, { backgroundColor: c.grouped }]}>
+          <View>
+            <Text variant="title2">Rota de hoje</Text>
+            <Text variant="callout" tone="secondary">
+              {chosen.length === 0
+                ? 'Nenhum cliente'
+                : `${chosen.length} ${chosen.length === 1 ? 'cliente' : 'clientes'} · qua, 18 nov`}
+            </Text>
           </View>
 
           <ScrollView
-            contentContainerStyle={{ gap: spacing[2] }}
-            showsVerticalScrollIndicator={false}
             style={{ flex: 1 }}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ gap: spacing[2] }}
           >
             {chosen.length === 0 ? (
               <View style={styles.empty}>
-                <Icon name="git-network-outline" size={56} color={colors.textTertiary} />
-                <Text variant="body" tone="secondary" style={{ textAlign: 'center' }}>
-                  Toque nos clientes à esquerda para montar a rota do dia.
+                <Icon name="git-network" size={56} color={c.textTertiary} />
+                <Text variant="callout" tone="secondary" style={{ textAlign: 'center' }}>
+                  Toque nos clientes ao lado para montar a rota do dia.
                 </Text>
               </View>
             ) : (
-              chosen.map((c, i) => (
-                <View key={c.id} style={styles.stop}>
-                  <View style={styles.stopNumber}>
-                    <Text variant="bodyStrong">{i + 1}</Text>
+              chosen.map((x, i) => (
+                <Appear key={x.id} axis="x" distance={20}>
+                  <View style={[styles.stop, { backgroundColor: c.fill }]}>
+                    <View style={[styles.num, { backgroundColor: c.accent }]}>
+                      <Text variant="bodyStrong" color="#FFFFFF">
+                        {i + 1}
+                      </Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text variant="bodyStrong" numberOfLines={1}>
+                        {x.tradeName}
+                      </Text>
+                      <Text variant="caption" tone="secondary" numberOfLines={1}>
+                        {x.district}
+                      </Text>
+                    </View>
+                    <IconButton
+                      icon="close-circle"
+                      iconSize={34}
+                      color={c.textTertiary}
+                      accessibilityLabel="Remover"
+                      onPress={() => toggle(x.id)}
+                    />
                   </View>
-                  <View style={{ flex: 1 }}>
-                    <Text variant="bodyStrong" numberOfLines={1}>
-                      {c.tradeName}
-                    </Text>
-                    <Text variant="caption" tone="secondary" numberOfLines={1}>
-                      {c.district}
-                    </Text>
-                  </View>
-                  <IconButton
-                    icon="close"
-                    variant="plain"
-                    iconSize={28}
-                    accessibilityLabel="Remover"
-                    onPress={() => toggle(c.id)}
-                  />
-                </View>
+                </Appear>
               ))
             )}
           </ScrollView>
@@ -157,150 +150,89 @@ export default function RoutesScreen() {
             icon="navigate"
             onPress={calculate}
             disabled={chosen.length === 0}
-            style={chosen.length === 0 && { opacity: 0.4 }}
           />
-        </Card>
+        </View>
       </View>
     </View>
   );
 }
 
-/** Quadrado arredondado com animação de carregamento — "Calculando rota". */
+/** Quadro arredondado de carregamento (estilo HUD do iOS) — "Calculando rota". */
 function Calculating({ count, onDone }: { count: number; onDone: () => void }) {
-  const spin = useRef(new Animated.Value(0)).current;
-  const appear = useRef(new Animated.Value(0)).current;
-
+  const c = useColors();
+  const v = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    Animated.timing(appear, { toValue: 1, duration: 220, useNativeDriver: nativeDriver }).start();
-    const loop = Animated.loop(
-      Animated.timing(spin, {
-        toValue: 1,
-        duration: 900,
-        easing: Easing.linear,
-        useNativeDriver: nativeDriver,
-      }),
-    );
-    loop.start();
+    Animated.spring(v, {
+      toValue: 1,
+      damping: 18,
+      stiffness: 220,
+      useNativeDriver: nativeDriver,
+    }).start();
     const t = setTimeout(onDone, 2400);
-    return () => {
-      loop.stop();
-      clearTimeout(t);
-    };
-  }, [spin, appear, onDone]);
+    return () => clearTimeout(t);
+  }, [v, onDone]);
 
   return (
-    <Animated.View style={[styles.loadingRoot, { opacity: appear }]}>
+    <Animated.View
+      style={[
+        styles.hudRoot,
+        {
+          backgroundColor: c.scrim,
+          opacity: v.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 1, 1] }),
+        },
+      ]}
+    >
       <Animated.View
-        style={[
-          styles.loadingBox,
-          {
-            transform: [
-              { scale: appear.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1] }) },
-            ],
-          },
-        ]}
+        style={{
+          transform: [{ scale: v.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1] }) }],
+        }}
       >
-        <Animated.View
-          style={{
-            transform: [
-              { rotate: spin.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) },
-            ],
-          }}
-        >
-          <Svg width={112} height={112} viewBox="0 0 112 112">
-            <Circle
-              cx="56"
-              cy="56"
-              r="46"
-              stroke={colors.surfaceOverlay}
-              strokeWidth="10"
-              fill="none"
-            />
-            <Circle
-              cx="56"
-              cy="56"
-              r="46"
-              stroke={colors.accent}
-              strokeWidth="10"
-              fill="none"
-              strokeLinecap="round"
-              strokeDasharray="90 300"
-            />
-          </Svg>
-        </Animated.View>
-        <View style={{ alignItems: 'center', gap: spacing[1] }}>
-          <Text variant="title">Calculando rota</Text>
-          <Text variant="callout" tone="secondary">
-            Organizando {count} paradas pela melhor sequência
-          </Text>
-        </View>
+        <Material style={styles.hud} intensity={80}>
+          <ActivityIndicator size="large" color={c.text} style={{ transform: [{ scale: 1.8 }] }} />
+          <View style={{ alignItems: 'center', gap: 4 }}>
+            <Text variant="title2">Calculando rota</Text>
+            <Text variant="callout" tone="secondary">
+              {count} paradas
+            </Text>
+          </View>
+        </Material>
       </Animated.View>
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, paddingHorizontal: 48, paddingTop: 40, gap: spacing[6] },
+  page: { flex: 1, paddingHorizontal: 48, paddingTop: 36, gap: spacing[5] },
   columns: { flex: 1, flexDirection: 'row', gap: spacing[6] },
-  pickRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[4],
-    padding: spacing[3],
-    paddingRight: spacing[5],
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: 'transparent',
+  selection: {
+    width: 540,
+    borderRadius: layout.radius.lg,
+    padding: spacing[6],
+    gap: spacing[5],
+    marginBottom: spacing[8],
   },
-  pickRowOn: { backgroundColor: 'rgba(10,132,255,0.10)', borderColor: 'rgba(10,132,255,0.45)' },
-  check: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    borderWidth: 3,
-    borderColor: colors.borderStrong,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkOn: { backgroundColor: colors.accent, borderColor: colors.accent },
-  selection: { width: 560, padding: spacing[6], gap: spacing[5], marginBottom: spacing[6] },
   stop: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[4],
     padding: spacing[3],
-    borderRadius: 20,
-    backgroundColor: colors.panelHigh,
+    paddingLeft: spacing[4],
+    borderRadius: layout.radius.md,
   },
-  stopNumber: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: colors.surfaceOverlay,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  num: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
   empty: {
     alignItems: 'center',
     gap: spacing[4],
     paddingVertical: spacing[16],
     paddingHorizontal: spacing[8],
   },
-  loadingRoot: {
-    flex: 1,
-    backgroundColor: colors.scrim,
+  hudRoot: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  hud: {
+    width: 360,
+    height: 360,
+    borderRadius: 44,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  loadingBox: {
-    width: 520,
-    height: 400,
-    borderRadius: 40,
-    backgroundColor: colors.panel,
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing[8],
+    gap: spacing[10],
   },
 });

@@ -1,107 +1,92 @@
 import { useState } from 'react';
-import { FlatList, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { PLAYLISTS } from '../../../mocks/data';
+import { MusicChip, PlaylistTile } from '../../../music/ui';
 import { usePlay } from '../../../music/use-play';
-import { colors, spacing } from '../../../theme';
-import { Artwork } from '../../../ui/brand';
-import {
-  Avatar,
-  Chip,
-  Icon,
-  IconButton,
-  type IconName,
-  Text,
-  Touchable,
-} from '../../../ui/primitives';
+import { spacing, useColors } from '../../../theme';
+import { Cover } from '../../../ui/brand';
+import { Appear } from '../../../ui/motion';
+import { Avatar, Icon, IconButton, type IconName, Text, Touchable } from '../../../ui/primitives';
 
 const FILTERS: { label: string; icon: IconName }[] = [
   { label: 'Playlists', icon: 'play' },
   { label: 'Podcasts', icon: 'mic-outline' },
   { label: 'Álbuns', icon: 'disc-outline' },
   { label: 'Artistas', icon: 'person-outline' },
+  { label: 'Eventos', icon: 'calendar-outline' },
 ];
 
 /** Sua Biblioteca — playlists (referência: imagem 5). */
 export default function Library() {
+  const c = useColors();
   const [filter, setFilter] = useState('Playlists');
   const play = usePlay();
 
   return (
     <View style={styles.page}>
       <View style={styles.head}>
-        <Avatar name="Raul Barbosa" size={76} />
-        <Text variant="display" style={{ flex: 1, fontSize: 48 }}>
+        <Avatar name="Raul Barbosa" size={84} />
+        <Text variant="largeTitle" style={{ flex: 1, fontSize: 56, lineHeight: 64 }}>
           Sua Biblioteca
         </Text>
-        <IconButton
-          icon="search"
-          variant="plain"
-          iconSize={38}
-          accessibilityLabel="Buscar na biblioteca"
-        />
-        <IconButton icon="add" variant="plain" iconSize={44} accessibilityLabel="Criar playlist" />
+        <IconButton icon="search" iconSize={44} accessibilityLabel="Buscar na biblioteca" />
+        <IconButton icon="add" iconSize={52} accessibilityLabel="Criar playlist" />
       </View>
 
-      <View style={{ flexDirection: 'row', gap: spacing[3] }}>
+      <View style={{ flexDirection: 'row', gap: spacing[4], paddingLeft: 64 }}>
         {FILTERS.map((f) => (
-          <Chip
+          <MusicChip
             key={f.label}
             label={f.label}
             icon={f.icon}
             selected={filter === f.label}
-            accent={colors.music.accent}
-            onAccent={colors.music.onAccent}
             onPress={() => setFilter(f.label)}
           />
         ))}
       </View>
 
       <View style={styles.sortRow}>
-        <Touchable style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[3] }}>
-          <Icon name="swap-vertical" size={30} color={colors.text} />
-          <Text variant="bodyStrong">Recentes</Text>
+        <Touchable style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[6] }}>
+          <Icon name="swap-vertical" size={38} />
+          <Text variant="headline">Recentes</Text>
         </Touchable>
-        <IconButton icon="grid-outline" variant="plain" accessibilityLabel="Ver em grade" />
+        <IconButton icon="grid" iconSize={40} accessibilityLabel="Ver em grade" />
       </View>
 
-      <FlatList
-        data={PLAYLISTS}
-        keyExtractor={(p) => p.id}
-        contentContainerStyle={{ gap: spacing[2], paddingBottom: spacing[6] }}
+      <ScrollView
         showsVerticalScrollIndicator={false}
-        renderItem={({ item }) => (
-          <Touchable accessibilityRole="button" onPress={play} style={styles.row}>
-            <Artwork color={item.cover} size={96} radius={0} liked={item.liked} />
-            <View style={{ flex: 1, gap: 2 }}>
-              <Text variant="headline" numberOfLines={1}>
-                {item.name}
-              </Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[2] }}>
-                <Icon name="pin" size={20} color={colors.music.accent} />
-                <Text variant="callout" tone="secondary" numberOfLines={1}>
-                  {item.kind} • {item.owner}
-                </Text>
-              </View>
-            </View>
-            <Icon name="chevron-forward" size={30} color={colors.textSecondary} />
-          </Touchable>
-        )}
-      />
+        contentContainerStyle={{ gap: spacing[3], paddingBottom: spacing[6] }}
+      >
+        {PLAYLISTS.map((p, i) => (
+          <Appear key={p.id} delay={i * 40} distance={12}>
+            <PlaylistTile
+              height={104}
+              cover={<Cover color={p.cover} size={150} height={104} radius={0} liked={p.liked} />}
+              title={p.name}
+              onPress={play}
+              subtitle={
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[2] }}>
+                  <Icon name="pin" size={24} color={c.music.accent} />
+                  <Text variant="callout" tone="secondary" numberOfLines={1}>
+                    {p.kind} • {p.owner}
+                  </Text>
+                </View>
+              }
+            />
+          </Appear>
+        ))}
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, paddingHorizontal: 40, paddingTop: 32, gap: spacing[5] },
-  head: { flexDirection: 'row', alignItems: 'center', gap: spacing[5] },
-  sortRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  row: {
+  page: { flex: 1, paddingHorizontal: 36, paddingTop: 28, gap: spacing[5] },
+  head: { flexDirection: 'row', alignItems: 'center', gap: spacing[8] },
+  sortRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing[6],
-    paddingRight: spacing[5],
-    borderRadius: 14,
-    overflow: 'hidden',
-    backgroundColor: '#1E1E21',
+    justifyContent: 'space-between',
+    paddingLeft: spacing[2],
   },
 });

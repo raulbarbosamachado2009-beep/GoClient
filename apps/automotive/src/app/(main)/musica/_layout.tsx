@@ -1,9 +1,11 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { type Href, Slot, usePathname, useRouter } from 'expo-router';
-import { StyleSheet, View } from 'react-native';
+import { Animated, StyleSheet, View } from 'react-native';
 import { SpotifyConnect } from '../../../music/connect';
 import { usePrototype } from '../../../prototype/state';
-import { colors, spacing } from '../../../theme';
+import { MiniPlayer } from '../../../shell/mini-player';
+import { spacing, useColors } from '../../../theme';
+import { ScreenTransition, useSpring } from '../../../ui/motion';
 import { Icon, type IconName, Text, Touchable } from '../../../ui/primitives';
 
 const TABS: {
@@ -18,7 +20,7 @@ const TABS: {
     href: '/musica/buscar',
     match: '/musica/buscar',
     label: 'Buscar',
-    icon: 'search',
+    icon: 'search-outline',
     iconActive: 'search',
   },
   {
@@ -28,28 +30,49 @@ const TABS: {
     icon: 'library-outline',
     iconActive: 'library',
   },
-  // "Criar" fica visível como na referência; a tela será desenhada numa próxima etapa.
+  // "Criar" fica visível como na referência; a tela será desenhada em uma próxima etapa.
   { href: null, match: '/musica/criar', label: 'Criar', icon: 'add', iconActive: 'add' },
 ];
 
-/** Área de música: primeiro a apresentação/login; depois as abas próprias do módulo. */
+const TAB_W = 1480 / TABS.length;
+
+/**
+ * Área de Música: primeiro a apresentação/login; depois o conteúdo, o player minimizado
+ * (somente aqui) e, abaixo dele, as abas.
+ */
 export default function MusicLayout() {
+  const c = useColors();
   const { musicConnected, setMusicConnected } = usePrototype();
   const pathname = usePathname();
   const router = useRouter();
+  const activeIndex = Math.max(
+    0,
+    TABS.findIndex((t) => t.match === pathname),
+  );
+  const x = useSpring(activeIndex * TAB_W);
 
   if (!musicConnected) return <SpotifyConnect onConnect={() => setMusicConnected(true)} />;
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, backgroundColor: c.music.background }}>
       <LinearGradient
-        colors={['rgba(15,74,38,0.55)', 'rgba(0,0,0,0)']}
-        style={[StyleSheet.absoluteFill, { height: 320 }]}
+        colors={[c.music.ambient, `${c.music.ambient}00`]}
+        style={[StyleSheet.absoluteFill, { height: 360 }]}
       />
       <View style={{ flex: 1 }}>
-        <Slot />
+        <ScreenTransition routeKey={pathname}>
+          <Slot />
+        </ScreenTransition>
       </View>
-      <View style={styles.tabs}>
+
+      <View style={{ paddingHorizontal: spacing[3], paddingBottom: spacing[2] }}>
+        <MiniPlayer />
+      </View>
+
+      <View style={[styles.tabs, { backgroundColor: c.music.tabBar }]}>
+        <Animated.View
+          style={[styles.indicator, { backgroundColor: c.text, transform: [{ translateX: x }] }]}
+        />
         {TABS.map((t) => {
           const active = pathname === t.match;
           return (
@@ -58,17 +81,17 @@ export default function MusicLayout() {
               accessibilityRole="tab"
               accessibilityState={{ selected: active }}
               onPress={() => t.href && router.replace(t.href)}
+              scaleTo={0.9}
               style={styles.tab}
             >
               <Icon
                 name={active ? t.iconActive : t.icon}
-                size={34}
-                color={active ? colors.text : colors.textSecondary}
+                size={36}
+                color={active ? c.text : c.textSecondary}
               />
-              <Text variant="label" tone={active ? 'primary' : 'secondary'}>
+              <Text variant="footnote" tone={active ? 'primary' : 'secondary'}>
                 {t.label}
               </Text>
-              {active && <View style={styles.indicator} />}
             </Touchable>
           );
         })}
@@ -78,20 +101,14 @@ export default function MusicLayout() {
 }
 
 const styles = StyleSheet.create({
-  tabs: {
-    flexDirection: 'row',
-    height: 96,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    backgroundColor: '#0A0A0B',
-  },
-  tab: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing[1] },
+  tabs: { flexDirection: 'row', height: 100 },
+  tab: { width: TAB_W, height: 100, alignItems: 'center', justifyContent: 'center', gap: 4 },
   indicator: {
     position: 'absolute',
-    bottom: 8,
-    width: 120,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: colors.text,
+    bottom: 10,
+    left: TAB_W / 2 - 80,
+    width: 160,
+    height: 5,
+    borderRadius: 3,
   },
 });

@@ -1,10 +1,10 @@
 import { type ReactNode, useEffect, useRef } from 'react';
-import { Animated, Easing, Pressable, StyleSheet, View, type ViewStyle } from 'react-native';
-import { colors, nativeDriver } from '../theme';
+import { Animated, Pressable, StyleSheet, View, type ViewStyle } from 'react-native';
+import { nativeDriver, useColors } from '../theme';
 
 /**
- * Janela sobreposta com fundo escurecido e entrada suave. Tocar fora fecha.
- * Renderizada pela camada de sobreposição do layout principal (cobre o menu lateral).
+ * Janela sobreposta (estilo "form sheet" do iOS): fundo escurece e a janela sobe com mola.
+ * Tocar fora fecha.
  */
 export function Sheet({
   children,
@@ -15,34 +15,37 @@ export function Sheet({
   onClose?: () => void;
   style?: ViewStyle;
 }) {
-  const v = useRef(new Animated.Value(0)).current;
+  const c = useColors();
+  const fade = useRef(new Animated.Value(0)).current;
+  const rise = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    Animated.timing(v, {
+    Animated.timing(fade, { toValue: 1, duration: 220, useNativeDriver: nativeDriver }).start();
+    Animated.spring(rise, {
       toValue: 1,
-      duration: 240,
-      easing: Easing.bezier(0.2, 0, 0, 1),
+      damping: 24,
+      stiffness: 240,
       useNativeDriver: nativeDriver,
     }).start();
-  }, [v]);
+  }, [fade, rise]);
 
   return (
     <View style={styles.root}>
-      <Animated.View style={[StyleSheet.absoluteFill, { opacity: v }]}>
+      <Animated.View style={[StyleSheet.absoluteFill, { opacity: fade }]}>
         <Pressable
           accessibilityLabel="Fechar janela"
-          style={[StyleSheet.absoluteFill, { backgroundColor: colors.scrim }]}
+          style={[StyleSheet.absoluteFill, { backgroundColor: c.scrim }]}
           onPress={onClose}
         />
       </Animated.View>
       <Animated.View
         style={[
           styles.sheet,
+          { backgroundColor: c.mode === 'dark' ? '#1C1C1E' : '#F2F2F7' },
           style,
           {
-            opacity: v,
+            opacity: fade,
             transform: [
-              { translateY: v.interpolate({ inputRange: [0, 1], outputRange: [32, 0] }) },
-              { scale: v.interpolate({ inputRange: [0, 1], outputRange: [0.98, 1] }) },
+              { translateY: rise.interpolate({ inputRange: [0, 1], outputRange: [80, 0] }) },
             ],
           },
         ]}
@@ -56,10 +59,11 @@ export function Sheet({
 const styles = StyleSheet.create({
   root: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   sheet: {
-    backgroundColor: colors.panel,
     borderRadius: 36,
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
     overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 40,
+    shadowOffset: { width: 0, height: 20 },
   },
 });

@@ -1,106 +1,103 @@
 import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { PLAYLISTS, SHOWS } from '../../../mocks/data';
+import { MusicChip, MusicSection, PlaylistTile } from '../../../music/ui';
 import { usePlay } from '../../../music/use-play';
-import { colors, spacing } from '../../../theme';
-import { Artwork } from '../../../ui/brand';
-import { Avatar, Chip, Icon, IconButton, Text, Touchable } from '../../../ui/primitives';
+import { spacing, useColors } from '../../../theme';
+import { Cover } from '../../../ui/brand';
+import { Appear } from '../../../ui/motion';
+import { Avatar, IconButton, Text, Touchable } from '../../../ui/primitives';
 
-const FILTERS = [
-  { label: 'Tudo' },
-  { label: 'Músicas', icon: 'musical-note' as const },
-  { label: 'Podcasts', icon: 'mic-outline' as const },
-  { label: 'Audiolivros', icon: 'headset-outline' as const },
-];
-
-/** Início da música (referência: imagem 3). */
+/** Início da Música (referência: imagem 3). */
 export default function MusicHome() {
+  const c = useColors();
   const [filter, setFilter] = useState('Tudo');
   const play = usePlay();
-  const quick = PLAYLISTS.slice(0, 6);
 
   return (
     <ScrollView contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
       <View style={styles.top}>
-        <Avatar name="Raul Barbosa" size={76} />
-        {FILTERS.map((f) => (
-          <Chip
-            key={f.label}
-            label={f.label}
-            icon={f.icon}
-            selected={filter === f.label}
-            accent={colors.music.accent}
-            onAccent={colors.music.onAccent}
-            onPress={() => setFilter(f.label)}
-          />
-        ))}
+        <Avatar name="Raul Barbosa" size={84} />
+        <MusicChip label="Tudo" selected={filter === 'Tudo'} onPress={() => setFilter('Tudo')} />
+        <MusicChip
+          label="Músicas"
+          icon="musical-note"
+          selected={filter === 'Músicas'}
+          onPress={() => setFilter('Músicas')}
+        />
+        <MusicChip
+          label="Podcasts"
+          icon="mic-outline"
+          selected={filter === 'Podcasts'}
+          onPress={() => setFilter('Podcasts')}
+        />
+        <MusicChip
+          label="Audiolivros"
+          icon="headset-outline"
+          selected={filter === 'Audiolivros'}
+          onPress={() => setFilter('Audiolivros')}
+        />
       </View>
 
       <View style={styles.grid}>
-        {quick.map((p) => (
-          <Touchable key={p.id} accessibilityRole="button" onPress={play} style={styles.quick}>
-            <Artwork color={p.cover} size={96} radius={0} liked={p.liked} />
-            <Text variant="headline" numberOfLines={1} style={{ flex: 1 }}>
-              {p.name}
-            </Text>
-            <Icon name="chevron-forward" size={30} color={colors.textSecondary} />
-          </Touchable>
+        {PLAYLISTS.slice(0, 6).map((p, i) => (
+          <Appear key={p.id} delay={i * 40} distance={12} style={{ width: '49.3%' }}>
+            <PlaylistTile
+              cover={<Cover color={p.cover} size={104} radius={0} liked={p.liked} />}
+              title={p.name}
+              onPress={play}
+            />
+          </Appear>
         ))}
       </View>
 
-      <View style={styles.release}>
-        <Avatar name="Lua Ventura" size={120} color="#7A2E3A" />
-        <View style={{ width: 380 }}>
-          <Text variant="callout" tone="secondary">
-            Novo lançamento de
-          </Text>
-          <Text variant="display" numberOfLines={1} style={{ fontSize: 52 }}>
-            Lua Ventura
-          </Text>
-        </View>
-        <Artwork color="#B5652B" size={136} radius={8} />
-        <View style={{ flex: 1, gap: 2 }}>
-          <Text variant="callout" tone="secondary">
-            Single
-          </Text>
-          <Text variant="headline">Poeira e Sol</Text>
-          <Text variant="callout" tone="secondary" numberOfLines={1}>
-            Lua Ventura, Os Marés
-          </Text>
-        </View>
-        <IconButton
-          icon="play"
-          variant="inverse"
-          size={88}
-          iconSize={42}
-          accessibilityLabel="Tocar"
-          onPress={play}
-        />
-        <View style={styles.vline} />
-        <IconButton icon="ellipsis-horizontal" variant="plain" accessibilityLabel="Mais opções" />
-      </View>
-
-      <View style={styles.sectionHead}>
-        <Text variant="title" style={{ fontSize: 34 }}>
-          Seus programas
-        </Text>
-        <Touchable style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-          <Text variant="callout" tone="secondary">
-            Ver mais
-          </Text>
-          <Icon name="chevron-forward" size={24} color={colors.textSecondary} />
-        </Touchable>
-      </View>
-      <View style={{ flexDirection: 'row', gap: spacing[5] }}>
-        {SHOWS.map((s) => (
-          <Touchable
-            key={s.id}
-            accessibilityRole="button"
+      <Appear delay={260} distance={14}>
+        <View
+          style={[
+            styles.release,
+            { backgroundColor: c.music.card, borderColor: c.music.cardBorder },
+          ]}
+        >
+          <Avatar name="Lua Ventura" size={124} />
+          <View style={{ width: 400 }}>
+            <Text variant="callout" tone="secondary">
+              Novo lançamento de
+            </Text>
+            <Text variant="largeTitle" numberOfLines={1} style={{ fontSize: 58, lineHeight: 66 }}>
+              Lua Ventura
+            </Text>
+          </View>
+          <Cover color="#B5652B" size={136} radius={8} />
+          <View style={{ flex: 1 }}>
+            <Text variant="callout" tone="secondary">
+              Single
+            </Text>
+            <Text variant="title2">Poeira e Sol</Text>
+            <Text variant="callout" tone="secondary" numberOfLines={1}>
+              Lua Ventura, Os Marés
+            </Text>
+          </View>
+          <IconButton
+            icon="play"
+            variant="inverse"
+            size={92}
+            iconSize={44}
+            accessibilityLabel="Tocar"
             onPress={play}
-            style={{ flex: 1, gap: spacing[3] }}
-          >
-            <Artwork color={s.cover} size={318} height={200} radius={20} label={s.name} />
-          </Touchable>
+          />
+          <View style={[styles.vline, { backgroundColor: c.music.cardBorder }]} />
+          <IconButton icon="ellipsis-horizontal" iconSize={40} accessibilityLabel="Mais opções" />
+        </View>
+      </Appear>
+
+      <MusicSection title="Seus programas" action="Ver mais" />
+      <View style={{ flexDirection: 'row', gap: spacing[5] }}>
+        {SHOWS.map((s, i) => (
+          <Appear key={s.id} delay={320 + i * 50} distance={14} style={{ flex: 1 }}>
+            <Touchable accessibilityRole="button" onPress={play} scaleTo={0.97}>
+              <Cover color={s.cover} size={338} height={190} radius={14} title={s.name} />
+            </Touchable>
+          </Appear>
         ))}
       </View>
     </ScrollView>
@@ -108,36 +105,22 @@ export default function MusicHome() {
 }
 
 const styles = StyleSheet.create({
-  page: { paddingHorizontal: 40, paddingTop: 32, paddingBottom: 40, gap: spacing[6] },
-  top: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[4] },
-  quick: {
-    width: '49.2%',
-    height: 96,
-    borderRadius: 14,
-    overflow: 'hidden',
-    backgroundColor: '#2A2A2D',
+  page: { paddingHorizontal: 36, paddingTop: 28, paddingBottom: 32, gap: spacing[6] },
+  top: { flexDirection: 'row', alignItems: 'center', gap: spacing[5] },
+  grid: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[6],
-    paddingRight: spacing[5],
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    rowGap: spacing[4],
   },
   release: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[6],
-    padding: spacing[4],
+    paddingVertical: spacing[4],
     paddingHorizontal: spacing[6],
-    borderRadius: 24,
-    backgroundColor: '#1E1E21',
+    borderRadius: 28,
     borderWidth: 1,
-    borderColor: '#333336',
   },
-  vline: { width: 1, height: 64, backgroundColor: '#3A3A3C' },
-  sectionHead: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: spacing[2],
-  },
+  vline: { width: 1.5, height: 72 },
 });

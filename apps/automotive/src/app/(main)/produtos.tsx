@@ -1,40 +1,43 @@
 import { useState } from 'react';
 import { FlatList, ScrollView, StyleSheet, View } from 'react-native';
 import { type MockProduct, PRODUCT_CATEGORIES, PRODUCTS } from '../../mocks/data';
-import { colors, spacing } from '../../theme';
+import { layout, spacing, useColors } from '../../theme';
+import { Appear } from '../../ui/motion';
 import {
   Chip,
-  Divider,
+  Group,
   Icon,
   PageHeader,
+  Row,
   SearchField,
   Segmented,
   Text,
   Touchable,
 } from '../../ui/primitives';
 
-type View_ = 'cards' | 'list';
+type ViewMode = 'cards' | 'list';
 
 /**
  * Página de Produtos: busca, categorias e alternância entre cartões e lista.
- * Categoria e modo de exibição mudam apenas o estado visual (sem filtrar dados).
+ * Categoria e modo mudam apenas o estado visual (sem filtrar dados).
  */
 export default function ProductsScreen() {
   const [category, setCategory] = useState<string>('Todos');
-  const [mode, setMode] = useState<View_>('cards');
+  const [mode, setMode] = useState<ViewMode>('cards');
 
   return (
     <View style={styles.page}>
       <PageHeader
         title="Produtos"
-        subtitle={`${PRODUCTS.length} produtos no catálogo · atualizado hoje às 08:12`}
+        subtitle={`${PRODUCTS.length} produtos no catálogo`}
         right={
-          <Segmented<View_>
+          <Segmented<ViewMode>
             value={mode}
             onChange={setMode}
+            segmentWidth={150}
             options={[
-              { value: 'cards', icon: 'grid-outline', label: 'Cartões' },
-              { value: 'list', icon: 'list-outline', label: 'Lista' },
+              { value: 'cards', icon: 'grid', label: 'Cartões' },
+              { value: 'list', icon: 'list', label: 'Lista' },
             ]}
           />
         }
@@ -43,8 +46,8 @@ export default function ProductsScreen() {
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ gap: spacing[3] }}
         style={{ flexGrow: 0, flexShrink: 0 }}
+        contentContainerStyle={{ gap: spacing[3], alignItems: 'center' }}
       >
         {PRODUCT_CATEGORIES.map((c) => (
           <Chip key={c} label={c} selected={category === c} onPress={() => setCategory(c)} />
@@ -58,110 +61,98 @@ export default function ProductsScreen() {
           numColumns={4}
           keyExtractor={(p) => p.id}
           columnWrapperStyle={{ gap: spacing[5] }}
-          contentContainerStyle={{ gap: spacing[5], paddingBottom: spacing[8] }}
+          contentContainerStyle={{ gap: spacing[5], paddingBottom: spacing[10] }}
           showsVerticalScrollIndicator={false}
-          renderItem={({ item }) => <ProductCard product={item} />}
+          renderItem={({ item, index }) => (
+            <Appear delay={index * 30} distance={12} style={{ flex: 1, maxWidth: '25%' }}>
+              <ProductCard product={item} />
+            </Appear>
+          )}
         />
       ) : (
-        <FlatList
-          key="list"
-          data={PRODUCTS}
-          keyExtractor={(p) => p.id}
-          ItemSeparatorComponent={() => <Divider inset={120} />}
-          contentContainerStyle={{ paddingBottom: spacing[8] }}
+        <ScrollView
           showsVerticalScrollIndicator={false}
-          renderItem={({ item }) => <ProductRow product={item} />}
-        />
+          contentContainerStyle={{ paddingBottom: spacing[10] }}
+        >
+          <Group inset={136}>
+            {PRODUCTS.map((p, i) => (
+              <Appear key={p.id} delay={i * 25} distance={10}>
+                <Row
+                  leading={<ProductImage product={p} size={88} />}
+                  title={p.name}
+                  subtitle={`${p.category} · ${p.sku} · ${p.stock} em estoque`}
+                  value={p.price}
+                  chevron
+                  onPress={() => {}}
+                />
+              </Appear>
+            ))}
+          </Group>
+        </ScrollView>
       )}
     </View>
   );
 }
 
-function ProductImage({ product, size }: { product: MockProduct; size: number | '100%' }) {
+function ProductImage({ product, size }: { product: MockProduct; size: number | 'fill' }) {
+  const c = useColors();
+  const fill = size === 'fill';
   return (
     <View
       style={{
-        width: size,
-        height: size === '100%' ? 200 : size,
-        borderRadius: size === '100%' ? 22 : 18,
-        backgroundColor: product.tint,
+        width: fill ? '100%' : size,
+        height: fill ? 210 : size,
+        borderRadius: fill ? 20 : 16,
+        backgroundColor: c.fill,
         alignItems: 'center',
         justifyContent: 'center',
       }}
     >
-      <Icon name={product.icon} size={size === '100%' ? 88 : 44} color="rgba(255,255,255,0.86)" />
+      <Icon
+        name={product.icon.replace('-outline', '') as typeof product.icon}
+        size={fill ? 84 : 40}
+        color={c.textSecondary}
+      />
     </View>
   );
 }
 
-function Stock({ stock }: { stock: number }) {
-  const low = stock < 30;
-  return (
-    <Text variant="caption" tone={low ? 'danger' : 'secondary'}>
-      {low ? `Restam ${stock}` : `${stock} em estoque`}
-    </Text>
-  );
-}
-
 function ProductCard({ product }: { product: MockProduct }) {
+  const c = useColors();
+  const low = product.stock < 30;
   return (
-    <Touchable accessibilityRole="button" style={styles.card}>
-      <ProductImage product={product} size="100%" />
-      <View style={{ gap: 2, paddingHorizontal: spacing[1] }}>
-        <Text variant="label" tone="tertiary">
-          {product.category.toUpperCase()} · {product.sku}
-        </Text>
+    <Touchable accessibilityRole="button" style={[styles.card, { backgroundColor: c.grouped }]}>
+      <ProductImage product={product} size="fill" />
+      <View style={{ gap: 2, paddingHorizontal: spacing[2] }}>
         <Text variant="bodyStrong" numberOfLines={1}>
           {product.name}
+        </Text>
+        <Text variant="caption" tone="secondary">
+          {product.category} · {product.sku}
         </Text>
       </View>
       <View style={styles.cardFoot}>
         <Text variant="headline">{product.price}</Text>
-        <Stock stock={product.stock} />
-      </View>
-    </Touchable>
-  );
-}
-
-function ProductRow({ product }: { product: MockProduct }) {
-  return (
-    <Touchable accessibilityRole="button" style={styles.row}>
-      <ProductImage product={product} size={96} />
-      <View style={{ flex: 1, gap: 2 }}>
-        <Text variant="bodyStrong">{product.name}</Text>
-        <Text variant="callout" tone="secondary">
-          {product.category} · {product.sku}
+        <Text variant="caption" tone={low ? 'danger' : 'secondary'}>
+          {low ? `Restam ${product.stock}` : `${product.stock} un.`}
         </Text>
       </View>
-      <View style={{ width: 200 }}>
-        <Stock stock={product.stock} />
-      </View>
-      <Text variant="headline" style={{ width: 180, textAlign: 'right' }}>
-        {product.price}
-      </Text>
-      <Icon name="chevron-forward" size={30} color={colors.textTertiary} />
     </Touchable>
   );
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, paddingHorizontal: 48, paddingTop: 40, gap: spacing[6] },
+  page: { flex: 1, paddingHorizontal: 48, paddingTop: 36, gap: spacing[5] },
   card: {
-    flex: 1,
-    maxWidth: '25%',
     padding: spacing[3],
     paddingBottom: spacing[4],
     gap: spacing[3],
-    borderRadius: 28,
-    backgroundColor: colors.panel,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderRadius: layout.radius.lg,
   },
   cardFoot: {
     flexDirection: 'row',
     alignItems: 'baseline',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing[1],
+    paddingHorizontal: spacing[2],
   },
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing[6], paddingVertical: spacing[3] },
 });
