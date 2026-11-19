@@ -87,7 +87,9 @@ Por decisão do produto, a interface usa **somente SF Pro** (Display e Text), ob
   direito da tela, sem painel nem texto. Tocar fora fecha; tocar no círculo alterna os estados da animação.
 - Atrás do círculo, o desfoque nasce na borda direita e esvanece para a esquerda. Na Web é um único
   `backdrop-filter` com `mask-image` em degradê; no Android/iOS são faixas de `BlurView` sobrepostas
-  (o BlurView não aceita máscara). O desfoque cresce com `useTween`, sem animar opacidade.
+  (o BlurView não aceita máscara). O desfoque tem intensidade fixa e entra e sai deslizando pela
+  direita junto com o círculo: animar o raio a cada quadro fazia o navegador recompor o desfoque do cartão
+  do Mapa atrás dele (o cartão sumia e voltava).
 - Visual do orbe copiado da referência enviada: aquarela com creme no topo, azul-claro no meio e azul forte
   embaixo, sem brilho de vidro nem sombra. As manchas derivam em volta de pontos fixos.
 - O componente OrbBloop recebido usa WebGPU (pacote `vgpu`) e depende de arquivos que não vieram junto

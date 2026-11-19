@@ -2,8 +2,7 @@ import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Platform, Pressable, StyleSheet, View } from 'react-native';
-import { nativeDriver, useColors } from '../theme';
-import { useTween } from '../ui/motion';
+import { layout, nativeDriver, useColors } from '../theme';
 import { HavenaCaption } from './caption';
 import { HavenaOrb, type OrbState } from './orb';
 
@@ -12,6 +11,8 @@ const ORB = 300;
 const RIGHT = 110;
 /** Largura da legenda (centrada no círculo, passa um pouco das bordas dele). */
 const CAPTION = 480;
+/** Largura da faixa de desfoque (72% da tela). */
+const HAZE_W = Math.round(layout.width * 0.72);
 /** Deslocamento que leva o círculo (com folga para a sombra) totalmente para fora da tela. */
 const OFFSCREEN = RIGHT + ORB / 2 + CAPTION / 2 + 60;
 
@@ -21,8 +22,6 @@ const OFFSCREEN = RIGHT + ORB / 2 + CAPTION / 2 + 60;
  * palavras surgindo uma a uma. Tocar fora fecha. Protótipo: a Havena não fala de verdade.
  */
 export function HavenaPanel({ onClose }: { onClose: () => void }) {
-  const [open, setOpen] = useState(true);
-  const progress = useTween(open ? 1 : 0, DURATION);
   const enter = useRef(new Animated.Value(0)).current;
   const closing = useRef(false);
   const [state, setState] = useState<OrbState>('listen');
@@ -39,7 +38,6 @@ export function HavenaPanel({ onClose }: { onClose: () => void }) {
   const close = useCallback(() => {
     if (closing.current) return;
     closing.current = true;
-    setOpen(false);
     Animated.timing(enter, {
       toValue: 0,
       duration: DURATION + 80,
@@ -55,7 +53,7 @@ export function HavenaPanel({ onClose }: { onClose: () => void }) {
         onPress={close}
         style={StyleSheet.absoluteFill}
       />
-      <FadingBlur progress={progress} />
+      <FadingBlur enter={enter} />
 
       <Animated.View
         pointerEvents="box-none"
@@ -90,22 +88,42 @@ export function HavenaPanel({ onClose }: { onClose: () => void }) {
  * Web: um único `backdrop-filter` recortado por uma máscara em degradê.
  * Android/iOS: faixas de desfoque sobrepostas, cada vez mais estreitas, que somam mais
  * desfoque perto da borda direita (o BlurView não aceita máscara em degradê).
+ *
+ * A intensidade é fixa: o desfoque entra e sai deslizando pela direita junto com o círculo.
+ * Mudar o raio a cada quadro fazia o navegador recompor também o desfoque do cartão do Mapa
+ * que fica atrás, e o cartão sumia e voltava (e o mapa piscava).
  */
-function FadingBlur({ progress }: { progress: number }) {
+function FadingBlur({ enter }: { enter: Animated.Value }) {
   const c = useColors();
   const dark = c.mode === 'dark';
-  const shade = dark ? `rgba(0,0,0,${0.62 * progress})` : `rgba(225,228,236,${0.6 * progress})`;
+  const shade = dark ? 'rgba(0,0,0,0.62)' : 'rgba(225,228,236,0.6)';
   const mask = 'linear-gradient(to left, #000 0%, #000 30%, transparent 100%)';
 
   return (
-    <View pointerEvents="none" style={styles.fadeRegion}>
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        styles.fadeRegion,
+        {
+          transform: [
+            {
+              translateX: enter.interpolate({
+                inputRange: [0, 1],
+                outputRange: [HAZE_W, 0],
+                extrapolate: 'clamp',
+              }),
+            },
+          ],
+        },
+      ]}
+    >
       {Platform.OS === 'web' ? (
         <View
           style={[
             StyleSheet.absoluteFill,
             {
-              backdropFilter: `blur(${(40 * progress).toFixed(1)}px) saturate(${100 + 30 * progress}%)`,
-              WebkitBackdropFilter: `blur(${(40 * progress).toFixed(1)}px)`,
+              backdropFilter: 'blur(40px) saturate(130%)',
+              WebkitBackdropFilter: 'blur(40px) saturate(130%)',
               maskImage: mask,
               WebkitMaskImage: mask,
             } as object,
@@ -116,7 +134,7 @@ function FadingBlur({ progress }: { progress: number }) {
           <BlurView
             key={w}
             tint={dark ? 'dark' : 'light'}
-            intensity={24 * progress}
+            intensity={24}
             experimentalBlurMethod="dimezisBlurView"
             style={[styles.band, { width: `${w * 100}%` }]}
           />
@@ -129,7 +147,7 @@ function FadingBlur({ progress }: { progress: number }) {
         end={{ x: 1, y: 0 }}
         style={StyleSheet.absoluteFill}
       />
-    </View>
+    </Animated.View>
   );
 }
 
@@ -139,7 +157,7 @@ const styles = StyleSheet.create({
     top: 0,
     bottom: 0,
     right: 0,
-    width: '72%',
+    width: HAZE_W,
   },
   band: { position: 'absolute', top: 0, bottom: 0, right: 0 },
   caption: {
