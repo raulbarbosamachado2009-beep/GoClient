@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { usePathname, useRouter } from 'expo-router';
 import { usePrototype } from '../prototype/state';
 
 /** Toca uma faixa (com a fila opcional) e abre o player. */
@@ -14,5 +14,9 @@ export function usePlay() {
 /** Abre a página de uma playlist/single. */
 export function useOpenPlaylist() {
   const router = useRouter();
-  return (id: string) => router.push({ pathname: '/musica/playlist/[id]', params: { id } });
+  const pathname = usePathname();
+  // Lembra a origem para o "voltar" da playlist levar de volta ao lugar certo.
+  const from = pathname.startsWith('/musica/biblioteca') ? 'biblioteca' : 'inicio';
+  return (id: string) =>
+    router.replace({ pathname: '/musica/playlist/[id]', params: { id, from } });
 }

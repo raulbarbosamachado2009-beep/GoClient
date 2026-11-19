@@ -1,15 +1,15 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
 import { GENRES, type Genre, playlistById, trackById } from '../../../../mocks/data';
-import { MusicChip } from '../../../../music/ui';
+import { MusicBack, MusicChip } from '../../../../music/ui';
 import { usePlay } from '../../../../music/use-play';
 import { usePrototype } from '../../../../prototype/state';
 import { layout, spacing, useColors } from '../../../../theme';
 import { Cover } from '../../../../ui/brand';
 import { Appear } from '../../../../ui/motion';
-import { Icon, IconButton, Material, Text, Touchable } from '../../../../ui/primitives';
+import { Icon, IconButton, Text, Touchable } from '../../../../ui/primitives';
 
 /**
  * Página da playlist (referência: imagem 3). Os gêneros filtram a lista (apenas no
@@ -17,8 +17,7 @@ import { Icon, IconButton, Material, Text, Touchable } from '../../../../ui/prim
  */
 export default function PlaylistScreen() {
   const c = useColors();
-  const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, from } = useLocalSearchParams<{ id: string; from?: string }>();
   const playlist = playlistById(id ?? 'l1');
   const { nowPlaying } = usePrototype();
   const play = usePlay();
@@ -40,16 +39,7 @@ export default function PlaylistScreen() {
       />
 
       <View style={styles.header}>
-        <Touchable
-          accessibilityRole="button"
-          accessibilityLabel="Voltar"
-          onPress={() => router.back()}
-          scaleTo={0.9}
-        >
-          <Material style={styles.back} radius={20}>
-            <Icon name="chevron-back" size={52} color="#FFFFFF" />
-          </Material>
-        </Touchable>
+        <MusicBack to={from === 'biblioteca' ? '/musica/biblioteca' : '/musica'} size={112} />
         <View style={{ flex: 1 }}>
           <Text
             variant="largeTitle"
@@ -184,13 +174,6 @@ const styles = StyleSheet.create({
     gap: spacing[8],
     paddingHorizontal: 36,
     paddingTop: 28,
-  },
-  back: {
-    width: 112,
-    height: 112,
-    borderRadius: 56,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   chips: {
     flexDirection: 'row',

@@ -129,3 +129,10 @@ Por decisão do produto, a interface usa **somente SF Pro** (Display e Text), ob
 - Linhas de lista com 112 px de altura mínima, título 28 px e subtítulo 21 px; busca com 88 px; filtros
   com 80 px; seletor segmentado com 84 px; interruptor 112 × 68. Avatares e ícones das linhas maiores.
 - A busca da Música mantém o tamanho anterior (`SearchField compact`).
+
+## Navegação da Música (sem abas)
+
+- Sem menu no rodapé: só o player minimizado embaixo. Início tem a lupa no canto superior direito (vai para
+  Buscar) e o bloco "Sua Biblioteca" na grade (no lugar de "Piscina de Diamante", que segue na Biblioteca).
+- Buscar, Biblioteca e playlists têm botão de voltar (`MusicBack`) com destino explícito; a playlist volta
+  para onde foi aberta (`?from=inicio|biblioteca`). A lupa da Biblioteca também leva a Buscar.

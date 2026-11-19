@@ -1,7 +1,8 @@
+import { type Href, useRouter } from 'expo-router';
 import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { spacing, useColors } from '../theme';
-import { Icon, type IconName, Text, Touchable } from '../ui/primitives';
+import { Icon, type IconName, Material, Text, Touchable } from '../ui/primitives';
 
 /** Pílula de filtro da Música: verde quando selecionada (referências 3 e 5). */
 export function MusicChip({
@@ -113,3 +114,32 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
 });
+
+/**
+ * Botão de voltar das páginas internas da Música. Vai sempre para um destino explícito
+ * (e não para o histórico), para nunca cair em outra seção do app por engano.
+ */
+export function MusicBack({ to, size = 96 }: { to: Href; size?: number }) {
+  const router = useRouter();
+  return (
+    <Touchable
+      accessibilityRole="button"
+      accessibilityLabel="Voltar"
+      onPress={() => router.replace(to)}
+      scaleTo={0.9}
+    >
+      <Material
+        style={{
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+        radius={20}
+      >
+        <Icon name="chevron-back" size={size * 0.46} color="#FFFFFF" />
+      </Material>
+    </Touchable>
+  );
+}

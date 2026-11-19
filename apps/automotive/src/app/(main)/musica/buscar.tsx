@@ -1,6 +1,6 @@
 import { Image, ScrollView, StyleSheet, View } from 'react-native';
 import { BROWSE, SHOWS } from '../../../mocks/data';
-import { MusicSection } from '../../../music/ui';
+import { MusicBack, MusicSection } from '../../../music/ui';
 import { usePlay } from '../../../music/use-play';
 import { spacing, useColors } from '../../../theme';
 import { Cover, shade } from '../../../ui/brand';
@@ -20,11 +20,7 @@ export default function Search() {
   return (
     <ScrollView contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
       <View style={styles.head}>
-        <View style={[styles.initial, { backgroundColor: '#2F6FD6' }]}>
-          <Text variant="title" color="#FFFFFF">
-            R
-          </Text>
-        </View>
+        <MusicBack to="/musica" />
         <Text variant="largeTitle" style={{ flex: 1, fontSize: 56, lineHeight: 64 }}>
           Buscar
         </Text>
@@ -89,13 +85,6 @@ export default function Search() {
 const styles = StyleSheet.create({
   page: { paddingHorizontal: 36, paddingTop: 28, paddingBottom: 32, gap: spacing[6] },
   head: { flexDirection: 'row', alignItems: 'center', gap: spacing[8] },
-  initial: {
-    width: 84,
-    height: 84,
-    borderRadius: 42,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   tile: { height: 132, borderRadius: 14, padding: spacing[6], overflow: 'hidden' },
   tileArt: {
     position: 'absolute',

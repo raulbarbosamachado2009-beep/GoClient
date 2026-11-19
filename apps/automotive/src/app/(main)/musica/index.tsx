@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { COVERS, PLAYLISTS, SHOWS } from '../../../mocks/data';
@@ -16,6 +17,7 @@ type Filter = 'Tudo' | 'Músicas' | 'Podcasts' | 'Audiolivros';
  * (apenas no protótipo).
  */
 export default function MusicHome() {
+  const router = useRouter();
   const [filter, setFilter] = useState<Filter>('Tudo');
   const showMusic = filter === 'Tudo' || filter === 'Músicas';
   const showShows = filter === 'Tudo' || filter === 'Podcasts';
@@ -43,6 +45,13 @@ export default function MusicHome() {
           selected={filter === 'Audiolivros'}
           onPress={() => setFilter('Audiolivros')}
         />
+        <View style={{ flex: 1 }} />
+        <IconButton
+          icon="search"
+          iconSize={48}
+          accessibilityLabel="Buscar"
+          onPress={() => router.replace('/musica/buscar')}
+        />
       </View>
 
       <View key={filter} style={{ gap: spacing[6] }}>
@@ -57,20 +66,40 @@ export default function MusicHome() {
 
 function MusicGrid() {
   const open = useOpenPlaylist();
+  const router = useRouter();
+  // "Sua Biblioteca" ocupa o lugar de "Piscina de Diamante" (que continua na Biblioteca).
+  const tiles = PLAYLISTS.slice(0, 6).map((p) => (p.id === 'l2' ? LIBRARY : p));
   return (
     <View style={styles.grid}>
-      {PLAYLISTS.slice(0, 6).map((p, i) => (
+      {tiles.map((p, i) => (
         <Appear key={p.id} delay={i * 40} distance={12} style={{ width: '49.3%' }}>
-          <PlaylistTile
-            cover={<Cover color={p.cover} image={p.image} size={104} radius={0} liked={p.liked} />}
-            title={p.name}
-            onPress={() => open(p.id)}
-          />
+          {p === LIBRARY ? (
+            <PlaylistTile
+              cover={
+                <View style={styles.libraryCover}>
+                  <Icon name="library" size={52} color="#FFFFFF" />
+                </View>
+              }
+              title="Sua Biblioteca"
+              onPress={() => router.replace('/musica/biblioteca')}
+            />
+          ) : (
+            <PlaylistTile
+              cover={
+                <Cover color={p.cover} image={p.image} size={104} radius={0} liked={p.liked} />
+              }
+              title={p.name}
+              onPress={() => open(p.id)}
+            />
+          )}
         </Appear>
       ))}
     </View>
   );
 }
+
+/** Marcador do bloco "Sua Biblioteca" na grade do Início. */
+const LIBRARY = { id: 'biblioteca' } as (typeof PLAYLISTS)[number];
 
 function NewRelease() {
   const c = useColors();
@@ -159,6 +188,13 @@ function EmptyState() {
 const styles = StyleSheet.create({
   page: { paddingHorizontal: 36, paddingTop: 28, paddingBottom: 32, gap: spacing[6] },
   top: { flexDirection: 'row', alignItems: 'center', gap: spacing[5] },
+  libraryCover: {
+    width: 104,
+    height: 104,
+    backgroundColor: '#3A3A3C',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',

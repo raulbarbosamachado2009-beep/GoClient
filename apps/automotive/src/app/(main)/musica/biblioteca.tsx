@@ -1,8 +1,9 @@
+import { useRouter } from 'expo-router';
 import { type ReactNode, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { ARTISTS, PLAYLISTS, SHOWS } from '../../../mocks/data';
 import { AccountButton } from '../../../music/accounts';
-import { MusicChip, PlaylistTile } from '../../../music/ui';
+import { MusicBack, MusicChip, PlaylistTile } from '../../../music/ui';
 import { useOpenPlaylist, usePlay } from '../../../music/use-play';
 import { spacing, useColors } from '../../../theme';
 import { Cover } from '../../../ui/brand';
@@ -27,6 +28,7 @@ const FILTERS: { label: Filter; icon: IconName }[] = [
 export default function Library() {
   const c = useColors();
   const fade = useEdgeFade(c.music.background);
+  const router = useRouter();
   const [filter, setFilter] = useState<Filter | null>(null);
   const open = useOpenPlaylist();
   const play = usePlay();
@@ -100,11 +102,17 @@ export default function Library() {
   return (
     <View style={styles.page}>
       <View style={styles.head}>
+        <MusicBack to="/musica" />
         <AccountButton />
         <Text variant="largeTitle" style={{ flex: 1, fontSize: 56, lineHeight: 64 }}>
           Sua Biblioteca
         </Text>
-        <IconButton icon="search" iconSize={44} accessibilityLabel="Buscar na biblioteca" />
+        <IconButton
+          icon="search"
+          iconSize={44}
+          accessibilityLabel="Buscar"
+          onPress={() => router.replace('/musica/buscar')}
+        />
         <IconButton icon="add" iconSize={52} accessibilityLabel="Criar playlist" />
       </View>
 
