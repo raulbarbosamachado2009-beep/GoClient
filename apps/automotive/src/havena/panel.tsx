@@ -8,6 +8,9 @@ import { HavenaOrb, type OrbState } from './orb';
 
 const DURATION = 420;
 const ORB = 300;
+const RIGHT = 110;
+/** Deslocamento que leva o círculo (com folga para a sombra) totalmente para fora da tela. */
+const OFFSCREEN = ORB + RIGHT + 60;
 
 /** Sequência de estados ao tocar no círculo (só para ver as animações no protótipo). */
 const NEXT: Record<OrbState, OrbState> = {
@@ -44,7 +47,7 @@ export function HavenaPanel({ onClose }: { onClose: () => void }) {
     setOpen(false);
     Animated.timing(enter, {
       toValue: 0,
-      duration: DURATION - 60,
+      duration: DURATION + 80,
       easing: Easing.in(Easing.cubic),
       useNativeDriver: nativeDriver,
     }).start(onClose);
@@ -64,10 +67,13 @@ export function HavenaPanel({ onClose }: { onClose: () => void }) {
         style={[
           styles.orbWrap,
           {
-            opacity: enter.interpolate({ inputRange: [0, 0.4, 1], outputRange: [0, 1, 1] }),
             transform: [
-              { translateX: enter.interpolate({ inputRange: [0, 1], outputRange: [180, 0] }) },
-              { scale: enter.interpolate({ inputRange: [0, 1], outputRange: [0.5, 1] }) },
+              // Sem esmaecer: o círculo entra e sai deslizando, e só é removido depois de
+              // passar inteiro da borda direita da tela.
+              {
+                translateX: enter.interpolate({ inputRange: [0, 1], outputRange: [OFFSCREEN, 0] }),
+              },
+              { scale: enter.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1] }) },
             ],
           },
         ]}
@@ -144,7 +150,7 @@ const styles = StyleSheet.create({
   band: { position: 'absolute', top: 0, bottom: 0, right: 0 },
   orbWrap: {
     position: 'absolute',
-    right: 110,
+    right: RIGHT,
     top: 0,
     bottom: 0,
     justifyContent: 'center',
