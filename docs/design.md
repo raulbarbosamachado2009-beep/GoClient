@@ -110,6 +110,6 @@ Por decisão do produto, a interface usa **somente SF Pro** (Display e Text), ob
 
 ## Legenda da Havena
 
-- Abaixo do orbe, as palavras surgem uma a uma (fade, leve subida e, na Web, saída de um desfoque de 6 px)
+- Abaixo do orbe, as palavras surgem uma a uma já na posição final (a frase inteira é diagramada invisível desde o início) (fade, leve subida e, na Web, saída de um desfoque de 6 px)
   e a frase some antes da próxima. Fonte SF Pro Display Light, 30 px. Falas fixas de exemplo; a Havena
   ainda não fala. O orbe fica em "falando" enquanto as palavras surgem.

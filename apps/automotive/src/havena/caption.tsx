@@ -66,19 +66,22 @@ export function HavenaCaption({
 
   return (
     <Animated.View style={[styles.line, { width, opacity: fade }]} pointerEvents="none">
-      {words.slice(0, count).map((w, i) => (
+      {/* A frase inteira já ocupa o lugar final desde o início (invisível); cada palavra só
+          é revelada na sua posição, então nenhuma empurra as outras. */}
+      {words.map((w, i) => (
         // biome-ignore lint/suspicious/noArrayIndexKey: a posição na frase é a identidade da palavra (palavras podem se repetir).
-        <Word key={`${phrase}-${i}`} text={w} color={c.text} />
+        <Word key={`${phrase}-${i}`} text={w} color={c.text} visible={i < count} />
       ))}
     </Animated.View>
   );
 }
 
-function Word({ text, color }: { text: string; color: string }) {
+function Word({ text, color, visible }: { text: string; color: string; visible: boolean }) {
   const v = useRef(new Animated.Value(0)).current;
   const [blur, setBlur] = useState(Platform.OS === 'web' ? 6 : 0);
 
   useEffect(() => {
+    if (!visible) return;
     Animated.timing(v, {
       toValue: 1,
       duration: 420,
@@ -96,7 +99,7 @@ function Word({ text, color }: { text: string; color: string }) {
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [v]);
+  }, [v, visible]);
 
   return (
     <Animated.Text
