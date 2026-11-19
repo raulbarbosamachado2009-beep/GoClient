@@ -9,6 +9,7 @@ import { layout, spacing, useColors } from '../theme';
 import { useSpring } from '../ui/motion';
 import { Blur, Icon, Text, Touchable } from '../ui/primitives';
 import { type AppGlyph, OutlineGlyph } from './app-icons';
+import { NowPlayingTile } from './now-playing-tile';
 
 interface Item {
   href: Href;
@@ -40,7 +41,9 @@ export function Sidebar() {
   const c = useColors();
   const pathname = usePathname();
   const router = useRouter();
-  const { setOverlay } = usePrototype();
+  const { setOverlay, nowPlaying, playing } = usePrototype();
+  // Fora da Música, o bloco do Spotify mostra a música tocando.
+  const showPlaying = nowPlaying !== null && !pathname.startsWith('/musica');
   const activeIndex = ITEMS.findIndex((i) => pathname.startsWith(i.match));
   const settingsActive = pathname.startsWith('/configuracoes');
   const y = useSpring(Math.max(activeIndex, 0) * SLOT);
@@ -109,6 +112,14 @@ export function Sidebar() {
             >
               {item.glyph ? (
                 <OutlineGlyph glyph={item.glyph} size={50} color={color} />
+              ) : showPlaying && nowPlaying ? (
+                <NowPlayingTile
+                  cover={nowPlaying.image}
+                  playing={playing}
+                  width={TILE_W}
+                  height={TILE_H}
+                  radius={24}
+                />
               ) : (
                 <FontAwesome5
                   name="spotify"

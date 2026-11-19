@@ -114,3 +114,9 @@ Por decisão do produto, a interface usa **somente SF Pro** (Display e Text), ob
 - Abaixo do orbe, as palavras surgem uma a uma já na posição final (a frase inteira é diagramada invisível desde o início) (fade, leve subida e, na Web, saída de um desfoque de 6 px)
   e a frase some antes da próxima. Fonte SF Pro Display Light, 30 px. Falas fixas de exemplo; a Havena
   ainda não fala. O orbe fica em "falando" enquanto as palavras surgem.
+
+## Música tocando na barra lateral
+
+- Fora da Música, com uma faixa em andamento, o bloco do Spotify mostra a capa desfocada dentro do quadrado
+  arredondado e barras de equalizador (degradê roxo-azul) na frente (`src/shell/now-playing-tile.tsx`).
+- Sem áudio no protótipo: o movimento é ruído suave gerado; pausado, as barras param baixas.
