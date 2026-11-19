@@ -1,11 +1,11 @@
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { type Href, usePathname, useRouter } from 'expo-router';
-import type { ReactNode } from 'react';
-import { Animated, StyleSheet, View } from 'react-native';
+import { type ReactNode, useEffect, useRef } from 'react';
+import { Animated, Easing, StyleSheet, View } from 'react-native';
 import { HavenaOrb } from '../havena/orb';
 import { HavenaPanel } from '../havena/panel';
 import { usePrototype } from '../prototype/state';
-import { layout, spacing, useColors } from '../theme';
+import { layout, nativeDriver, spacing, useColors } from '../theme';
 import { useSpring } from '../ui/motion';
 import { Blur, Icon, Text, Touchable } from '../ui/primitives';
 import { type AppGlyph, OutlineGlyph } from './app-icons';
@@ -112,19 +112,28 @@ export function Sidebar() {
             >
               {item.glyph ? (
                 <OutlineGlyph glyph={item.glyph} size={50} color={color} />
-              ) : showPlaying && nowPlaying ? (
-                <NowPlayingTile
-                  cover={nowPlaying.image}
-                  playing={playing}
-                  width={TILE_W}
-                  height={TILE_H}
-                  radius={24}
-                />
               ) : (
-                <FontAwesome5
-                  name="spotify"
-                  size={50}
-                  color={active ? c.accent : dark ? '#C7C7CC' : '#3A3A3C'}
+                <MusicSwap
+                  show={showPlaying}
+                  logo={
+                    <FontAwesome5
+                      name="spotify"
+                      size={50}
+                      color={active ? c.accent : dark ? '#C7C7CC' : '#3A3A3C'}
+                    />
+                  }
+                  playingTile={
+                    nowPlaying && (
+                      <NowPlayingTile
+                        cover={nowPlaying.image}
+                        tint={nowPlaying.tint}
+                        playing={playing}
+                        width={TILE_W}
+                        height={TILE_H}
+                        radius={24}
+                      />
+                    )
+                  }
                 />
               )}
             </Tile>
@@ -151,6 +160,59 @@ export function Sidebar() {
           <OutlineGlyph glyph="ajustes" size={50} color={settingsActive ? c.accent : ink} />
         </Tile>
       </View>
+    </View>
+  );
+}
+
+/**
+ * Troca animada entre o logo do Spotify e a música tocando: o logo encolhe e some enquanto
+ * a capa cresce no lugar (e o inverso ao voltar para a Música).
+ */
+function MusicSwap({
+  show,
+  logo,
+  playingTile,
+}: {
+  show: boolean;
+  logo: ReactNode;
+  playingTile: ReactNode;
+}) {
+  const p = useRef(new Animated.Value(show ? 1 : 0)).current;
+  useEffect(() => {
+    Animated.timing(p, {
+      toValue: show ? 1 : 0,
+      duration: 460,
+      easing: Easing.bezier(0.2, 0.8, 0.2, 1),
+      useNativeDriver: nativeDriver,
+    }).start();
+  }, [p, show]);
+  return (
+    <View style={styles.swap}>
+      <Animated.View
+        style={[
+          styles.swapLayer,
+          {
+            opacity: p.interpolate({ inputRange: [0, 0.5, 1], outputRange: [1, 0, 0] }),
+            transform: [{ scale: p.interpolate({ inputRange: [0, 1], outputRange: [1, 0.55] }) }],
+          },
+        ]}
+      >
+        {logo}
+      </Animated.View>
+      {playingTile && (
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.swapLayer,
+            {
+              opacity: p.interpolate({ inputRange: [0, 0.35, 1], outputRange: [0, 1, 1] }),
+              transform: [{ scale: p.interpolate({ inputRange: [0, 1], outputRange: [0.72, 1] }) }],
+            },
+          ]}
+        >
+          {playingTile}
+        </Animated.View>
+      )}
     </View>
   );
 }
@@ -209,6 +271,16 @@ const styles = StyleSheet.create({
     left: LEFT,
     width: TILE_W,
     height: TILE_H,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  swap: { width: TILE_W, height: TILE_H },
+  swapLayer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     alignItems: 'center',
     justifyContent: 'center',
   },

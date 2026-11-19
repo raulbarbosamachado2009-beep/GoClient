@@ -117,6 +117,9 @@ Por decisão do produto, a interface usa **somente SF Pro** (Display e Text), ob
 
 ## Música tocando na barra lateral
 
-- Fora da Música, com uma faixa em andamento, o bloco do Spotify mostra a capa desfocada dentro do quadrado
-  arredondado e barras de equalizador (degradê roxo-azul) na frente (`src/shell/now-playing-tile.tsx`).
+- Fora da Música, com uma faixa em andamento, o bloco do Spotify mostra a capa levemente desfocada (ainda
+  reconhecível) dentro do quadrado arredondado e barras de equalizador na frente
+  (`src/shell/now-playing-tile.tsx`). As barras usam o tom da capa (a mesma cor do player minimizado),
+  com saturação e brilho altos para destacar.
+- Ao sair da Música, o logo encolhe e some enquanto a capa cresce no lugar; ao voltar, o inverso.
 - Sem áudio no protótipo: o movimento é ruído suave gerado; pausado, as barras param baixas.
