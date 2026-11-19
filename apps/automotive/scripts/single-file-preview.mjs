@@ -77,6 +77,8 @@ const shim = `
     history[m] = function () { try { return orig.apply(null, arguments); } catch (e) { return undefined; } };
   });
   try { if (location.pathname !== '/') history.replaceState(null, '', '/'); } catch (e) {}
+  // Marca o Preview publicado: a página dele bloqueia iframes de outros sites (ex.: Kyte Web).
+  globalThis.__GOCLIENT_PREVIEW__ = true;
 })();`;
 
 const scripts = [

@@ -95,7 +95,8 @@ Kyte Web numa janela interna; a Havena vai operar essa janela com confirmação 
   não funciona em janelas embutidas (o Google bloqueia).
 - Android (multimídia e celular): `react-native-webview`, cookies persistentes (login continua valendo),
   agente de usuário de Chrome de desktop para receber o Kyte Web e não a página de instalar o app.
-- Web/Preview: iframe. O Kyte não envia `X-Frame-Options` nem `frame-ancestors` (verificado em
+- Web: iframe. No Preview publicado, a página bloqueia iframes de outros sites; ali aparece um aviso
+  com link para abrir o Kyte em outra aba. O Kyte não envia `X-Frame-Options` nem `frame-ancestors` (verificado em
   19/11/2026), mas navegadores podem bloquear os cookies de terceiros dentro do iframe; o teste de
   login de verdade é na multimídia.
 - Fragilidade aceita: mudanças no Kyte Web podem exigir ajustes no GoClient.

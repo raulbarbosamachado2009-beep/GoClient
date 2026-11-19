@@ -24,8 +24,31 @@ export function KyteConnect({ onOpen }: { onOpen: () => void }) {
         style={[StyleSheet.absoluteFill, { left: -layout.sidebarWidth }]}
       />
       <View style={styles.page}>
+        <Appear delay={80} style={styles.copy}>
+          <Text
+            variant="largeTitle"
+            color="#FFFFFF"
+            style={{ fontSize: 120, lineHeight: 130, letterSpacing: -3 }}
+          >
+            Kyte
+          </Text>
+          <Text variant="largeTitle" color="#FFFFFF" style={styles.headline}>
+            Seu PDV,{' '}
+            <Text variant="largeTitle" color={ACCENT} style={styles.headline}>
+              dentro do GoClient.
+            </Text>
+          </Text>
+          <Text
+            variant="body"
+            color="rgba(255,255,255,0.7)"
+            style={{ fontSize: 28, lineHeight: 38 }}
+          >
+            Entre na sua conta para ver clientes, produtos, estoque e vendas.
+          </Text>
+        </Appear>
+
         <View style={styles.buttons}>
-          <Appear delay={80} axis="x" distance={-24}>
+          <Appear delay={200} axis="x" distance={-24}>
             <Touchable
               accessibilityRole="button"
               onPress={onOpen}
@@ -44,7 +67,7 @@ export function KyteConnect({ onOpen }: { onOpen: () => void }) {
               <Icon name="chevron-forward" size={34} color="#FFFFFF" />
             </Touchable>
           </Appear>
-          <Appear delay={200}>
+          <Appear delay={300}>
             <View style={styles.note}>
               <Icon name="lock-closed" size={26} color="rgba(255,255,255,0.6)" />
               <Text variant="callout" color="rgba(255,255,255,0.6)" style={{ flex: 1 }}>
@@ -54,36 +77,13 @@ export function KyteConnect({ onOpen }: { onOpen: () => void }) {
             </View>
           </Appear>
         </View>
-
-        <Appear delay={200} style={styles.copy}>
-          <Text
-            variant="largeTitle"
-            color="#FFFFFF"
-            style={{ fontSize: 120, lineHeight: 130, letterSpacing: -3 }}
-          >
-            Kyte
-          </Text>
-          <Text variant="largeTitle" color="#FFFFFF" style={styles.headline}>
-            Seu PDV,{'\n'}
-            <Text variant="largeTitle" color={ACCENT} style={styles.headline}>
-              dentro do GoClient.
-            </Text>
-          </Text>
-          <Text
-            variant="body"
-            color="rgba(255,255,255,0.7)"
-            style={{ fontSize: 28, lineHeight: 38 }}
-          >
-            Entre na sua conta para ver clientes,{'\n'}produtos, estoque e vendas.
-          </Text>
-        </Appear>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 64, gap: 72 },
+  page: { flex: 1, justifyContent: 'center', paddingHorizontal: 72, gap: 56 },
   buttons: { width: 640, gap: spacing[6] },
   loginBtn: {
     height: 104,
@@ -96,6 +96,6 @@ const styles = StyleSheet.create({
   },
   loginIcon: { width: 52, alignItems: 'center' },
   note: { flexDirection: 'row', gap: spacing[4], paddingHorizontal: spacing[4] },
-  copy: { flex: 1, gap: spacing[8] },
+  copy: { gap: spacing[6], maxWidth: 1000 },
   headline: { fontSize: 66, lineHeight: 74, letterSpacing: -1 },
 });
