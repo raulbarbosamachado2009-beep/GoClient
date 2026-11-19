@@ -357,6 +357,11 @@ export interface MockTrack {
   /** Cor de apoio (fallback e detalhes). */
   cover: string;
   image: ImageSourcePropType;
+  /**
+   * Cor predominante da capa, escurecida para o texto branco ficar legível (usada no
+   * player minimizado, como no Spotify). Extraída das imagens em assets/covers.
+   */
+  tint: string;
   duration: string;
   explicit?: boolean;
   downloaded?: boolean;
@@ -372,6 +377,7 @@ export const TRACKS: MockTrack[] = [
     album: 'Isolado no Quarto',
     cover: '#3A2A6B',
     image: COVERS.isolado,
+    tint: '#29445F',
     duration: '3:42',
     explicit: true,
     genres: ['Funk', 'Trap'],
@@ -383,6 +389,7 @@ export const TRACKS: MockTrack[] = [
     album: 'Donos da Capital',
     cover: '#4A3A2A',
     image: COVERS.donos,
+    tint: '#5C2C3F',
     duration: '4:12',
     explicit: true,
     downloaded: true,
@@ -395,6 +402,7 @@ export const TRACKS: MockTrack[] = [
     album: 'Piscina de Diamante',
     cover: '#8A7A55',
     image: COVERS.piscina,
+    tint: '#5D542C',
     duration: '3:13',
     genres: ['Funk', 'Suave'],
   },
@@ -405,6 +413,7 @@ export const TRACKS: MockTrack[] = [
     album: 'Revoada do Tubarão 3',
     cover: '#2E5E7A',
     image: COVERS.revoada,
+    tint: '#603C29',
     duration: '3:58',
     genres: ['Funk'],
   },
@@ -415,6 +424,7 @@ export const TRACKS: MockTrack[] = [
     album: 'Pouco Tecido',
     cover: '#7A2E4A',
     image: COVERS.poucoTecido,
+    tint: '#711821',
     duration: '2:47',
     explicit: true,
     downloaded: true,
@@ -427,6 +437,7 @@ export const TRACKS: MockTrack[] = [
     album: 'Seminua 2',
     cover: '#6B2E5A',
     image: COVERS.seminua,
+    tint: '#6B391E',
     duration: '3:21',
     explicit: true,
     genres: ['Cabaré', 'Funk'],
@@ -438,6 +449,7 @@ export const TRACKS: MockTrack[] = [
     album: 'Ninguém Tá Puro',
     cover: '#2E4A6B',
     image: COVERS.ninguem,
+    tint: '#5C3B2C',
     duration: '3:05',
     genres: ['Trap', 'Hip hop'],
   },
@@ -561,4 +573,17 @@ export const BROWSE = [
   { id: 'b2', name: 'Podcasts', color: '#4E8A1E', image: undefined },
   { id: 'b3', name: 'Audiolivros', color: '#2C4FB0', image: undefined },
   { id: 'b4', name: 'Eventos ao vivo', color: '#8E5AA8', image: COVERS.revoada },
+];
+
+/** Contas do Spotify no aparelho (somente para o seletor de contas do protótipo). */
+export interface MockSpotifyAccount {
+  id: string;
+  name: string;
+  colors: readonly [string, string];
+}
+
+export const SPOTIFY_ACCOUNTS: MockSpotifyAccount[] = [
+  { id: 'raul', name: 'Raul Barbosa', colors: ['#A6ABB8', '#858994'] },
+  { id: 'maria', name: 'Maria Oliveira', colors: ['#E58AA6', '#C25A7C'] },
+  { id: 'laila', name: 'Laila Costa', colors: ['#7CC7B6', '#459B88'] },
 ];

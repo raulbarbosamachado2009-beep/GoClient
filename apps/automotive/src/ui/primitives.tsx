@@ -195,10 +195,13 @@ export function Avatar({
   name,
   size = 64,
   square = false,
+  colors = ['#A6ABB8', '#858994'],
 }: {
   name: string;
   size?: number;
   square?: boolean;
+  /** Degradê do fundo (padrão: cinza). */
+  colors?: readonly [string, string];
 }) {
   const initials = name
     .split(' ')
@@ -209,7 +212,7 @@ export function Avatar({
     .toUpperCase();
   return (
     <LinearGradient
-      colors={['#A6ABB8', '#858994']}
+      colors={colors}
       style={[
         styles.center,
         { width: size, height: size, borderRadius: square ? size * 0.26 : size / 2 },

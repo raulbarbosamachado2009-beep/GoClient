@@ -1,6 +1,7 @@
 import { type ReactNode, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { ARTISTS, PLAYLISTS, SHOWS } from '../../../mocks/data';
+import { AccountButton } from '../../../music/accounts';
 import { MusicChip, PlaylistTile } from '../../../music/ui';
 import { useOpenPlaylist, usePlay } from '../../../music/use-play';
 import { spacing, useColors } from '../../../theme';
@@ -97,7 +98,7 @@ export default function Library() {
   return (
     <View style={styles.page}>
       <View style={styles.head}>
-        <Avatar name="Raul Barbosa" size={84} />
+        <AccountButton />
         <Text variant="largeTitle" style={{ flex: 1, fontSize: 56, lineHeight: 64 }}>
           Sua Biblioteca
         </Text>

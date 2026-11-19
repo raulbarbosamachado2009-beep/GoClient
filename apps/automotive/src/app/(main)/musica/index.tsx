@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { COVERS, PLAYLISTS, SHOWS } from '../../../mocks/data';
+import { AccountButton } from '../../../music/accounts';
 import { MusicChip, MusicSection, PlaylistTile } from '../../../music/ui';
 import { useOpenPlaylist, usePlay } from '../../../music/use-play';
 import { spacing, useColors } from '../../../theme';
 import { Cover } from '../../../ui/brand';
 import { Appear } from '../../../ui/motion';
-import { Avatar, Icon, IconButton, Text, Touchable } from '../../../ui/primitives';
+import { Icon, IconButton, Text, Touchable } from '../../../ui/primitives';
 
 type Filter = 'Tudo' | 'Músicas' | 'Podcasts' | 'Audiolivros';
 
@@ -22,7 +23,7 @@ export default function MusicHome() {
   return (
     <ScrollView contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
       <View style={styles.top}>
-        <Avatar name="Raul Barbosa" size={84} />
+        <AccountButton />
         <MusicChip label="Tudo" selected={filter === 'Tudo'} onPress={() => setFilter('Tudo')} />
         <MusicChip
           label="Músicas"

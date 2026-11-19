@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Animated, StyleSheet, View } from 'react-native';
 import { usePrototype } from '../prototype/state';
 import { layout, nativeDriver, spacing, useColors } from '../theme';
@@ -26,13 +26,16 @@ export function MiniPlayer() {
       }).start();
   }, [nowPlaying, enter]);
 
+  // A cor acompanha a capa; ao trocar de faixa ela muda numa transição suave.
+  const tint = useTintTransition(nowPlaying?.tint ?? c.music.miniPlayer);
+
   if (!nowPlaying) return null;
 
   return (
     <Animated.View
       style={[
         styles.bar,
-        { backgroundColor: c.music.miniPlayer },
+        { backgroundColor: tint },
         {
           opacity: enter,
           transform: [
@@ -71,6 +74,18 @@ export function MiniPlayer() {
       </View>
     </Animated.View>
   );
+}
+
+/** Interpola entre a cor anterior e a nova em ~400 ms. */
+function useTintTransition(color: string): Animated.AnimatedInterpolation<string> {
+  const v = useRef(new Animated.Value(1)).current;
+  const [pair, setPair] = useState({ from: color, to: color });
+  useEffect(() => {
+    setPair((p) => (p.to === color ? p : { from: p.to, to: color }));
+    v.setValue(0);
+    Animated.timing(v, { toValue: 1, duration: 420, useNativeDriver: false }).start();
+  }, [v, color]);
+  return v.interpolate({ inputRange: [0, 1], outputRange: [pair.from, pair.to] });
 }
 
 const styles = StyleSheet.create({

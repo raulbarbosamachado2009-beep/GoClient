@@ -1,5 +1,11 @@
 import { createContext, type ReactNode, useCallback, useContext, useMemo, useState } from 'react';
-import { ALL_TRACK_IDS, type MockTrack, trackById } from '../mocks/data';
+import {
+  ALL_TRACK_IDS,
+  type MockSpotifyAccount,
+  type MockTrack,
+  SPOTIFY_ACCOUNTS,
+  trackById,
+} from '../mocks/data';
 
 /**
  * Estado APENAS visual do protótipo de design: o que está aberto, minimizado ou tocando.
@@ -8,6 +14,9 @@ import { ALL_TRACK_IDS, type MockTrack, trackById } from '../mocks/data';
 interface PrototypeState {
   musicConnected: boolean;
   setMusicConnected: (v: boolean) => void;
+  /** Conta do Spotify em uso no seletor de contas. */
+  spotifyAccount: MockSpotifyAccount;
+  setSpotifyAccount: (id: string) => void;
   /** Faixa atual (null enquanto nada foi tocado). */
   nowPlaying: MockTrack | null;
   /** Fila de reprodução (IDs) e posição atual. */
@@ -27,6 +36,7 @@ const Ctx = createContext<PrototypeState | null>(null);
 
 export function PrototypeProvider({ children }: { children: ReactNode }) {
   const [musicConnected, setMusicConnected] = useState(false);
+  const [accountId, setSpotifyAccount] = useState('raul');
   const [queue, setQueue] = useState<string[]>(ALL_TRACK_IDS);
   const [index, setIndex] = useState<number | null>(null);
   const [playing, setPlaying] = useState(true);
@@ -53,6 +63,10 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
     return {
       musicConnected,
       setMusicConnected,
+      spotifyAccount:
+        SPOTIFY_ACCOUNTS.find((a) => a.id === accountId) ??
+        (SPOTIFY_ACCOUNTS[0] as MockSpotifyAccount),
+      setSpotifyAccount,
       nowPlaying: currentId ? trackById(currentId) : null,
       upNext: nextId ? trackById(nextId) : null,
       queue,
@@ -64,7 +78,7 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
       overlay,
       setOverlay,
     };
-  }, [musicConnected, index, queue, playing, playTrack, step, overlay]);
+  }, [musicConnected, accountId, index, queue, playing, playTrack, step, overlay]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
