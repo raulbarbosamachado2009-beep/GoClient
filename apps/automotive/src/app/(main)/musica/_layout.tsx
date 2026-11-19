@@ -4,7 +4,7 @@ import { Animated, StyleSheet, View } from 'react-native';
 import { SpotifyConnect } from '../../../music/connect';
 import { usePrototype } from '../../../prototype/state';
 import { MiniPlayer } from '../../../shell/mini-player';
-import { spacing, useColors } from '../../../theme';
+import { layout, spacing, useColors } from '../../../theme';
 import { ScreenTransition, useSpring } from '../../../ui/motion';
 import { Icon, type IconName, Text, Touchable } from '../../../ui/primitives';
 
@@ -54,11 +54,14 @@ export default function MusicLayout() {
   if (!musicConnected) return <SpotifyConnect onConnect={() => setMusicConnected(true)} />;
 
   return (
-    <View style={{ flex: 1, backgroundColor: c.music.background }}>
-      <LinearGradient
-        colors={[c.music.ambient, `${c.music.ambient}00`]}
-        style={[StyleSheet.absoluteFill, { height: 360 }]}
-      />
+    <View style={{ flex: 1 }}>
+      {/* O fundo continua por baixo da barra lateral, que o desfoca. */}
+      <View style={[styles.bleed, { backgroundColor: c.music.background }]}>
+        <LinearGradient
+          colors={[c.music.ambient, `${c.music.ambient}00`]}
+          style={[StyleSheet.absoluteFill, { height: 360 }]}
+        />
+      </View>
       <View style={{ flex: 1 }}>
         <ScreenTransition routeKey={pathname}>
           <Slot />
@@ -101,6 +104,7 @@ export default function MusicLayout() {
 }
 
 const styles = StyleSheet.create({
+  bleed: { position: 'absolute', top: 0, right: 0, bottom: 0, left: -layout.sidebarWidth },
   tabs: { flexDirection: 'row', height: 100 },
   tab: { width: TAB_W, height: 100, alignItems: 'center', justifyContent: 'center', gap: 4 },
   indicator: {

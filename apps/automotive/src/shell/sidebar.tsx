@@ -20,10 +20,16 @@ interface Item {
 }
 
 const ITEMS: Item[] = [
-  { href: '/mapa', match: '/mapa', label: 'Mapa', icon: 'navigate', color: '#0A84FF' },
-  { href: '/clientes', match: '/clientes', label: 'Clientes', icon: 'people', color: '#FF9F0A' },
-  { href: '/produtos', match: '/produtos', label: 'Produtos', icon: 'pricetag', color: '#BF5AF2' },
-  { href: '/rotas', match: '/rotas', label: 'Rotas', icon: 'git-network', color: '#30D158' },
+  { href: '/mapa', match: '/mapa', label: 'Mapa', icon: 'map', color: '#0A84FF' },
+  {
+    href: '/clientes',
+    match: '/clientes',
+    label: 'Clientes',
+    icon: 'storefront',
+    color: '#FF9F0A',
+  },
+  { href: '/produtos', match: '/produtos', label: 'Produtos', icon: 'shirt', color: '#BF5AF2' },
+  { href: '/rotas', match: '/rotas', label: 'Rotas', icon: 'trail-sign', color: '#30D158' },
   {
     href: '/musica',
     match: '/musica',
@@ -56,7 +62,7 @@ export function Sidebar() {
       <View
         style={[
           StyleSheet.absoluteFill,
-          { backgroundColor: c.mode === 'dark' ? 'rgba(18,18,20,0.62)' : 'rgba(236,236,241,0.66)' },
+          { backgroundColor: c.mode === 'dark' ? 'rgba(20,20,22,0.42)' : 'rgba(240,240,244,0.5)' },
         ]}
       />
       <View style={styles.status}>

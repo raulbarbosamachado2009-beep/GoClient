@@ -106,7 +106,7 @@ export default function Library() {
         <IconButton icon="add" iconSize={52} accessibilityLabel="Criar playlist" />
       </View>
 
-      <View style={{ flexDirection: 'row', gap: spacing[4], paddingLeft: 64 }}>
+      <View style={{ flexDirection: 'row', gap: spacing[4] }}>
         {FILTERS.map((f) => (
           <MusicChip
             key={f.label}

@@ -6,7 +6,7 @@ import { GENRES, type Genre, playlistById, trackById } from '../../../../mocks/d
 import { MusicChip } from '../../../../music/ui';
 import { usePlay } from '../../../../music/use-play';
 import { usePrototype } from '../../../../prototype/state';
-import { spacing, useColors } from '../../../../theme';
+import { layout, spacing, useColors } from '../../../../theme';
 import { Cover } from '../../../../ui/brand';
 import { Appear } from '../../../../ui/motion';
 import { Icon, IconButton, Material, Text, Touchable } from '../../../../ui/primitives';
@@ -36,7 +36,7 @@ export default function PlaylistScreen() {
       <LinearGradient
         colors={[playlist.cover, `${playlist.cover}00`]}
         locations={[0, 1]}
-        style={[StyleSheet.absoluteFill, { height: 340 }]}
+        style={[StyleSheet.absoluteFill, { height: 340, left: -layout.sidebarWidth }]}
       />
 
       <View style={styles.header}>

@@ -2,7 +2,7 @@ import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { FONT, spacing, useColors } from '../theme';
+import { FONT, layout, spacing, useColors } from '../theme';
 import { Appear } from '../ui/motion';
 import { Icon, type IconName, Text, Touchable } from '../ui/primitives';
 
@@ -17,18 +17,24 @@ export function SpotifyConnect({ onConnect }: { onConnect: () => void }) {
   const c = useColors();
   const green = c.music.accent;
   return (
-    <View style={{ flex: 1, backgroundColor: '#000000' }}>
+    <View style={{ flex: 1 }}>
+      <View
+        style={[
+          StyleSheet.absoluteFill,
+          { left: -layout.sidebarWidth, backgroundColor: '#000000' },
+        ]}
+      />
       <LinearGradient
         colors={['rgba(30,215,96,0.28)', 'rgba(30,215,96,0)']}
         start={{ x: 1, y: 0 }}
         end={{ x: 0.35, y: 0.65 }}
-        style={StyleSheet.absoluteFill}
+        style={[StyleSheet.absoluteFill, { left: -layout.sidebarWidth }]}
       />
       <LinearGradient
         colors={['rgba(30,215,96,0)', 'rgba(30,215,96,0.18)']}
         start={{ x: 0.4, y: 0.4 }}
         end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
+        style={[StyleSheet.absoluteFill, { left: -layout.sidebarWidth }]}
       />
       <View style={styles.page}>
         <View style={styles.buttons}>
