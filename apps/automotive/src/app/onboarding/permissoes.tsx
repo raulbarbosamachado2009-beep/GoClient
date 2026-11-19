@@ -28,7 +28,7 @@ const PERMISSIONS: { icon: IconName; title: string; text: string; optional?: boo
 export default function Permissions() {
   const c = useColors();
   const router = useRouter();
-  const go = () => router.replace('/mapa');
+  const go = () => router.replace('/onboarding/login');
 
   return (
     <View style={[styles.page, { backgroundColor: c.background }]}>

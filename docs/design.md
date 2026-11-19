@@ -73,7 +73,7 @@ Por decisão do produto, a interface usa **somente SF Pro** (Display e Text), ob
 
 | Rota | Tela |
 |---|---|
-| `/onboarding`, `/onboarding/permissoes` | Boas-vindas e permissões |
+| `/onboarding`, `/onboarding/permissoes`, `/onboarding/login` | Boas-vindas, permissões e login (e-mail e senha ou código pelo celular; QR ilustrativo, provedor de login ainda não definido) |
 | `/mapa` (`?rota=cliente&id=…`, `?rota=dia`) | Mapa em tela cheia + cartão do cliente |
 | `/clientes` | Lista e ficha do cliente (botão IR) |
 | `/produtos` | Catálogo em cartões ou lista |
