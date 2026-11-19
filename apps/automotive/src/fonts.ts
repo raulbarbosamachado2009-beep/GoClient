@@ -5,6 +5,7 @@ import { FONT } from './theme';
  * Origem e restrições de licença: ver docs/design.md.
  */
 export const fontAssets = {
+  [FONT.displayLight]: require('../assets/fonts/SF-Pro-Display-Light.otf'),
   [FONT.displayRegular]: require('../assets/fonts/SF-Pro-Display-Regular.otf'),
   [FONT.displayMedium]: require('../assets/fonts/SF-Pro-Display-Medium.otf'),
   [FONT.displaySemibold]: require('../assets/fonts/SF-Pro-Display-Semibold.otf'),

@@ -156,6 +156,7 @@ export const palettes = { dark, light } as const;
 
 /** Famílias registradas no carregamento (ver `fonts.ts`). */
 export const FONT = {
+  displayLight: 'SFProDisplay-Light',
   displayRegular: 'SFProDisplay-Regular',
   displayMedium: 'SFProDisplay-Medium',
   displaySemibold: 'SFProDisplay-Semibold',

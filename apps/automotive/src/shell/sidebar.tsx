@@ -7,6 +7,7 @@ import { usePrototype } from '../prototype/state';
 import { spacing, useColors } from '../theme';
 import { useSpring } from '../ui/motion';
 import { AppIcon, Blur, Icon, type IconName, Text, Touchable } from '../ui/primitives';
+import { type AppGlyph, GoAppIcon } from './app-icons';
 
 interface Item {
   href: Href;
@@ -15,21 +16,38 @@ interface Item {
   icon: IconName;
   color: string;
   glyph?: string;
+  /** Ícone desenhado do app (ver app-icons.tsx). */
+  app?: AppGlyph;
   /** Ícone de marca no lugar do ícone genérico. */
   brand?: 'spotify';
 }
 
 const ITEMS: Item[] = [
-  { href: '/mapa', match: '/mapa', label: 'Mapa', icon: 'map', color: '#3A3A3C' },
+  { href: '/mapa', match: '/mapa', label: 'Mapa', icon: 'map', color: '#3A3A3C', app: 'mapa' },
   {
     href: '/clientes',
     match: '/clientes',
     label: 'Clientes',
     icon: 'storefront',
     color: '#3A3A3C',
+    app: 'clientes',
   },
-  { href: '/produtos', match: '/produtos', label: 'Produtos', icon: 'shirt', color: '#3A3A3C' },
-  { href: '/rotas', match: '/rotas', label: 'Rotas', icon: 'trail-sign', color: '#3A3A3C' },
+  {
+    href: '/produtos',
+    match: '/produtos',
+    label: 'Produtos',
+    icon: 'shirt',
+    color: '#3A3A3C',
+    app: 'produtos',
+  },
+  {
+    href: '/rotas',
+    match: '/rotas',
+    label: 'Rotas',
+    icon: 'trail-sign',
+    color: '#3A3A3C',
+    app: 'rotas',
+  },
   {
     href: '/musica',
     match: '/musica',
@@ -91,7 +109,9 @@ export function Sidebar() {
             scaleTo={0.9}
             style={styles.item}
           >
-            {item.brand === 'spotify' ? (
+            {item.app ? (
+              <GoAppIcon glyph={item.app} size={72} />
+            ) : item.brand === 'spotify' ? (
               <SpotifyIcon size={72} />
             ) : (
               <AppIcon icon={item.icon} color={item.color} glyph={item.glyph} size={72} />

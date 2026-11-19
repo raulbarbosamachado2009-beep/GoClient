@@ -100,3 +100,16 @@ Por decisão do produto, a interface usa **somente SF Pro** (Display e Text), ob
 - `useEdgeFade()` (`src/ui/edge-fade.tsx`): quando há conteúdo escondido acima ou abaixo, a borda da lista
   desfoca e some na cor do fundo. A borda de cima só aparece depois que o usuário começa a rolar.
 - Usado em Clientes, Produtos (cartões e lista), Ajustes e Sua Biblioteca.
+
+## Ícones da barra lateral
+
+- Desenhados para o GoClient em `src/shell/app-icons.tsx` (SVG), no acabamento dos ícones do iOS: base
+  grafite com brilho sutil, desenho branco de traço arredondado e um detalhe no azul do sistema.
+- Não usamos os ícones dos apps da Apple (arte protegida) nem SF Symbols (a licença só permite uso em
+  aparelhos Apple; a central multimídia é Android).
+
+## Legenda da Havena
+
+- Abaixo do orbe, as palavras surgem uma a uma (fade, leve subida e, na Web, saída de um desfoque de 6 px)
+  e a frase some antes da próxima. Fonte SF Pro Display Light, 30 px. Falas fixas de exemplo; a Havena
+  ainda não fala. O orbe fica em "falando" enquanto as palavras surgem.

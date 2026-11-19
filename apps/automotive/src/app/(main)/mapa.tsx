@@ -32,7 +32,7 @@ export default function MapScreen() {
   // usuário a escolher para onde ir.
   const client =
     mode === 'day'
-      ? (routeClients[stop % routeClients.length] as MockClient)
+      ? (routeClients[wrap(stop, routeClients.length)] as MockClient)
       : (CLIENTS.find((c) => c.id === id) ?? null);
 
   return (
@@ -58,10 +58,11 @@ export default function MapScreen() {
             mode={mode}
             stopLabel={
               mode === 'day'
-                ? `Parada ${(stop % routeClients.length) + 1} de ${routeClients.length}`
+                ? `Parada ${wrap(stop, routeClients.length) + 1} de ${routeClients.length}`
                 : undefined
             }
             onNext={() => setStop((s) => s + 1)}
+            onPrevious={() => setStop((s) => s - 1)}
           />
         ) : (
           <WelcomeCard />
@@ -142,11 +143,13 @@ function ClientCard({
   mode,
   stopLabel,
   onNext,
+  onPrevious,
 }: {
   client: MockClient;
   mode: MapMode;
   stopLabel?: string;
   onNext: () => void;
+  onPrevious: () => void;
 }) {
   const c = useColors();
   const router = useRouter();
@@ -209,15 +212,33 @@ function ClientCard({
           }
         />
       ) : (
-        <Touchable
-          accessibilityRole="button"
-          onPress={onNext}
-          style={[styles.next, { backgroundColor: tile }]}
-        >
-          <Text variant="title2" style={{ letterSpacing: 0.5 }}>
-            PRÓXIMO CLIENTE
-          </Text>
-        </Touchable>
+        <View style={styles.stepRow}>
+          <Touchable
+            accessibilityRole="button"
+            accessibilityLabel="Cliente anterior"
+            onPress={onPrevious}
+            style={[styles.step, { backgroundColor: tile }]}
+          >
+            <Icon name="chevron-back" size={40} />
+          </Touchable>
+          <Touchable
+            accessibilityRole="button"
+            onPress={onNext}
+            style={[styles.next, { flex: 1, backgroundColor: tile }]}
+          >
+            <Text variant="headline" numberOfLines={1} style={{ fontSize: 24, letterSpacing: 0.3 }}>
+              PRÓXIMO CLIENTE
+            </Text>
+          </Touchable>
+          <Touchable
+            accessibilityRole="button"
+            accessibilityLabel="Próximo cliente"
+            onPress={onNext}
+            style={[styles.step, { backgroundColor: tile }]}
+          >
+            <Icon name="chevron-forward" size={40} />
+          </Touchable>
+        </View>
       )}
     </Material>
   );
@@ -242,6 +263,7 @@ function WelcomeCard() {
         <Button
           label="Escolher cliente"
           icon="storefront"
+          size="xl"
           style={styles.welcomeButton}
           onPress={() => router.replace('/clientes')}
         />
@@ -249,6 +271,7 @@ function WelcomeCard() {
           label="Montar rota do dia"
           icon="trail-sign"
           variant="tinted"
+          size="xl"
           style={styles.welcomeButton}
           onPress={() => router.replace('/rotas')}
         />
@@ -352,4 +375,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   next: { height: 96, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
+  stepRow: { flexDirection: 'row', gap: spacing[3] },
+  step: { width: 80, height: 96, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
 });
+
+/** Índice circular (aceita negativos): anterior do primeiro volta para o último. */
+function wrap(i: number, n: number): number {
+  return ((i % n) + n) % n;
+}

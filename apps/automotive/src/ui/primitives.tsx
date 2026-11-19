@@ -112,7 +112,8 @@ export function Button({
   label: string;
   icon?: IconName;
   variant?: ButtonVariant;
-  size?: 'md' | 'lg';
+  /** `xl`: ícone e texto maiores, para botões grandes de toque no carro. */
+  size?: 'md' | 'lg' | 'xl';
   style?: StyleProp<ViewStyle>;
 }) {
   const c = useColors();
@@ -138,15 +139,21 @@ export function Button({
       style={[
         styles.button,
         {
-          height: size === 'lg' ? 84 : layout.touch - 4,
+          height: size === 'md' ? layout.touch - 4 : 84,
           backgroundColor: l.bg,
           opacity: rest.disabled ? 0.4 : 1,
         },
         style,
       ]}
     >
-      {icon && <Icon name={icon} size={size === 'lg' ? 32 : 28} color={l.fg} />}
-      <Text variant="headline" color={l.fg}>
+      {icon && (
+        <Icon name={icon} size={size === 'xl' ? 44 : size === 'lg' ? 32 : 28} color={l.fg} />
+      )}
+      <Text
+        variant="headline"
+        color={l.fg}
+        style={size === 'xl' ? { fontSize: 34, lineHeight: 40 } : undefined}
+      >
         {label}
       </Text>
     </Touchable>

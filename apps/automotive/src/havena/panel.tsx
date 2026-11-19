@@ -4,26 +4,21 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { nativeDriver, useColors } from '../theme';
 import { useTween } from '../ui/motion';
+import { HavenaCaption } from './caption';
 import { HavenaOrb, type OrbState } from './orb';
 
 const DURATION = 420;
 const ORB = 300;
 const RIGHT = 110;
+/** Largura da legenda (centrada no círculo, passa um pouco das bordas dele). */
+const CAPTION = 480;
 /** Deslocamento que leva o círculo (com folga para a sombra) totalmente para fora da tela. */
-const OFFSCREEN = ORB + RIGHT + 60;
-
-/** Sequência de estados ao tocar no círculo (só para ver as animações no protótipo). */
-const NEXT: Record<OrbState, OrbState> = {
-  idle: 'listen',
-  listen: 'think',
-  think: 'speak',
-  speak: 'listen',
-};
+const OFFSCREEN = RIGHT + ORB / 2 + CAPTION / 2 + 60;
 
 /**
  * Havena: só o círculo, no canto direito da tela. Atrás dele, um desfoque que nasce na
- * borda direita e esvanece para a esquerda. Tocar fora fecha; tocar no círculo alterna os
- * estados (ouvindo → pensando → falando). Protótipo: não há comando de voz.
+ * borda direita e esvanece para a esquerda. Abaixo dele, uma legenda de exemplo mostra as
+ * palavras surgindo uma a uma. Tocar fora fecha. Protótipo: a Havena não fala de verdade.
  */
 export function HavenaPanel({ onClose }: { onClose: () => void }) {
   const [open, setOpen] = useState(true);
@@ -78,14 +73,13 @@ export function HavenaPanel({ onClose }: { onClose: () => void }) {
           },
         ]}
       >
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Havena"
-          accessibilityHint="Alterna os estados da animação"
-          onPress={() => setState((s) => NEXT[s])}
-        >
+        <View accessibilityLabel="Havena">
           <HavenaOrb size={ORB} state={state} />
-        </Pressable>
+          {/* Legenda logo abaixo do círculo, centrada nele. */}
+          <View style={styles.caption}>
+            <HavenaCaption width={CAPTION} onSpeaking={(on) => setState(on ? 'speak' : 'listen')} />
+          </View>
+        </View>
       </Animated.View>
     </View>
   );
@@ -148,6 +142,12 @@ const styles = StyleSheet.create({
     width: '72%',
   },
   band: { position: 'absolute', top: 0, bottom: 0, right: 0 },
+  caption: {
+    position: 'absolute',
+    top: ORB + 36,
+    left: (ORB - CAPTION) / 2,
+    width: CAPTION,
+  },
   orbWrap: {
     position: 'absolute',
     right: RIGHT,
