@@ -4,6 +4,7 @@ import { CLIENTS, type MockClient } from '../../mocks/data';
 import { usePrototype } from '../../prototype/state';
 import { Sheet, useSheetClose } from '../../shell/sheet';
 import { layout, spacing, useColors } from '../../theme';
+import { useEdgeFade } from '../../ui/edge-fade';
 import { Appear } from '../../ui/motion';
 import {
   Avatar,
@@ -23,30 +24,35 @@ import {
 export default function ClientsScreen() {
   const { setOverlay } = usePrototype();
   const open = (client: MockClient) => setOverlay(<ClientDetails client={client} />);
+  const fade = useEdgeFade();
 
   return (
     <View style={styles.page}>
       <PageHeader title="Clientes" subtitle={`${CLIENTS.length} clientes na sua carteira`} />
       <SearchField placeholder="Buscar por nome, loja ou cidade" />
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: spacing[10] }}
-      >
-        <Group inset={124}>
-          {CLIENTS.map((client, i) => (
-            <Appear key={client.id} delay={i * 35} distance={10}>
-              <Row
-                leading={<Avatar name={client.name} size={76} />}
-                title={client.tradeName}
-                subtitle={`${client.name} · ${client.address}`}
-                value={client.region}
-                chevron
-                onPress={() => open(client)}
-              />
-            </Appear>
-          ))}
-        </Group>
-      </ScrollView>
+      <View style={{ flex: 1 }}>
+        <ScrollView
+          {...fade.scrollProps}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: spacing[10] }}
+        >
+          <Group inset={124}>
+            {CLIENTS.map((client, i) => (
+              <Appear key={client.id} delay={i * 35} distance={10}>
+                <Row
+                  leading={<Avatar name={client.name} size={76} />}
+                  title={client.tradeName}
+                  subtitle={`${client.name} · ${client.address}`}
+                  value={client.region}
+                  chevron
+                  onPress={() => open(client)}
+                />
+              </Appear>
+            ))}
+          </Group>
+        </ScrollView>
+        {fade.edges}
+      </View>
     </View>
   );
 }

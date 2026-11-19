@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { spacing, type ThemePreference, useColors, useTheme } from '../../theme';
+import { useEdgeFade } from '../../ui/edge-fade';
 import { Appear } from '../../ui/motion';
 import {
   AppIcon,
@@ -142,16 +143,24 @@ export default function SettingsScreen() {
     </Group>,
   ];
 
+  const fade = useEdgeFade();
   return (
     <View style={styles.page}>
       <PageHeader title="Ajustes" subtitle="Conta, preferências e integrações" />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-        {sections.map((s, i) => (
-          <Appear key={s.key} delay={i * 50} distance={12}>
-            {s}
-          </Appear>
-        ))}
-      </ScrollView>
+      <View style={{ flex: 1 }}>
+        <ScrollView
+          {...fade.scrollProps}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.content}
+        >
+          {sections.map((s, i) => (
+            <Appear key={s.key} delay={i * 50} distance={12}>
+              {s}
+            </Appear>
+          ))}
+        </ScrollView>
+        {fade.edges}
+      </View>
     </View>
   );
 }

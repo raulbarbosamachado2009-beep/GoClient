@@ -193,23 +193,28 @@ export default function Player() {
         {/* Parte de baixo (imagem 6) */}
         <View style={styles.more}>
           <View style={styles.row}>
-            <Card style={{ flex: 2, padding: 0, flexDirection: 'row', overflow: 'hidden' }}>
-              <View style={{ flex: 1 }}>
-                <Cover color="#8A7A55" image={COVERS.piscina} size={520} height={250} radius={0} />
+            <Card style={styles.artistCard}>
+              {/* A foto preenche a metade esquerda inteira; o degradê mantém o título legível. */}
+              <View style={styles.artistPhoto}>
+                <Image source={COVERS.piscina} resizeMode="cover" style={styles.fill} />
+                <LinearGradient
+                  colors={['rgba(0,0,0,0.75)', 'rgba(0,0,0,0)']}
+                  style={[styles.fill, { height: 150 }]}
+                />
                 <Text variant="headline" color={W} style={styles.cardLabel}>
                   Sobre o artista
                 </Text>
               </View>
-              <View
-                style={{ flex: 1, padding: spacing[6], justifyContent: 'center', gap: spacing[2] }}
-              >
+              <View style={styles.artistInfo}>
                 <Text variant="title2" color={W}>
                   MC Kevin
                 </Text>
                 <Text variant="callout" color={W2}>
                   1,2 mi ouvintes mensais
                 </Text>
-                <Pill label="Seguir" />
+                <View style={{ alignSelf: 'flex-start', marginTop: spacing[2] }}>
+                  <Pill label="Seguir" />
+                </View>
               </View>
             </Card>
             <Card style={{ flex: 1 }} title="Artistas na faixa">
@@ -434,6 +439,10 @@ function Pill({ label, small }: { label: string; small?: boolean }) {
 }
 
 const styles = StyleSheet.create({
+  artistCard: { flex: 2, height: 300, padding: 0, flexDirection: 'row', overflow: 'hidden' },
+  artistPhoto: { flex: 1, overflow: 'hidden' },
+  artistInfo: { flex: 1, padding: spacing[8], justifyContent: 'center', gap: spacing[2] },
+  fill: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' },
   backdrop: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' },
   hero: { height: layout.height, paddingHorizontal: 56, paddingTop: 20, paddingBottom: 40 },
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },

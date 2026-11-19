@@ -6,6 +6,7 @@ import { MusicChip, PlaylistTile } from '../../../music/ui';
 import { useOpenPlaylist, usePlay } from '../../../music/use-play';
 import { spacing, useColors } from '../../../theme';
 import { Cover } from '../../../ui/brand';
+import { useEdgeFade } from '../../../ui/edge-fade';
 import { Appear } from '../../../ui/motion';
 import { Avatar, Icon, IconButton, type IconName, Text, Touchable } from '../../../ui/primitives';
 
@@ -25,6 +26,7 @@ const FILTERS: { label: Filter; icon: IconName }[] = [
  */
 export default function Library() {
   const c = useColors();
+  const fade = useEdgeFade(c.music.background);
   const [filter, setFilter] = useState<Filter | null>(null);
   const open = useOpenPlaylist();
   const play = usePlay();
@@ -126,27 +128,31 @@ export default function Library() {
         <IconButton icon="grid" iconSize={40} accessibilityLabel="Ver em grade" />
       </View>
 
-      <ScrollView
-        key={filter ?? 'tudo'}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ gap: spacing[3], paddingBottom: spacing[6] }}
-      >
-        {rows.length === 0 ? (
-          <Appear distance={12} style={styles.empty}>
-            <Icon name="calendar-outline" size={72} color={c.textTertiary} />
-            <Text variant="title2">Nenhum evento por perto</Text>
-            <Text variant="callout" tone="secondary">
-              Shows dos artistas que você ouve aparecem aqui.
-            </Text>
-          </Appear>
-        ) : (
-          rows.map((r, i) => (
-            <Appear key={r.key} delay={i * 35} distance={12}>
-              {r.node}
+      <View style={{ flex: 1 }}>
+        <ScrollView
+          {...fade.scrollProps}
+          key={filter ?? 'tudo'}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ gap: spacing[3], paddingBottom: spacing[6] }}
+        >
+          {rows.length === 0 ? (
+            <Appear distance={12} style={styles.empty}>
+              <Icon name="calendar-outline" size={72} color={c.textTertiary} />
+              <Text variant="title2">Nenhum evento por perto</Text>
+              <Text variant="callout" tone="secondary">
+                Shows dos artistas que você ouve aparecem aqui.
+              </Text>
             </Appear>
-          ))
-        )}
-      </ScrollView>
+          ) : (
+            rows.map((r, i) => (
+              <Appear key={r.key} delay={i * 35} distance={12}>
+                {r.node}
+              </Appear>
+            ))
+          )}
+        </ScrollView>
+        {fade.edges}
+      </View>
     </View>
   );
 }

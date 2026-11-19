@@ -94,3 +94,9 @@ Por decisão do produto, a interface usa **somente SF Pro** (Display e Text), ob
   (shader WGSL, `gpu-runtime`, `use-orb-audio`). WebGPU não roda na central multimídia em React Native,
   então `src/havena/orb.tsx` usa SVG. Os estados `idle`, `listen`, `think` e `speak` só mudam o ritmo.
 - Protótipo: não há comando de voz.
+
+## Esmaecido nas bordas das listas
+
+- `useEdgeFade()` (`src/ui/edge-fade.tsx`): quando há conteúdo escondido acima ou abaixo, a borda da lista
+  desfoca e some na cor do fundo. A borda de cima só aparece depois que o usuário começa a rolar.
+- Usado em Clientes, Produtos (cartões e lista), Ajustes e Sua Biblioteca.

@@ -4,6 +4,7 @@ import { type MockProduct, PRODUCT_CATEGORIES, PRODUCTS } from '../../mocks/data
 import { usePrototype } from '../../prototype/state';
 import { Sheet, useSheetClose } from '../../shell/sheet';
 import { layout, spacing, useColors } from '../../theme';
+import { useEdgeFade } from '../../ui/edge-fade';
 import { Appear } from '../../ui/motion';
 import {
   Button,
@@ -33,6 +34,7 @@ export default function ProductsScreen() {
   const open = (product: MockProduct) => setOverlay(<ProductDetails product={product} />);
   const [mode, setMode] = useState<ViewMode>('cards');
 
+  const fade = useEdgeFade();
   return (
     <View style={styles.page}>
       <PageHeader
@@ -62,42 +64,47 @@ export default function ProductsScreen() {
         ))}
       </ScrollView>
 
-      {mode === 'cards' ? (
-        <FlatList
-          key={`cards-${category}`}
-          data={products}
-          numColumns={4}
-          keyExtractor={(p) => p.id}
-          columnWrapperStyle={{ gap: spacing[5] }}
-          contentContainerStyle={{ gap: spacing[5], paddingBottom: spacing[10] }}
-          showsVerticalScrollIndicator={false}
-          renderItem={({ item, index }) => (
-            <Appear delay={index * 30} distance={12} style={{ flex: 1, maxWidth: '25%' }}>
-              <ProductCard product={item} onPress={() => open(item)} />
-            </Appear>
-          )}
-        />
-      ) : (
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: spacing[10] }}
-        >
-          <Group key={category} inset={136}>
-            {products.map((p, i) => (
-              <Appear key={p.id} delay={i * 25} distance={10}>
-                <Row
-                  leading={<ProductImage product={p} size={88} />}
-                  title={p.name}
-                  subtitle={`${p.category} · ${p.sku} · ${p.stock} em estoque`}
-                  value={p.price}
-                  chevron
-                  onPress={() => open(p)}
-                />
+      <View style={{ flex: 1 }}>
+        {mode === 'cards' ? (
+          <FlatList
+            {...fade.scrollProps}
+            key={`cards-${category}`}
+            data={products}
+            numColumns={4}
+            keyExtractor={(p) => p.id}
+            columnWrapperStyle={{ gap: spacing[5] }}
+            contentContainerStyle={{ gap: spacing[5], paddingBottom: spacing[10] }}
+            showsVerticalScrollIndicator={false}
+            renderItem={({ item, index }) => (
+              <Appear delay={index * 30} distance={12} style={{ flex: 1, maxWidth: '25%' }}>
+                <ProductCard product={item} onPress={() => open(item)} />
               </Appear>
-            ))}
-          </Group>
-        </ScrollView>
-      )}
+            )}
+          />
+        ) : (
+          <ScrollView
+            {...fade.scrollProps}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: spacing[10] }}
+          >
+            <Group key={category} inset={136}>
+              {products.map((p, i) => (
+                <Appear key={p.id} delay={i * 25} distance={10}>
+                  <Row
+                    leading={<ProductImage product={p} size={88} />}
+                    title={p.name}
+                    subtitle={`${p.category} · ${p.sku} · ${p.stock} em estoque`}
+                    value={p.price}
+                    chevron
+                    onPress={() => open(p)}
+                  />
+                </Appear>
+              ))}
+            </Group>
+          </ScrollView>
+        )}
+        {fade.edges}
+      </View>
     </View>
   );
 }
