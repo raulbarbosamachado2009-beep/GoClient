@@ -24,12 +24,13 @@ const ITEMS: Item[] = [
   { href: '/clientes', match: '/clientes', label: 'Clientes', glyph: 'clientes' },
   { href: '/produtos', match: '/produtos', label: 'Produtos', glyph: 'produtos' },
   { href: '/rotas', match: '/rotas', label: 'Rotas', glyph: 'rotas' },
+  { href: '/kyte', match: '/kyte', label: 'Kyte', glyph: 'kyte' },
   { href: '/musica', match: '/musica', label: 'Música' },
 ];
 
 const TILE_W = 112;
-const TILE_H = 92;
-const GAP = 10;
+const TILE_H = 84;
+const GAP = 8;
 const SLOT = TILE_H + GAP;
 
 /**
@@ -111,14 +112,14 @@ export function Sidebar() {
               onPress={() => router.replace(item.href)}
             >
               {item.glyph ? (
-                <OutlineGlyph glyph={item.glyph} size={50} color={color} />
+                <OutlineGlyph glyph={item.glyph} size={46} color={color} />
               ) : (
                 <MusicSwap
                   show={showPlaying}
                   logo={
                     <FontAwesome5
                       name="spotify"
-                      size={50}
+                      size={46}
                       color={active ? c.accent : dark ? '#C7C7CC' : '#3A3A3C'}
                     />
                   }
@@ -157,7 +158,7 @@ export function Sidebar() {
           selected={settingsActive}
           onPress={() => router.replace('/configuracoes')}
         >
-          <OutlineGlyph glyph="ajustes" size={50} color={settingsActive ? c.accent : ink} />
+          <OutlineGlyph glyph="ajustes" size={46} color={settingsActive ? c.accent : ink} />
         </Tile>
       </View>
     </View>

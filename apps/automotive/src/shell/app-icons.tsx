@@ -6,7 +6,7 @@ import Svg, { Circle, Path } from 'react-native-svg';
  * Mapa, loja e engrenagem vêm do Ionicons (licença MIT); cabide e rota são desenhados aqui,
  * no mesmo peso de traço. Nenhum é cópia de ícone da Apple.
  */
-export type AppGlyph = 'mapa' | 'clientes' | 'produtos' | 'rotas' | 'ajustes';
+export type AppGlyph = 'mapa' | 'clientes' | 'produtos' | 'rotas' | 'kyte' | 'ajustes';
 
 export function OutlineGlyph({
   glyph,
@@ -22,6 +22,9 @@ export function OutlineGlyph({
       return <Ionicons name="map-outline" size={size} color={color} />;
     case 'clientes':
       return <Ionicons name="storefront-outline" size={size} color={color} />;
+    case 'kyte':
+      // Ícone genérico de PDV (recibo); não reproduzimos o logo do Kyte.
+      return <Ionicons name="receipt-outline" size={size} color={color} />;
     case 'ajustes':
       return <Ionicons name="settings-outline" size={size} color={color} />;
     case 'produtos':

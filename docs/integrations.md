@@ -84,3 +84,18 @@ Maps), aberto por link.
 - Spotify — critérios de Extended Access: https://developer.spotify.com/blog/2025-04-15-updating-the-criteria-for-web-api-extended-access
 - Spotify App Remote SDK (Android): https://spotify.github.io/android-sdk/app-remote-lib
 - Android for Cars: https://developer.android.com/cars
+
+### Kyte Web dentro do GoClient (janela interna)
+
+Decisão de 19/11/2026: uso familiar (cerca de 10 pessoas), conta Kyte no plano GROW. O app mostra o
+Kyte Web numa janela interna; a Havena vai operar essa janela com confirmação por voz (próxima etapa).
+
+- Endereço: `https://web.auth.kyteapp.com/pt-br/signin` (link "Acessar o Kyte" do site oficial).
+- Login por e-mail e senha na página do Kyte; o GoClient não vê nem guarda a senha. Entrar com Google
+  não funciona em janelas embutidas (o Google bloqueia).
+- Android (multimídia e celular): `react-native-webview`, cookies persistentes (login continua valendo),
+  agente de usuário de Chrome de desktop para receber o Kyte Web e não a página de instalar o app.
+- Web/Preview: iframe. O Kyte não envia `X-Frame-Options` nem `frame-ancestors` (verificado em
+  19/11/2026), mas navegadores podem bloquear os cookies de terceiros dentro do iframe; o teste de
+  login de verdade é na multimídia.
+- Fragilidade aceita: mudanças no Kyte Web podem exigir ajustes no GoClient.

@@ -13,6 +13,9 @@ import {
  */
 interface PrototypeState {
   musicConnected: boolean;
+  /** Janela do Kyte aberta (o login em si fica salvo nos cookies da janela). */
+  kyteOpen: boolean;
+  setKyteOpen: (v: boolean) => void;
   setMusicConnected: (v: boolean) => void;
   /** Conta do Spotify em uso no seletor de contas. */
   spotifyAccount: MockSpotifyAccount;
@@ -36,6 +39,7 @@ const Ctx = createContext<PrototypeState | null>(null);
 
 export function PrototypeProvider({ children }: { children: ReactNode }) {
   const [musicConnected, setMusicConnected] = useState(false);
+  const [kyteOpen, setKyteOpen] = useState(false);
   const [accountId, setSpotifyAccount] = useState('raul');
   const [queue, setQueue] = useState<string[]>(ALL_TRACK_IDS);
   const [index, setIndex] = useState<number | null>(null);
@@ -62,6 +66,8 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
     const nextId = index === null ? null : queue[(index + 1) % queue.length];
     return {
       musicConnected,
+      kyteOpen,
+      setKyteOpen,
       setMusicConnected,
       spotifyAccount:
         SPOTIFY_ACCOUNTS.find((a) => a.id === accountId) ??
@@ -78,7 +84,7 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
       overlay,
       setOverlay,
     };
-  }, [musicConnected, accountId, index, queue, playing, playTrack, step, overlay]);
+  }, [musicConnected, kyteOpen, accountId, index, queue, playing, playTrack, step, overlay]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
