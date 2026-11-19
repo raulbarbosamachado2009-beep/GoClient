@@ -20,16 +20,16 @@ interface Item {
 }
 
 const ITEMS: Item[] = [
-  { href: '/mapa', match: '/mapa', label: 'Mapa', icon: 'map', color: '#0A84FF' },
+  { href: '/mapa', match: '/mapa', label: 'Mapa', icon: 'map', color: '#3A3A3C' },
   {
     href: '/clientes',
     match: '/clientes',
     label: 'Clientes',
     icon: 'storefront',
-    color: '#0A84FF',
+    color: '#3A3A3C',
   },
-  { href: '/produtos', match: '/produtos', label: 'Produtos', icon: 'shirt', color: '#0A84FF' },
-  { href: '/rotas', match: '/rotas', label: 'Rotas', icon: 'trail-sign', color: '#0A84FF' },
+  { href: '/produtos', match: '/produtos', label: 'Produtos', icon: 'shirt', color: '#3A3A3C' },
+  { href: '/rotas', match: '/rotas', label: 'Rotas', icon: 'trail-sign', color: '#3A3A3C' },
   {
     href: '/musica',
     match: '/musica',
