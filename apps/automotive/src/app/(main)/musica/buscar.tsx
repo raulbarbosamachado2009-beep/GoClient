@@ -32,6 +32,7 @@ export default function Search() {
       </View>
 
       <SearchField
+        compact
         placeholder="O que você quer ouvir?"
         background={c.music.search}
         foreground={c.music.onSearch}

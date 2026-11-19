@@ -286,8 +286,8 @@ export function Chip({
       onPress={onPress}
       style={[styles.chip, { backgroundColor: bg }]}
     >
-      {icon && <Icon name={icon} size={26} color={fg} />}
-      <Text variant="bodyStrong" color={fg}>
+      {icon && <Icon name={icon} size={30} color={fg} />}
+      <Text variant="bodyStrong" color={fg} style={{ fontSize: 28, lineHeight: 34 }}>
         {label}
       </Text>
     </Touchable>
@@ -299,21 +299,39 @@ export function SearchField({
   style,
   background,
   foreground,
+  compact = false,
 }: {
   placeholder: string;
   style?: StyleProp<ViewStyle>;
   background?: string;
   foreground?: string;
+  /** Tamanho anterior (menor), usado na busca da Música. */
+  compact?: boolean;
 }) {
   const c = useColors();
   const fg = foreground ?? c.text;
   return (
-    <View style={[styles.search, { backgroundColor: background ?? c.fill }, style]}>
-      <Icon name="search" size={28} color={foreground ? `${foreground}99` : c.textSecondary} />
+    <View
+      style={[
+        styles.search,
+        { backgroundColor: background ?? c.fill },
+        compact && { height: 72 },
+        style,
+      ]}
+    >
+      <Icon
+        name="search"
+        size={compact ? 28 : 34}
+        color={foreground ? `${foreground}99` : c.textSecondary}
+      />
       <TextInput
         placeholder={placeholder}
         placeholderTextColor={foreground ? `${foreground}88` : c.textSecondary}
-        style={[type.body, { flex: 1, color: fg, height: '100%' }, webNoOutline]}
+        style={[
+          type.body,
+          { flex: 1, color: fg, height: '100%', fontSize: compact ? 24 : 28 },
+          webNoOutline,
+        ]}
       />
     </View>
   );
@@ -364,8 +382,12 @@ export function Segmented<T extends string>({
           onPress={() => onChange(o.value)}
           style={[styles.segment, { width: segmentWidth }]}
         >
-          {o.icon && <Icon name={o.icon} size={24} />}
-          {o.label && <Text variant="subhead">{o.label}</Text>}
+          {o.icon && <Icon name={o.icon} size={30} />}
+          {o.label && (
+            <Text variant="subhead" style={{ fontSize: 24, lineHeight: 30 }}>
+              {o.label}
+            </Text>
+          )}
         </Pressable>
       ))}
     </View>
@@ -375,7 +397,7 @@ export function Segmented<T extends string>({
 /** Interruptor do iOS com o botão deslizando por mola. */
 export function Switch({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
   const c = useColors();
-  const x = useSpring(value ? 36 : 0);
+  const x = useSpring(value ? 44 : 0);
   return (
     <Pressable
       accessibilityRole="switch"
@@ -445,22 +467,22 @@ export function Row({
     <>
       {leading}
       <View style={{ flex: 1, gap: 2 }}>
-        <Text variant="body" color={titleColor} numberOfLines={1}>
+        <Text variant="body" color={titleColor} numberOfLines={1} style={rowText.title}>
           {title}
         </Text>
         {subtitle && (
-          <Text variant="caption" tone="secondary" numberOfLines={1}>
+          <Text variant="caption" tone="secondary" numberOfLines={1} style={rowText.subtitle}>
             {subtitle}
           </Text>
         )}
       </View>
       {value && (
-        <Text variant="body" tone="secondary" numberOfLines={1}>
+        <Text variant="body" tone="secondary" numberOfLines={1} style={rowText.title}>
           {value}
         </Text>
       )}
       {trailing}
-      {chevron && <Icon name="chevron-forward" size={26} color={c.textTertiary} />}
+      {chevron && <Icon name="chevron-forward" size={32} color={c.textTertiary} />}
     </>
   );
   // Sem ação, a linha é só um contêiner: controles dentro dela (interruptor, seletor)
@@ -605,6 +627,12 @@ function lighten(hex: string, amount: number): string {
   return `#${ch(16)}${ch(8)}${ch(0)}`;
 }
 
+/** Textos das linhas de lista, maiores para tocar e ler no carro. */
+const rowText = StyleSheet.create({
+  title: { fontSize: 28, lineHeight: 34 },
+  subtitle: { fontSize: 21, lineHeight: 27 },
+});
+
 const styles = StyleSheet.create({
   center: { alignItems: 'center', justifyContent: 'center' },
   button: {
@@ -616,28 +644,28 @@ const styles = StyleSheet.create({
     borderRadius: layout.radius.md,
   },
   chip: {
-    height: 64,
-    paddingHorizontal: spacing[6],
-    borderRadius: 32,
+    height: 80,
+    paddingHorizontal: spacing[8],
+    borderRadius: 40,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[2],
   },
   search: {
-    height: 72,
+    height: 88,
     borderRadius: layout.radius.md,
     paddingHorizontal: spacing[5],
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[3],
   },
-  segmented: { height: 68, borderRadius: 16, padding: 4, flexDirection: 'row' },
+  segmented: { height: 84, borderRadius: 20, padding: 4, flexDirection: 'row' },
   thumb: {
     position: 'absolute',
     top: 4,
     left: 4,
     bottom: 4,
-    borderRadius: 13,
+    borderRadius: 16,
     shadowColor: '#000',
     shadowOpacity: 0.12,
     shadowRadius: 6,
@@ -649,11 +677,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: spacing[2],
   },
-  switch: { width: 92, height: 56, borderRadius: 28, padding: 4 },
+  switch: { width: 112, height: 68, borderRadius: 34, padding: 4 },
   knob: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: '#FFFFFF',
     shadowColor: '#000',
     shadowOpacity: 0.18,
@@ -663,10 +691,10 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing[5],
-    minHeight: 88,
+    gap: spacing[6],
+    minHeight: 112,
     paddingHorizontal: spacing[6],
-    paddingVertical: spacing[3],
+    paddingVertical: spacing[4],
   },
   sectionHeader: {
     flexDirection: 'row',

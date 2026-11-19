@@ -40,15 +40,15 @@ export default function SettingsScreen() {
 
     <View key="aparencia">
       <SectionHeader title="Aparência" />
-      <Group inset={112}>
+      <Group inset={128}>
         <Row
-          leading={<AppIcon icon="contrast" color="#0A84FF" size={56} />}
+          leading={<AppIcon icon="contrast" color="#0A84FF" size={68} />}
           title="Tema"
           trailing={
             <Segmented<ThemePreference>
               value={preference}
               onChange={setPreference}
-              segmentWidth={150}
+              segmentWidth={180}
               options={[
                 { value: 'light', label: 'Claro' },
                 { value: 'dark', label: 'Escuro' },
@@ -58,7 +58,7 @@ export default function SettingsScreen() {
           }
         />
         <Row
-          leading={<AppIcon icon="language" color="#5856D6" size={56} />}
+          leading={<AppIcon icon="language" color="#5856D6" size={68} />}
           title="Idioma"
           value="Português (Brasil)"
           chevron
@@ -69,14 +69,14 @@ export default function SettingsScreen() {
 
     <View key="havena">
       <SectionHeader title="Havena" />
-      <Group inset={112}>
+      <Group inset={128}>
         <Row
-          leading={<AppIcon icon="mic" color="#FF375F" size={56} />}
+          leading={<AppIcon icon="mic" color="#FF375F" size={68} />}
           title='Ativar com "Oi, Havena"'
           trailing={<Switch value={wakeWord} onChange={setWakeWord} />}
         />
         <Row
-          leading={<AppIcon icon="volume-high" color="#FF9F0A" size={56} />}
+          leading={<AppIcon icon="volume-high" color="#FF9F0A" size={68} />}
           title="Respostas por voz"
           trailing={<Switch value={voiceReplies} onChange={setVoiceReplies} />}
         />
@@ -85,23 +85,23 @@ export default function SettingsScreen() {
 
     <View key="integracoes">
       <SectionHeader title="Navegação e integrações" />
-      <Group inset={112}>
+      <Group inset={128}>
         <Row
-          leading={<AppIcon icon="navigate" color="#30D158" size={56} />}
+          leading={<AppIcon icon="navigate" color="#30D158" size={68} />}
           title="App de navegação"
           value="GoClient"
           chevron
           onPress={() => {}}
         />
         <Row
-          leading={<AppIcon icon="musical-notes" color="#1ED760" glyph="#000" size={56} />}
+          leading={<AppIcon icon="musical-notes" color="#1ED760" glyph="#000" size={68} />}
           title="Spotify"
           value="Não conectado"
           chevron
           onPress={() => {}}
         />
         <Row
-          leading={<AppIcon icon="storefront" color="#AC8E68" size={56} />}
+          leading={<AppIcon icon="storefront" color="#AC8E68" size={68} />}
           title="Kyte"
           value="Importar planilhas"
           chevron
@@ -112,20 +112,20 @@ export default function SettingsScreen() {
 
     <View key="dados">
       <SectionHeader title="Dados e privacidade" />
-      <Group inset={112}>
+      <Group inset={128}>
         <Row
-          leading={<AppIcon icon="cloud-offline" color="#64D2FF" glyph="#003A55" size={56} />}
+          leading={<AppIcon icon="cloud-offline" color="#64D2FF" glyph="#003A55" size={68} />}
           title="Modo offline"
           trailing={<Switch value={offline} onChange={setOffline} />}
         />
         <Row
-          leading={<AppIcon icon="hand-left" color="#0A84FF" size={56} />}
+          leading={<AppIcon icon="hand-left" color="#0A84FF" size={68} />}
           title="Permissões"
           chevron
           onPress={() => {}}
         />
         <Row
-          leading={<AppIcon icon="information-circle" color="#8E8E93" size={56} />}
+          leading={<AppIcon icon="information-circle" color="#8E8E93" size={68} />}
           title="Sobre"
           value="Versão 0.1.0"
           chevron

@@ -73,20 +73,20 @@ export default function RoutesScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: spacing[10] }}
         >
-          <Group inset={112}>
+          <Group inset={136}>
             {visibleClients.map((item, i) => {
               const on = selected.includes(item.id);
               return (
                 <Appear key={item.id} delay={i * 30} distance={10}>
                   <Row
-                    leading={<Avatar name={item.name} size={64} />}
+                    leading={<Avatar name={item.name} size={80} />}
                     title={item.tradeName}
                     subtitle={`${item.address} · ${item.region}`}
                     onPress={() => toggle(item.id)}
                     trailing={
                       <Icon
                         name={on ? 'checkmark-circle' : 'ellipse-outline'}
-                        size={48}
+                        size={58}
                         color={on ? c.accent : c.textTertiary}
                       />
                     }
@@ -124,21 +124,34 @@ export default function RoutesScreen() {
                 <Appear key={x.id} axis="x" distance={20}>
                   <View style={[styles.stop, { backgroundColor: c.fill }]}>
                     <View style={[styles.num, { backgroundColor: c.accent }]}>
-                      <Text variant="bodyStrong" color="#FFFFFF">
+                      <Text
+                        variant="bodyStrong"
+                        color="#FFFFFF"
+                        style={{ fontSize: 28, lineHeight: 34 }}
+                      >
                         {i + 1}
                       </Text>
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text variant="bodyStrong" numberOfLines={1}>
+                      <Text
+                        variant="bodyStrong"
+                        numberOfLines={1}
+                        style={{ fontSize: 27, lineHeight: 33 }}
+                      >
                         {x.tradeName}
                       </Text>
-                      <Text variant="caption" tone="secondary" numberOfLines={1}>
+                      <Text
+                        variant="caption"
+                        tone="secondary"
+                        numberOfLines={1}
+                        style={{ fontSize: 20, lineHeight: 26 }}
+                      >
                         {x.district}
                       </Text>
                     </View>
                     <IconButton
                       icon="close-circle"
-                      iconSize={34}
+                      iconSize={42}
                       color={c.textTertiary}
                       accessibilityLabel="Remover"
                       onPress={() => toggle(x.id)}
@@ -151,6 +164,7 @@ export default function RoutesScreen() {
 
           <Button
             label="Calcular rota"
+            size="xl"
             icon="navigate"
             onPress={calculate}
             disabled={chosen.length === 0}
@@ -217,11 +231,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[4],
-    padding: spacing[3],
-    paddingLeft: spacing[4],
+    minHeight: 104,
+    padding: spacing[4],
+    paddingLeft: spacing[5],
     borderRadius: layout.radius.md,
   },
-  num: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
+  num: { width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center' },
   empty: {
     alignItems: 'center',
     gap: spacing[4],

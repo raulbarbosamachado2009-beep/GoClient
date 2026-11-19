@@ -36,11 +36,11 @@ export default function ClientsScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: spacing[10] }}
         >
-          <Group inset={124}>
+          <Group inset={148}>
             {CLIENTS.map((client, i) => (
               <Appear key={client.id} delay={i * 35} distance={10}>
                 <Row
-                  leading={<Avatar name={client.name} size={76} />}
+                  leading={<Avatar name={client.name} size={92} />}
                   title={client.tradeName}
                   subtitle={`${client.name} · ${client.address}`}
                   value={client.region}

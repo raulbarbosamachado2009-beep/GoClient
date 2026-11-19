@@ -123,3 +123,9 @@ Por decisão do produto, a interface usa **somente SF Pro** (Display e Text), ob
   com saturação e brilho altos para destacar.
 - Ao sair da Música, o logo encolhe e some enquanto a capa cresce no lugar; ao voltar, o inverso.
 - Sem áudio no protótipo: o movimento é ruído suave gerado; pausado, as barras param baixas.
+
+## Alvos de toque (Clientes, Produtos, Rotas, Ajustes)
+
+- Linhas de lista com 112 px de altura mínima, título 28 px e subtítulo 21 px; busca com 88 px; filtros
+  com 80 px; seletor segmentado com 84 px; interruptor 112 × 68. Avatares e ícones das linhas maiores.
+- A busca da Música mantém o tamanho anterior (`SearchField compact`).

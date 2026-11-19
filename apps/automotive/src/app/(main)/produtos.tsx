@@ -44,7 +44,7 @@ export default function ProductsScreen() {
           <Segmented<ViewMode>
             value={mode}
             onChange={setMode}
-            segmentWidth={150}
+            segmentWidth={180}
             options={[
               { value: 'cards', icon: 'grid', label: 'Cartões' },
               { value: 'list', icon: 'list', label: 'Lista' },
@@ -87,11 +87,11 @@ export default function ProductsScreen() {
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: spacing[10] }}
           >
-            <Group key={category} inset={136}>
+            <Group key={category} inset={160}>
               {products.map((p, i) => (
                 <Appear key={p.id} delay={i * 25} distance={10}>
                   <Row
-                    leading={<ProductImage product={p} size={88} />}
+                    leading={<ProductImage product={p} size={104} />}
                     title={p.name}
                     subtitle={`${p.category} · ${p.sku} · ${p.stock} em estoque`}
                     value={p.price}
