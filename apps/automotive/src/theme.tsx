@@ -203,7 +203,7 @@ export const spacing = {
 export const layout = {
   width: 1600,
   height: 900,
-  sidebarWidth: 120,
+  sidebarWidth: 136,
   gutter: 24,
   /** Alvo mínimo de toque no carro. */
   touch: 76,

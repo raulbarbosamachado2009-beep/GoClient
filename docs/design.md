@@ -101,12 +101,13 @@ Por decisão do produto, a interface usa **somente SF Pro** (Display e Text), ob
   desfoca e some na cor do fundo. A borda de cima só aparece depois que o usuário começa a rolar.
 - Usado em Clientes, Produtos (cartões e lista), Ajustes e Sua Biblioteca.
 
-## Ícones da barra lateral
+## Barra lateral
 
-- Desenhados para o GoClient em `src/shell/app-icons.tsx` (SVG), no acabamento dos ícones do iOS: base
-  grafite com brilho sutil, desenho branco de traço arredondado e um detalhe no azul do sistema.
-- Não usamos os ícones dos apps da Apple (arte protegida) nem SF Symbols (a licença só permite uso em
-  aparelhos Apple; a central multimídia é Android).
+- Cada app num bloco cinza arredondado (112 × 92) com ícone de contorno; o ativo fica azul, com barra azul
+  na borda esquerda, e o destaque desliza por mola. Largura da barra: 136 px.
+- Ícones em `src/shell/app-icons.tsx`: mapa, loja e engrenagem do Ionicons (MIT); cabide e rota desenhados
+  em SVG no mesmo traço. Não usamos ícones dos apps da Apple (arte protegida) nem SF Symbols (licença só
+  para aparelhos Apple; a central multimídia é Android).
 
 ## Legenda da Havena
 

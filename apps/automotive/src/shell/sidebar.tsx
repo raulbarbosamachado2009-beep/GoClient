@@ -1,78 +1,55 @@
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { type Href, usePathname, useRouter } from 'expo-router';
-import { Animated, Pressable, StyleSheet, View } from 'react-native';
+import type { ReactNode } from 'react';
+import { Animated, StyleSheet, View } from 'react-native';
 import { HavenaOrb } from '../havena/orb';
 import { HavenaPanel } from '../havena/panel';
 import { usePrototype } from '../prototype/state';
-import { spacing, useColors } from '../theme';
+import { layout, spacing, useColors } from '../theme';
 import { useSpring } from '../ui/motion';
-import { AppIcon, Blur, Icon, type IconName, Text, Touchable } from '../ui/primitives';
-import { type AppGlyph, GoAppIcon } from './app-icons';
+import { Blur, Icon, Text, Touchable } from '../ui/primitives';
+import { type AppGlyph, OutlineGlyph } from './app-icons';
 
 interface Item {
   href: Href;
   match: string;
   label: string;
-  icon: IconName;
-  color: string;
-  glyph?: string;
-  /** Ícone desenhado do app (ver app-icons.tsx). */
-  app?: AppGlyph;
-  /** Ícone de marca no lugar do ícone genérico. */
-  brand?: 'spotify';
+  /** Ícone de contorno; sem ele, o item usa o logo do Spotify. */
+  glyph?: AppGlyph;
 }
 
 const ITEMS: Item[] = [
-  { href: '/mapa', match: '/mapa', label: 'Mapa', icon: 'map', color: '#3A3A3C', app: 'mapa' },
-  {
-    href: '/clientes',
-    match: '/clientes',
-    label: 'Clientes',
-    icon: 'storefront',
-    color: '#3A3A3C',
-    app: 'clientes',
-  },
-  {
-    href: '/produtos',
-    match: '/produtos',
-    label: 'Produtos',
-    icon: 'shirt',
-    color: '#3A3A3C',
-    app: 'produtos',
-  },
-  {
-    href: '/rotas',
-    match: '/rotas',
-    label: 'Rotas',
-    icon: 'trail-sign',
-    color: '#3A3A3C',
-    app: 'rotas',
-  },
-  {
-    href: '/musica',
-    match: '/musica',
-    label: 'Música',
-    icon: 'musical-notes',
-    color: '#000000',
-    brand: 'spotify',
-  },
+  { href: '/mapa', match: '/mapa', label: 'Mapa', glyph: 'mapa' },
+  { href: '/clientes', match: '/clientes', label: 'Clientes', glyph: 'clientes' },
+  { href: '/produtos', match: '/produtos', label: 'Produtos', glyph: 'produtos' },
+  { href: '/rotas', match: '/rotas', label: 'Rotas', glyph: 'rotas' },
+  { href: '/musica', match: '/musica', label: 'Música' },
 ];
 
-const SLOT = 104; // altura do item + espaço entre itens
+const TILE_W = 112;
+const TILE_H = 92;
+const GAP = 10;
+const SLOT = TILE_H + GAP;
 
 /**
- * Barra lateral do CarPlay: hora e sinal no topo, ícones dos apps e Ajustes no rodapé.
- * O destaque do app atual desliza por mola até o item selecionado.
+ * Barra lateral (referência enviada): cada app num bloco cinza arredondado com ícone de
+ * contorno. O app ativo fica azul, com uma barra azul na borda esquerda; o destaque desliza
+ * por mola até o item selecionado.
  */
 export function Sidebar() {
   const c = useColors();
   const pathname = usePathname();
   const router = useRouter();
-  const activeIndex = ITEMS.findIndex((i) => pathname.startsWith(i.match));
-  const y = useSpring(Math.max(activeIndex, 0) * SLOT);
-  const settingsActive = pathname.startsWith('/configuracoes');
   const { setOverlay } = usePrototype();
+  const activeIndex = ITEMS.findIndex((i) => pathname.startsWith(i.match));
+  const settingsActive = pathname.startsWith('/configuracoes');
+  const y = useSpring(Math.max(activeIndex, 0) * SLOT);
   const openHavena = () => setOverlay(<HavenaPanel onClose={() => setOverlay(null)} />);
+
+  const dark = c.mode === 'dark';
+  const tile = dark ? '#1C1C1F' : 'rgba(0,0,0,0.05)';
+  const selected = dark ? 'rgba(10,132,255,0.16)' : 'rgba(0,122,255,0.12)';
+  const ink = dark ? '#F2F2F7' : '#1C1C1E';
 
   return (
     <View style={[styles.bar, { borderRightColor: c.material.border }]}>
@@ -80,88 +57,121 @@ export function Sidebar() {
       <View
         style={[
           StyleSheet.absoluteFill,
-          { backgroundColor: c.mode === 'dark' ? 'rgba(20,20,22,0.42)' : 'rgba(240,240,244,0.5)' },
+          { backgroundColor: dark ? 'rgba(10,10,12,0.62)' : 'rgba(240,240,244,0.6)' },
         ]}
       />
+
       <View style={styles.status}>
-        <Text variant="headline">09:41</Text>
+        <Text variant="title2" style={{ fontSize: 28, lineHeight: 32 }}>
+          09:41
+        </Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <Icon name="cellular" size={18} color={c.textSecondary} />
-          <Text variant="footnote" tone="secondary">
+          <Text variant="subhead" style={{ fontSize: 20 }}>
             5G
           </Text>
+          <Icon name="cellular" size={22} color={c.text} />
         </View>
       </View>
 
-      <View>
-        {activeIndex >= 0 && (
-          <Animated.View
-            style={[styles.plate, { backgroundColor: c.fill, transform: [{ translateY: y }] }]}
-          />
-        )}
-        {ITEMS.map((item) => (
-          <Touchable
+      <View style={{ height: ITEMS.length * SLOT + TILE_H }}>
+        {/* Fundo dos blocos, destaque deslizante e barra azul ficam atrás dos ícones. */}
+        {ITEMS.map((item, i) => (
+          <View
             key={item.label}
-            accessibilityRole="button"
-            accessibilityLabel={item.label}
-            accessibilityState={{ selected: pathname.startsWith(item.match) }}
-            onPress={() => router.replace(item.href)}
-            scaleTo={0.9}
-            style={styles.item}
-          >
-            {item.app ? (
-              <GoAppIcon glyph={item.app} size={72} />
-            ) : item.brand === 'spotify' ? (
-              <SpotifyIcon size={72} />
-            ) : (
-              <AppIcon icon={item.icon} color={item.color} glyph={item.glyph} size={72} />
-            )}
-          </Touchable>
+            style={[styles.tileBg, { top: i * SLOT, backgroundColor: tile }]}
+          />
         ))}
-        <Touchable
-          accessibilityRole="button"
-          accessibilityLabel="Falar com a Havena"
-          onPress={openHavena}
-          scaleTo={0.88}
-          style={styles.item}
-        >
-          <HavenaOrb size={62} />
-        </Touchable>
+        <View style={[styles.tileBg, { top: ITEMS.length * SLOT, backgroundColor: tile }]} />
+        {activeIndex >= 0 && (
+          <>
+            <Animated.View
+              style={[styles.tileBg, { backgroundColor: selected, transform: [{ translateY: y }] }]}
+            />
+            <Animated.View
+              style={[
+                styles.indicator,
+                { backgroundColor: c.accent, transform: [{ translateY: y }] },
+              ]}
+            />
+          </>
+        )}
+
+        {ITEMS.map((item, i) => {
+          const active = i === activeIndex;
+          const color = active ? c.accent : ink;
+          return (
+            <Tile
+              key={item.label}
+              top={i * SLOT}
+              label={item.label}
+              selected={active}
+              onPress={() => router.replace(item.href)}
+            >
+              {item.glyph ? (
+                <OutlineGlyph glyph={item.glyph} size={50} color={color} />
+              ) : (
+                <FontAwesome5
+                  name="spotify"
+                  size={50}
+                  color={active ? c.accent : dark ? '#C7C7CC' : '#3A3A3C'}
+                />
+              )}
+            </Tile>
+          );
+        })}
+        <Tile top={ITEMS.length * SLOT} label="Falar com a Havena" onPress={openHavena}>
+          <HavenaOrb size={64} />
+        </Tile>
       </View>
 
       <View style={{ flex: 1 }} />
 
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Ajustes"
-        onPress={() => router.replace('/configuracoes')}
-        style={[styles.item, settingsActive && { backgroundColor: c.fill, borderRadius: 24 }]}
-      >
-        <AppIcon icon="settings-sharp" color="#8E8E93" size={72} />
-      </Pressable>
+      <View style={{ height: TILE_H }}>
+        <View
+          style={[styles.tileBg, { top: 0, backgroundColor: settingsActive ? selected : tile }]}
+        />
+        {settingsActive && <View style={[styles.indicator, { backgroundColor: c.accent }]} />}
+        <Tile
+          top={0}
+          label="Ajustes"
+          selected={settingsActive}
+          onPress={() => router.replace('/configuracoes')}
+        >
+          <OutlineGlyph glyph="ajustes" size={50} color={settingsActive ? c.accent : ink} />
+        </Tile>
+      </View>
     </View>
   );
 }
 
-/** Ícone do app do Spotify: logo verde sobre fundo preto, no formato de ícone do CarPlay. */
-function SpotifyIcon({ size }: { size: number }) {
+function Tile({
+  top,
+  label,
+  selected,
+  onPress,
+  children,
+}: {
+  top: number;
+  label: string;
+  selected?: boolean;
+  onPress: () => void;
+  children: ReactNode;
+}) {
   return (
-    <View
-      style={{
-        width: size,
-        height: size,
-        borderRadius: size * 0.235,
-        backgroundColor: '#000000',
-        borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.12)',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
+    <Touchable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ selected }}
+      onPress={onPress}
+      scaleTo={0.92}
+      style={[styles.tile, { top }]}
     >
-      <FontAwesome5 name="spotify" size={size * 0.64} color="#1ED760" />
-    </View>
+      {children}
+    </Touchable>
   );
 }
+
+const LEFT = (layout.sidebarWidth - TILE_W) / 2;
 
 const styles = StyleSheet.create({
   bar: {
@@ -169,13 +179,35 @@ const styles = StyleSheet.create({
     left: 0,
     top: 0,
     bottom: 0,
-    width: 120,
-    paddingVertical: spacing[5],
-    alignItems: 'center',
+    width: layout.sidebarWidth,
+    paddingTop: spacing[5],
+    paddingBottom: spacing[4],
     overflow: 'hidden',
     borderRightWidth: StyleSheet.hairlineWidth,
   },
   status: { alignItems: 'center', gap: 2, marginBottom: spacing[5] },
-  plate: { position: 'absolute', left: 4, top: 0, width: 96, height: 96, borderRadius: 24 },
-  item: { width: 104, height: SLOT, alignItems: 'center', justifyContent: 'center' },
+  tileBg: {
+    position: 'absolute',
+    left: LEFT,
+    width: TILE_W,
+    height: TILE_H,
+    borderRadius: 24,
+  },
+  tile: {
+    position: 'absolute',
+    left: LEFT,
+    width: TILE_W,
+    height: TILE_H,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  indicator: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    width: 6,
+    height: TILE_H,
+    borderTopRightRadius: 4,
+    borderBottomRightRadius: 4,
+  },
 });
