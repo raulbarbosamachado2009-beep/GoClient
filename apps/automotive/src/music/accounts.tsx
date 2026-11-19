@@ -45,7 +45,7 @@ function AccountMenu({ anchor, onClose }: { anchor: Anchor; onClose: () => void 
   const { spotifyAccount, setSpotifyAccount } = usePrototype();
   const enter = useRef(new Animated.Value(0)).current;
   const rootRef = useRef<ComponentRef<typeof View>>(null);
-  const [origin, setOrigin] = useState<{ x: number; y: number } | null>(null);
+  const [origin, setOrigin] = useState<{ x: number; y: number; scale: number } | null>(null);
   const closing = useRef(false);
 
   useEffect(() => {
@@ -78,10 +78,15 @@ function AccountMenu({ anchor, onClose }: { anchor: Anchor; onClose: () => void 
     <View
       ref={rootRef}
       style={StyleSheet.absoluteFill}
-      onLayout={() =>
-        // As coordenadas da foto são da janela; converte para as desta camada.
-        rootRef.current?.measureInWindow((x, y) => setOrigin({ x, y }))
-      }
+      onLayout={(e) => {
+        // As medidas da janela já vêm com a escala da moldura do Preview (a tela de
+        // 1600×900 é reduzida para caber). Compara com a largura real desta camada para
+        // converter a posição da foto para as coordenadas daqui.
+        const width = e.nativeEvent.layout.width;
+        rootRef.current?.measureInWindow((x, y, w) =>
+          setOrigin({ x, y, scale: width > 0 && w > 0 ? w / width : 1 }),
+        );
+      }}
     >
       <Pressable
         accessibilityLabel="Fechar menu de contas"
@@ -93,8 +98,8 @@ function AccountMenu({ anchor, onClose }: { anchor: Anchor; onClose: () => void 
           style={[
             styles.menu,
             {
-              left: anchor.x - origin.x,
-              top: anchor.y - origin.y + anchor.height + 12,
+              left: (anchor.x - origin.x) / origin.scale,
+              top: (anchor.y - origin.y + anchor.height) / origin.scale + 12,
               backgroundColor: c.mode === 'dark' ? '#282828' : '#FFFFFF',
               opacity: enter,
               transformOrigin: 'top left',

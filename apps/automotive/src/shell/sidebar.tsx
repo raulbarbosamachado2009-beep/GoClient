@@ -26,10 +26,10 @@ const ITEMS: Item[] = [
     match: '/clientes',
     label: 'Clientes',
     icon: 'storefront',
-    color: '#FF9F0A',
+    color: '#0A84FF',
   },
-  { href: '/produtos', match: '/produtos', label: 'Produtos', icon: 'shirt', color: '#BF5AF2' },
-  { href: '/rotas', match: '/rotas', label: 'Rotas', icon: 'trail-sign', color: '#30D158' },
+  { href: '/produtos', match: '/produtos', label: 'Produtos', icon: 'shirt', color: '#0A84FF' },
+  { href: '/rotas', match: '/rotas', label: 'Rotas', icon: 'trail-sign', color: '#0A84FF' },
   {
     href: '/musica',
     match: '/musica',

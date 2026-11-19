@@ -225,35 +225,31 @@ function ClientCard({
 
 /** Cartão inicial: nenhum cliente selecionado ainda. */
 function WelcomeCard() {
-  const c = useColors();
   const router = useRouter();
+  // Ocupa a altura toda do espaço do cartão, com botões grandes para tocar dirigindo.
   return (
     <Material style={styles.welcome}>
-      <View
-        style={[
-          styles.welcomeIcon,
-          { backgroundColor: c.mode === 'dark' ? 'rgba(10,132,255,0.22)' : 'rgba(0,122,255,0.12)' },
-        ]}
-      >
-        <Icon name="navigate" size={52} color={c.accent} />
-      </View>
-      <View style={{ gap: spacing[2] }}>
-        <Text variant="title">Para onde vamos?</Text>
+      <View style={{ gap: spacing[3] }}>
+        <Text variant="largeTitle" style={{ fontSize: 42, lineHeight: 50 }}>
+          Para onde vamos?
+        </Text>
         <Text variant="body" tone="secondary">
           Escolha um cliente para traçar o caminho até ele, ou monte as visitas de hoje e o GoClient
           organiza a rota.
         </Text>
       </View>
-      <View style={{ gap: spacing[3] }}>
+      <View style={{ gap: spacing[4] }}>
         <Button
           label="Escolher cliente"
-          icon="people"
+          icon="storefront"
+          style={styles.welcomeButton}
           onPress={() => router.replace('/clientes')}
         />
         <Button
           label="Montar rota do dia"
-          icon="git-network"
+          icon="trail-sign"
           variant="tinted"
+          style={styles.welcomeButton}
           onPress={() => router.replace('/rotas')}
         />
       </View>
@@ -333,14 +329,13 @@ const styles = StyleSheet.create({
     borderRadius: layout.radius.xl,
   },
   card: { flex: 1, borderRadius: 40, padding: spacing[8] },
-  welcome: { borderRadius: 40, padding: spacing[8], gap: spacing[8] },
-  welcomeIcon: {
-    width: 104,
-    height: 104,
-    borderRadius: 30,
-    alignItems: 'center',
-    justifyContent: 'center',
+  welcome: {
+    flex: 1,
+    borderRadius: 40,
+    padding: spacing[8],
+    justifyContent: 'space-between',
   },
+  welcomeButton: { height: 128, borderRadius: 28 },
   avatarTile: {
     width: 112,
     height: 112,
