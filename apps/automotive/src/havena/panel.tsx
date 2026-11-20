@@ -3,6 +3,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { layout, nativeDriver, useColors } from '../theme';
+import { useBlurTarget } from '../ui/blur-target';
 import { HavenaCaption } from './caption';
 import { HavenaOrb, type OrbState } from './orb';
 
@@ -93,8 +94,16 @@ export function HavenaPanel({ onClose }: { onClose: () => void }) {
  * Mudar o raio a cada quadro fazia o navegador recompor também o desfoque do cartão do Mapa
  * que fica atrás, e o cartão sumia e voltava (e o mapa piscava).
  */
+const BANDS = [
+  { w: 1, intensity: 12 },
+  { w: 0.78, intensity: 22 },
+  { w: 0.58, intensity: 34 },
+  { w: 0.4, intensity: 48 },
+];
+
 function FadingBlur({ enter }: { enter: Animated.Value }) {
   const c = useColors();
+  const target = useBlurTarget();
   const dark = c.mode === 'dark';
   const shade = dark ? 'rgba(0,0,0,0.62)' : 'rgba(225,228,236,0.6)';
   const mask = 'linear-gradient(to left, #000 0%, #000 30%, transparent 100%)';
@@ -130,13 +139,15 @@ function FadingBlur({ enter }: { enter: Animated.Value }) {
           ]}
         />
       ) : (
-        [1, 0.78, 0.58, 0.4].map((w) => (
+        // Faixas cada vez mais estreitas e mais fortes: somadas, o desfoque cresce para a direita.
+        BANDS.map((b) => (
           <BlurView
-            key={w}
+            key={b.w}
             tint={dark ? 'dark' : 'light'}
-            intensity={24}
-            experimentalBlurMethod="dimezisBlurView"
-            style={[styles.band, { width: `${w * 100}%` }]}
+            intensity={b.intensity}
+            blurTarget={target ?? undefined}
+            blurMethod={target ? 'dimezisBlurView' : 'none'}
+            style={[styles.band, { width: `${b.w * 100}%` }]}
           />
         ))
       )}

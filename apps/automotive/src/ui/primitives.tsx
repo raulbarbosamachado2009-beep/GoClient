@@ -17,6 +17,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { layout, nativeDriver, spacing, type TypeVariant, type, useColors } from '../theme';
+import { useBlurTarget } from './blur-target';
 import { useSpring } from './motion';
 
 export type IconName = ComponentProps<typeof Ionicons>['name'];
@@ -337,7 +338,8 @@ export function SearchField({
   );
 }
 
-const webNoOutline = { outlineStyle: 'none' } as object;
+/** Tira o contorno de foco do navegador; no Android/iOS não se aplica. */
+const webNoOutline = (Platform.OS === 'web' ? { outlineStyle: 'none' } : null) as object;
 
 /** Controle segmentado do iOS, com o "polegar" deslizando entre as opções. */
 export function Segmented<T extends string>({
@@ -558,11 +560,18 @@ export function Blur({ radius = 40, tint }: { radius?: number; tint: 'dark' | 'l
       />
     );
   }
+  return <NativeBlur radius={radius} tint={tint} />;
+}
+
+/** Android/iOS: BlurView nativo apontando para a área de trás (ver ui/blur-target.tsx). */
+function NativeBlur({ radius, tint }: { radius: number; tint: 'dark' | 'light' }) {
+  const target = useBlurTarget();
   return (
     <BlurView
       tint={tint}
       intensity={Math.min(100, (radius / 40) * 100)}
-      experimentalBlurMethod="dimezisBlurView"
+      blurTarget={target ?? undefined}
+      blurMethod={target ? 'dimezisBlurView' : 'none'}
       style={StyleSheet.absoluteFill}
       pointerEvents="none"
     />

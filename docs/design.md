@@ -145,3 +145,12 @@ Por decisão do produto, a interface usa **somente SF Pro** (Display e Text), ob
   para caber na área útil (sem entalhe nem barras do sistema). Em telas mais largas que 16:9 (celular) a
   área de desenho cresce para os lados; em mais altas (tablet), para baixo. Nunca é ampliado acima de 1.
 - Gestos que usam distâncias em pixels da tela (arrastar o mapa) dividem pela escala (`useFrameScale`).
+
+## Desfoque no Android
+
+- O expo-blur no Android só desfoca quando o BlurView aponta para uma área marcada (`BlurTargetView`);
+  sem isso mostra só a cor. `src/ui/blur-target.tsx` organiza as áreas: barra lateral → conteúdo;
+  janelas e Havena → conteúdo + barra lateral; cartões do Mapa → mapa. Um desfoque nunca fica dentro da
+  área que ele desfoca; onde não há área própria, vale a cor de reserva do material.
+- Fundo do player: capas já desfocadas em `assets/covers-blur` (o `blurRadius` forte no Android, maior
+  que a imagem, derrubava o app ao abrir o player).

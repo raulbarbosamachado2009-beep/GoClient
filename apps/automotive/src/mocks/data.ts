@@ -346,6 +346,21 @@ export const COVERS = {
   ninguem: require('../../assets/covers/ninguem-ta-puro.jpg'),
 } satisfies Record<string, ImageSourcePropType>;
 
+/**
+ * Capas já desfocadas (geradas a partir de assets/covers), usadas no fundo do player.
+ * No Android, pedir um desfoque forte em tempo real (blurRadius) maior que a própria imagem
+ * derruba o app; com a imagem pronta o visual é o mesmo e não há esse risco.
+ */
+export const COVERS_BLUR = {
+  piscina: require('../../assets/covers-blur/piscina-de-diamante.jpg'),
+  revoada: require('../../assets/covers-blur/revoada-do-tubarao-3.jpg'),
+  donos: require('../../assets/covers-blur/donos-da-capital.jpg'),
+  isolado: require('../../assets/covers-blur/isolado-no-quarto.jpg'),
+  poucoTecido: require('../../assets/covers-blur/pouco-tecido.jpg'),
+  seminua: require('../../assets/covers-blur/seminua-2.jpg'),
+  ninguem: require('../../assets/covers-blur/ninguem-ta-puro.jpg'),
+} satisfies Record<string, ImageSourcePropType>;
+
 export const GENRES = ['Beats', 'Trap', 'Cabaré', 'Suave', 'Hip hop', 'Funk'] as const;
 export type Genre = (typeof GENRES)[number];
 
@@ -357,6 +372,8 @@ export interface MockTrack {
   /** Cor de apoio (fallback e detalhes). */
   cover: string;
   image: ImageSourcePropType;
+  /** A mesma capa já desfocada (fundo do player). */
+  backdrop: ImageSourcePropType;
   /**
    * Cor predominante da capa, escurecida para o texto branco ficar legível (usada no
    * player minimizado, como no Spotify). Extraída das imagens em assets/covers.
@@ -377,6 +394,7 @@ export const TRACKS: MockTrack[] = [
     album: 'Isolado no Quarto',
     cover: '#3A2A6B',
     image: COVERS.isolado,
+    backdrop: COVERS_BLUR.isolado,
     tint: '#29445F',
     duration: '3:42',
     explicit: true,
@@ -389,6 +407,7 @@ export const TRACKS: MockTrack[] = [
     album: 'Donos da Capital',
     cover: '#4A3A2A',
     image: COVERS.donos,
+    backdrop: COVERS_BLUR.donos,
     tint: '#5C2C3F',
     duration: '4:12',
     explicit: true,
@@ -402,6 +421,7 @@ export const TRACKS: MockTrack[] = [
     album: 'Piscina de Diamante',
     cover: '#8A7A55',
     image: COVERS.piscina,
+    backdrop: COVERS_BLUR.piscina,
     tint: '#5D542C',
     duration: '3:13',
     genres: ['Funk', 'Suave'],
@@ -413,6 +433,7 @@ export const TRACKS: MockTrack[] = [
     album: 'Revoada do Tubarão 3',
     cover: '#2E5E7A',
     image: COVERS.revoada,
+    backdrop: COVERS_BLUR.revoada,
     tint: '#603C29',
     duration: '3:58',
     genres: ['Funk'],
@@ -424,6 +445,7 @@ export const TRACKS: MockTrack[] = [
     album: 'Pouco Tecido',
     cover: '#7A2E4A',
     image: COVERS.poucoTecido,
+    backdrop: COVERS_BLUR.poucoTecido,
     tint: '#711821',
     duration: '2:47',
     explicit: true,
@@ -437,6 +459,7 @@ export const TRACKS: MockTrack[] = [
     album: 'Seminua 2',
     cover: '#6B2E5A',
     image: COVERS.seminua,
+    backdrop: COVERS_BLUR.seminua,
     tint: '#6B391E',
     duration: '3:21',
     explicit: true,
@@ -449,6 +472,7 @@ export const TRACKS: MockTrack[] = [
     album: 'Ninguém Tá Puro',
     cover: '#2E4A6B',
     image: COVERS.ninguem,
+    backdrop: COVERS_BLUR.ninguem,
     tint: '#5C3B2C',
     duration: '3:05',
     genres: ['Trap', 'Hip hop'],

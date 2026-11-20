@@ -42,8 +42,7 @@ export default function Player() {
       {/* Fundo = a própria capa, ampliada e com desfoque forte (como no player da Apple). */}
       <Appear key={`bg-${track.id}`} distance={0} duration={600} style={StyleSheet.absoluteFill}>
         <Image
-          source={track.image}
-          blurRadius={60}
+          source={track.backdrop}
           resizeMode="cover"
           style={[styles.backdrop, { transform: [{ scale: 1.25 }] }]}
         />
@@ -361,8 +360,7 @@ export default function Player() {
         style={[styles.compact, { opacity: compactOpacity }]}
       >
         <Image
-          source={track.image}
-          blurRadius={60}
+          source={track.backdrop}
           resizeMode="cover"
           style={[styles.backdrop, { transform: [{ scale: 1.25 }] }]}
         />

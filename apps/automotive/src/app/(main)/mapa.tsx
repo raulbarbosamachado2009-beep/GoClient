@@ -1,10 +1,11 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { type ComponentRef, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { PannableMap } from '../../map/pannable-map';
 import { CLIENT_FOCUS, DAY_FOCUS, type MapMode, USER } from '../../map/world';
 import { CLIENTS, type MockClient, TODAY_ROUTE } from '../../mocks/data';
 import { layout, spacing, useColors } from '../../theme';
+import { BlurArea, BlurTargetProvider } from '../../ui/blur-target';
 import { Appear } from '../../ui/motion';
 import {
   Avatar,
@@ -35,39 +36,44 @@ export default function MapScreen() {
       ? (routeClients[wrap(stop, routeClients.length)] as MockClient)
       : (CLIENTS.find((c) => c.id === id) ?? null);
 
+  const mapArea = useRef<ComponentRef<typeof View>>(null);
   return (
     <View style={{ flex: 1 }}>
       {/* O foco é deslocado para a direita para que o conteúdo fique centrado na área livre à esquerda do cartão. */}
-      <PannableMap mode={mode} focus={{ x: target.x + FOCUS_SHIFT, y: target.y }} />
+      <BlurArea targetRef={mapArea} style={StyleSheet.absoluteFill}>
+        <PannableMap mode={mode} focus={{ x: target.x + FOCUS_SHIFT, y: target.y }} />
+      </BlurArea>
+      {/* Os cartões por cima desfocam o mapa (no Android, ver ui/blur-target.tsx). */}
+      <BlurTargetProvider value={mapArea}>
+        {mode === 'explore' ? <SearchPill /> : <Guidance />}
+        {mode !== 'explore' && <TripBar mode={mode} />}
 
-      {mode === 'explore' ? <SearchPill /> : <Guidance />}
-      {mode !== 'explore' && <TripBar mode={mode} />}
-
-      <Appear
-        axis="x"
-        distance={520}
-        delay={80}
-        duration={520}
-        fade={false}
-        style={styles.cardSlot}
-      >
-        {client ? (
-          <ClientCard
-            key={client.id}
-            client={client}
-            mode={mode}
-            stopLabel={
-              mode === 'day'
-                ? `Parada ${wrap(stop, routeClients.length) + 1} de ${routeClients.length}`
-                : undefined
-            }
-            onNext={() => setStop((s) => s + 1)}
-            onPrevious={() => setStop((s) => s - 1)}
-          />
-        ) : (
-          <WelcomeCard />
-        )}
-      </Appear>
+        <Appear
+          axis="x"
+          distance={520}
+          delay={80}
+          duration={520}
+          fade={false}
+          style={styles.cardSlot}
+        >
+          {client ? (
+            <ClientCard
+              key={client.id}
+              client={client}
+              mode={mode}
+              stopLabel={
+                mode === 'day'
+                  ? `Parada ${wrap(stop, routeClients.length) + 1} de ${routeClients.length}`
+                  : undefined
+              }
+              onNext={() => setStop((s) => s + 1)}
+              onPrevious={() => setStop((s) => s - 1)}
+            />
+          ) : (
+            <WelcomeCard />
+          )}
+        </Appear>
+      </BlurTargetProvider>
     </View>
   );
 }

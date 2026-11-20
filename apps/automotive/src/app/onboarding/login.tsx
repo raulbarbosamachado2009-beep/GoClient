@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { StyleSheet, TextInput, View } from 'react-native';
+import { Platform, StyleSheet, TextInput, View } from 'react-native';
 import Svg, { Rect } from 'react-native-svg';
 import { spacing, type, useColors } from '../../theme';
 import { Appear } from '../../ui/motion';
@@ -95,7 +95,7 @@ function Field({
         style={[
           type.body,
           { flex: 1, color: c.text, height: '100%' },
-          { outlineStyle: 'none' } as object,
+          (Platform.OS === 'web' ? { outlineStyle: 'none' } : null) as object,
         ]}
       />
     </View>

@@ -190,7 +190,12 @@ export function PannableMap({ mode, focus }: { mode: MapMode; focus?: { x: numbe
       ref={container}
       onLayout={onLayout}
       style={
-        { flex: 1, overflow: 'hidden', backgroundColor: c.map.ground, cursor: 'grab' } as object
+        {
+          flex: 1,
+          overflow: 'hidden',
+          backgroundColor: c.map.ground,
+          ...(Platform.OS === 'web' ? { cursor: 'grab' } : null),
+        } as object
       }
       {...responder.panHandlers}
     >
