@@ -154,3 +154,26 @@ Por decisão do produto, a interface usa **somente SF Pro** (Display e Text), ob
   área que ele desfoca; onde não há área própria, vale a cor de reserva do material.
 - Fundo do player: capas já desfocadas em `assets/covers-blur` (o `blurRadius` forte no Android, maior
   que a imagem, derrubava o app ao abrir o player).
+
+## Celular em pé × multimídia (mesmo app)
+
+O app do Automotive tem dois formatos, escolhidos pela orientação da tela
+(`src/layout/form-factor.tsx`, decidido em `src/preview/automotive-frame.tsx`):
+
+- **Deitado (multimídia ou celular deitado):** referência 1600×900, barra lateral.
+- **Em pé (celular):** referência de **720 de largura** (altura livre), reduzida para a largura
+  real do aparelho (≈0,55× num celular comum). Assim os mesmos componentes ficam do tamanho
+  usual de apps de celular, sem uma segunda biblioteca de interface.
+
+No celular, a barra lateral vira **barra de abas**: Mapa · Clientes · Havena (orbe no centro) ·
+Música · Mais (Produtos, Rotas, Kyte, Ajustes). As rotas são as mesmas nos dois formatos, então
+girar o celular mantém a tela, a música tocando e o resto do estado.
+
+Adaptações em pé: cartão do Mapa vira painel acima das abas; fichas (cliente, produto) viram
+folha de baixo para cima na largura toda; Produtos em 2 colunas; Rotas com resumo fixo
+embaixo; login e Spotify empilhados; player com capa em cima e controles embaixo; fileiras de
+capas da Música rolam para o lado.
+
+Cuidado de implementação: para desfazer um `flex: 1` ao empilhar em coluna, use `NO_FLEX`
+(`flexGrow: 0, flexShrink: 0, flexBasis: 'auto'`). `flex: 0` mantém a base 0% na web e o bloco
+some.

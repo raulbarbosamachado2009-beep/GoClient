@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { FlatList, ScrollView, StyleSheet, View } from 'react-native';
+import { usePhone } from '../../layout/form-factor';
 import { type MockProduct, PRODUCT_CATEGORIES, PRODUCTS } from '../../mocks/data';
 import { usePrototype } from '../../prototype/state';
 import { Sheet, useSheetClose } from '../../shell/sheet';
@@ -33,6 +34,8 @@ export default function ProductsScreen() {
     category === 'Todos' ? PRODUCTS : PRODUCTS.filter((p) => p.category === category);
   const open = (product: MockProduct) => setOverlay(<ProductDetails product={product} />);
   const [mode, setMode] = useState<ViewMode>('cards');
+  const phone = usePhone();
+  const cols = phone ? 2 : 4;
 
   const fade = useEdgeFade();
   return (
@@ -68,15 +71,19 @@ export default function ProductsScreen() {
         {mode === 'cards' ? (
           <FlatList
             {...fade.scrollProps}
-            key={`cards-${category}`}
+            key={`cards-${category}-${cols}`}
             data={products}
-            numColumns={4}
+            numColumns={cols}
             keyExtractor={(p) => p.id}
             columnWrapperStyle={{ gap: spacing[5] }}
             contentContainerStyle={{ gap: spacing[5], paddingBottom: spacing[10] }}
             showsVerticalScrollIndicator={false}
             renderItem={({ item, index }) => (
-              <Appear delay={index * 30} distance={12} style={{ flex: 1, maxWidth: '25%' }}>
+              <Appear
+                delay={index * 30}
+                distance={12}
+                style={{ flex: 1, maxWidth: phone ? '50%' : '25%' }}
+              >
                 <ProductCard product={item} onPress={() => open(item)} />
               </Appear>
             )}
@@ -209,10 +216,15 @@ function ProductDetailsContent({ product }: { product: MockProduct }) {
   const c = useColors();
   const close = useSheetClose();
   const low = product.stock < 30;
+  const phone = usePhone();
   return (
-    <View style={styles.sheet}>
-      <View style={{ width: 460, gap: spacing[4] }}>
-        <ProductImage product={product} size="fill" height={460} />
+    <ScrollView
+      style={{ flex: 1 }}
+      contentContainerStyle={[styles.sheet, phone && { flexDirection: 'column', gap: spacing[6] }]}
+      showsVerticalScrollIndicator={false}
+    >
+      <View style={{ width: phone ? '100%' : 460, gap: spacing[4] }}>
+        <ProductImage product={product} size="fill" height={phone ? 360 : 460} />
         <Text variant="caption" tone="secondary" style={{ textAlign: 'center' }}>
           Imagem ilustrativa
         </Text>
@@ -269,15 +281,20 @@ function ProductDetailsContent({ product }: { product: MockProduct }) {
         <View style={{ flex: 1 }} />
         <View style={{ flexDirection: 'row', gap: spacing[3] }}>
           <Button label="Enviar ao cliente" icon="logo-whatsapp" style={{ flex: 1 }} />
-          <Button label="Compartilhar" icon="share-outline" variant="gray" style={{ width: 240 }} />
+          <Button
+            label={phone ? '' : 'Compartilhar'}
+            icon="share-outline"
+            variant="gray"
+            style={{ width: phone ? 104 : 240 }}
+          />
         </View>
       </View>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  sheet: { flex: 1, flexDirection: 'row', gap: spacing[10], padding: spacing[10] },
+  sheet: { flexGrow: 1, flexDirection: 'row', gap: spacing[10], padding: spacing[10] },
   size: {
     minWidth: 120,
     paddingVertical: spacing[3],

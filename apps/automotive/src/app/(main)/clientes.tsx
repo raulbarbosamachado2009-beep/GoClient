@@ -1,5 +1,6 @@
 import { useRouter } from 'expo-router';
 import { ScrollView, StyleSheet, View } from 'react-native';
+import { NO_FLEX, usePhone } from '../../layout/form-factor';
 import { CLIENTS, type MockClient } from '../../mocks/data';
 import { usePrototype } from '../../prototype/state';
 import { Sheet, useSheetClose } from '../../shell/sheet';
@@ -71,6 +72,7 @@ function ClientDetailsContent({ client }: { client: MockClient }) {
   const c = useColors();
   const router = useRouter();
   const close = useSheetClose();
+  const phone = usePhone();
   // Fecha a ficha com a animação e só então abre o mapa com a rota.
   const go = () =>
     close(() => router.replace({ pathname: '/mapa', params: { rota: 'cliente', id: client.id } }));
@@ -96,7 +98,7 @@ function ClientDetailsContent({ client }: { client: MockClient }) {
         />
       </View>
 
-      <View style={styles.actions}>
+      <View style={[styles.actions, phone && { flexWrap: 'wrap' }]}>
         <QuickAction icon="call" label="Ligar" />
         <QuickAction icon="logo-whatsapp" label="WhatsApp" />
         <QuickAction icon="mail" label="E-mail" />
@@ -112,15 +114,19 @@ function ClientDetailsContent({ client }: { client: MockClient }) {
         </Touchable>
       </View>
 
-      <View style={styles.sheetBody}>
-        <View style={{ flex: 1 }}>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={[styles.sheetBody, phone && { flexDirection: 'column' }]}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={phone ? NO_FLEX : { flex: 1 }}>
           <Group>
             <Row title="Endereço" subtitle={`${client.address} · ${client.district}`} />
             <Row title="Telefone" subtitle={client.phone} />
             <Row title="Última visita" subtitle={client.lastVisit} />
           </Group>
         </View>
-        <View style={{ flex: 1 }}>
+        <View style={phone ? NO_FLEX : { flex: 1 }}>
           <SectionHeader title="Últimas compras" />
           <Group>
             {client.purchases.map((p) => (
@@ -128,7 +134,7 @@ function ClientDetailsContent({ client }: { client: MockClient }) {
             ))}
           </Group>
         </View>
-      </View>
+      </ScrollView>
     </>
   );
 }
@@ -172,5 +178,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: spacing[3],
   },
-  sheetBody: { flex: 1, flexDirection: 'row', gap: spacing[6], padding: spacing[8] },
+  sheetBody: { flexGrow: 1, flexDirection: 'row', gap: spacing[6], padding: spacing[8] },
 });

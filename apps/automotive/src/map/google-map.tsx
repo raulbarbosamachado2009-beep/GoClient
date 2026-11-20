@@ -1,6 +1,7 @@
 import { type ComponentRef, useEffect, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
+import { TAB_BAR_HEIGHT, usePhone } from '../layout/form-factor';
 import { layout } from '../theme';
 import { Text } from '../ui/primitives';
 import type { LatLng } from './google';
@@ -29,6 +30,7 @@ export function GoogleMap({
   pins: MapPin[];
 }) {
   const ref = useRef<ComponentRef<typeof MapView>>(null);
+  const phone = usePhone();
   const centered = useRef(false);
 
   // Com rota: enquadra o caminho inteiro. Sem rota: centra no carro uma vez.
@@ -57,7 +59,12 @@ export function GoogleMap({
       showsCompass={false}
       showsTraffic={path.length > 1}
       toolbarEnabled={false}
-      mapPadding={{ top: 0, right: 520, bottom: 0, left: layout.sidebarWidth }}
+      // Área livre do mapa: sem o cartão (à direita na multimídia, embaixo no celular).
+      mapPadding={
+        phone
+          ? { top: 140, right: 0, bottom: TAB_BAR_HEIGHT + 660, left: 0 }
+          : { top: 0, right: 520, bottom: 0, left: layout.sidebarWidth }
+      }
       initialRegion={{
         latitude: user?.latitude ?? -22.9056,
         longitude: user?.longitude ?? -47.0608,

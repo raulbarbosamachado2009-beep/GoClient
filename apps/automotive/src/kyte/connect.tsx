@@ -1,6 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { StyleSheet, View } from 'react-native';
-import { FONT, layout, spacing } from '../theme';
+import { useBleed } from '../layout/form-factor';
+import { FONT, spacing } from '../theme';
 import { Appear } from '../ui/motion';
 import { Icon, Text, Touchable } from '../ui/primitives';
 
@@ -12,16 +13,15 @@ const ACCENT = '#0A84FF';
  * O botão abre a página oficial de login do Kyte; a senha é digitada lá, nunca aqui.
  */
 export function KyteConnect({ onOpen }: { onOpen: () => void }) {
+  const bleed = useBleed();
   return (
     <View style={{ flex: 1 }}>
-      <View
-        style={[StyleSheet.absoluteFill, { left: -layout.sidebarWidth, backgroundColor: '#000' }]}
-      />
+      <View style={[StyleSheet.absoluteFill, { left: -bleed, backgroundColor: '#000' }]} />
       <LinearGradient
         colors={['rgba(10,132,255,0.26)', 'rgba(10,132,255,0)']}
         start={{ x: 1, y: 0 }}
         end={{ x: 0.35, y: 0.65 }}
-        style={[StyleSheet.absoluteFill, { left: -layout.sidebarWidth }]}
+        style={[StyleSheet.absoluteFill, { left: -bleed }]}
       />
       <View style={styles.page}>
         <Appear delay={80} style={styles.copy}>

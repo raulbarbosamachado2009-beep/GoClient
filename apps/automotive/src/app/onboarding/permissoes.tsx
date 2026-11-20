@@ -1,5 +1,6 @@
 import { useRouter } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
+import { usePhone } from '../../layout/form-factor';
 import { spacing, useColors } from '../../theme';
 import { Appear } from '../../ui/motion';
 import { Button, Icon, type IconName, Text } from '../../ui/primitives';
@@ -29,10 +30,11 @@ export default function Permissions() {
   const c = useColors();
   const router = useRouter();
   const go = () => router.replace('/onboarding/login');
+  const phone = usePhone();
 
   return (
     <View style={[styles.page, { backgroundColor: c.background }]}>
-      <View style={styles.column}>
+      <View style={[styles.column, phone && PHONE_COLUMN]}>
         <Appear distance={20}>
           <Icon name="hand-left" size={84} color={c.accent} />
         </Appear>
@@ -41,8 +43,8 @@ export default function Permissions() {
             Permissões
           </Text>
           <Text variant="body" tone="secondary" style={{ textAlign: 'center', maxWidth: 760 }}>
-            Para funcionar no carro, o GoClient precisa de alguns acessos. Você pode mudar isso
-            depois em Ajustes.
+            Para funcionar bem, o GoClient precisa de alguns acessos. Você pode mudar isso depois em
+            Ajustes.
           </Text>
         </Appear>
 
@@ -69,7 +71,7 @@ export default function Permissions() {
           ))}
         </View>
 
-        <Appear delay={640} distance={16} style={{ width: 560, gap: spacing[2] }}>
+        <Appear delay={640} distance={16} style={{ width: phone ? '100%' : 560, gap: spacing[2] }}>
           <Button label="Permitir e continuar" onPress={go} />
           <Button label="Agora não" variant="plain" onPress={go} />
         </Appear>
@@ -77,6 +79,9 @@ export default function Permissions() {
     </View>
   );
 }
+
+/** Celular em pé: a coluna ocupa a largura toda, com margens. */
+const PHONE_COLUMN = { width: '100%', paddingHorizontal: 40 } as const;
 
 const styles = StyleSheet.create({
   page: { flex: 1, alignItems: 'center', justifyContent: 'center' },

@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, StyleSheet, View } from 'react-native';
+import { usePhone } from '../../layout/form-factor';
 import { nativeDriver, spacing, useColors } from '../../theme';
 import { LogoMark } from '../../ui/brand';
 import { Appear } from '../../ui/motion';
@@ -31,6 +32,7 @@ const FEATURES: { icon: IconName; title: string; text: string }[] = [
 export default function Welcome() {
   const c = useColors();
   const router = useRouter();
+  const phone = usePhone();
   const [phase, setPhase] = useState<'logo' | 'content'>('logo');
   const logo = useRef(new Animated.Value(0)).current;
 
@@ -71,7 +73,7 @@ export default function Welcome() {
 
   return (
     <View style={[styles.page, { backgroundColor: c.background }]}>
-      <View style={styles.column}>
+      <View style={[styles.column, phone && PHONE_COLUMN]}>
         <Appear distance={20}>
           <LogoMark size={88} />
         </Appear>
@@ -100,13 +102,16 @@ export default function Welcome() {
           ))}
         </View>
 
-        <Appear delay={760} distance={16} style={{ width: 560 }}>
+        <Appear delay={760} distance={16} style={{ width: phone ? '100%' : 560 }}>
           <Button label="Continuar" onPress={() => router.push('/onboarding/permissoes')} />
         </Appear>
       </View>
     </View>
   );
 }
+
+/** Celular em pé: a coluna ocupa a largura toda, com margens. */
+const PHONE_COLUMN = { width: '100%', paddingHorizontal: 40 } as const;
 
 const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },

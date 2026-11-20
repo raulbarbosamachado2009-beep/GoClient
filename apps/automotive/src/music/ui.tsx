@@ -1,6 +1,7 @@
 import { type Href, useRouter } from 'expo-router';
 import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
+import { usePhone } from '../layout/form-factor';
 import { spacing, useColors } from '../theme';
 import { Icon, type IconName, Material, Text, Touchable } from '../ui/primitives';
 
@@ -72,6 +73,7 @@ export function PlaylistTile({
   height?: number;
 }) {
   const c = useColors();
+  const phone = usePhone();
   return (
     <Touchable
       accessibilityRole="button"
@@ -84,12 +86,17 @@ export function PlaylistTile({
     >
       {cover}
       <View style={{ flex: 1, gap: 2 }}>
-        <Text variant="title2" style={{ fontSize: 30, lineHeight: 36 }} numberOfLines={2}>
+        <Text
+          variant="title2"
+          style={phone ? { fontSize: 25, lineHeight: 30 } : { fontSize: 30, lineHeight: 36 }}
+          numberOfLines={2}
+        >
           {title}
         </Text>
         {subtitle}
       </View>
-      <Icon name="chevron-forward" size={38} />
+      {/* No celular os blocos são estreitos: sem a seta. */}
+      {!phone && <Icon name="chevron-forward" size={38} />}
     </Touchable>
   );
 }

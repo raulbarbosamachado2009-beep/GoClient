@@ -2,6 +2,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { type ReactNode, useRef, useState } from 'react';
 import { Animated, Image, type ImageSourcePropType, StyleSheet, View } from 'react-native';
+import { NO_FLEX, usePhone } from '../layout/form-factor';
 import { COVERS, NOW_PLAYING } from '../mocks/data';
 import { usePrototype } from '../prototype/state';
 import { layout, spacing } from '../theme';
@@ -22,6 +23,8 @@ export default function Player() {
   const router = useRouter();
   const { nowPlaying, upNext, playing, togglePlaying, next, previous } = usePrototype();
   const track = nowPlaying ?? NOW_PLAYING;
+  // Celular em pé: capa em cima, informações e controles embaixo (como no app do Spotify).
+  const phone = usePhone();
   const [compactVisible, setCompactVisible] = useState(false);
   const scrollY = useRef(new Animated.Value(0)).current;
 
@@ -63,7 +66,7 @@ export default function Player() {
             setCompactVisible(e.nativeEvent.contentOffset.y > 620),
         })}
       >
-        <Animated.View style={[styles.hero, { opacity: heroFade }]}>
+        <Animated.View style={[styles.hero, phone && PHONE.hero, { opacity: heroFade }]}>
           <View style={styles.topBar}>
             <IconButton
               icon="chevron-down"
@@ -72,7 +75,12 @@ export default function Player() {
               accessibilityLabel="Minimizar player"
               onPress={minimize}
             />
-            <Text variant="headline" color={W}>
+            <Text
+              variant="headline"
+              color={W}
+              numberOfLines={1}
+              style={{ flexShrink: 1, textAlign: 'center' }}
+            >
               “{track.album}” na Biblioteca
             </Text>
             <IconButton
@@ -83,10 +91,15 @@ export default function Player() {
             />
           </View>
 
-          <View style={styles.main}>
+          <View style={[styles.main, phone && PHONE.main]}>
             <Appear key={`art-${track.id}`} axis="x" distance={30} duration={420}>
               <View style={styles.artShadow}>
-                <Cover color={track.cover} image={track.image} size={600} radius={20} />
+                <Cover
+                  color={track.cover}
+                  image={track.image}
+                  size={phone ? 656 : 600}
+                  radius={20}
+                />
               </View>
             </Appear>
 
@@ -94,14 +107,18 @@ export default function Player() {
               key={`info-${track.id}`}
               delay={80}
               distance={16}
-              style={{ flex: 1, gap: spacing[10] }}
+              style={phone ? { gap: spacing[8] } : { flex: 1, gap: spacing[10] }}
             >
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[4] }}>
                 <View style={{ flex: 1, gap: spacing[2] }}>
                   <Text
                     variant="largeTitle"
                     color={W}
-                    style={{ fontSize: 76, lineHeight: 84, letterSpacing: -1 }}
+                    style={
+                      phone
+                        ? { fontSize: 52, lineHeight: 60, letterSpacing: -0.5 }
+                        : { fontSize: 76, lineHeight: 84, letterSpacing: -1 }
+                    }
                     numberOfLines={2}
                   >
                     {track.title}
@@ -110,7 +127,7 @@ export default function Player() {
                     {track.artists}
                   </Text>
                 </View>
-                <Icon name="checkmark-circle" size={84} color={GREEN} />
+                <Icon name="checkmark-circle" size={phone ? 64 : 84} color={GREEN} />
               </View>
 
               <View style={{ gap: spacing[3] }}>
@@ -131,15 +148,15 @@ export default function Player() {
               <View style={styles.controls}>
                 <IconButton
                   icon="shuffle"
-                  size={96}
-                  iconSize={54}
+                  size={phone ? 80 : 96}
+                  iconSize={phone ? 44 : 54}
                   color={W}
                   accessibilityLabel="Aleatório"
                 />
                 <IconButton
                   icon="play-skip-back"
-                  size={110}
-                  iconSize={68}
+                  size={phone ? 96 : 110}
+                  iconSize={phone ? 56 : 68}
                   color={W}
                   accessibilityLabel="Anterior"
                   onPress={previous}
@@ -147,8 +164,8 @@ export default function Player() {
                 <IconButton
                   icon={playing ? 'pause' : 'play'}
                   variant="inverse"
-                  size={168}
-                  iconSize={80}
+                  size={phone ? 144 : 168}
+                  iconSize={phone ? 68 : 80}
                   color="#000"
                   style={{ backgroundColor: W }}
                   accessibilityLabel={playing ? 'Pausar' : 'Tocar'}
@@ -156,16 +173,16 @@ export default function Player() {
                 />
                 <IconButton
                   icon="play-skip-forward"
-                  size={110}
-                  iconSize={68}
+                  size={phone ? 96 : 110}
+                  iconSize={phone ? 56 : 68}
                   color={W}
                   accessibilityLabel="Próxima"
                   onPress={next}
                 />
                 <IconButton
                   icon="repeat"
-                  size={96}
-                  iconSize={54}
+                  size={phone ? 80 : 96}
+                  iconSize={phone ? 44 : 54}
                   color={W}
                   accessibilityLabel="Repetir"
                 />
@@ -191,8 +208,8 @@ export default function Player() {
         </Animated.View>
 
         {/* Parte de baixo (imagem 6) */}
-        <View style={styles.more}>
-          <View style={styles.row}>
+        <View style={[styles.more, phone && { paddingHorizontal: 32 }]}>
+          <View style={[styles.row, phone && { flexDirection: 'column' }]}>
             <Card style={styles.artistCard}>
               {/* A foto preenche a metade esquerda inteira; o degradê mantém o título legível. */}
               <View style={styles.artistPhoto}>
@@ -241,7 +258,7 @@ export default function Player() {
             </Card>
           </View>
 
-          <View style={styles.row}>
+          <View style={[styles.row, phone && { flexDirection: 'column' }]}>
             <Card
               style={{ flex: 2 }}
               title="Vídeos relacionados"
@@ -411,8 +428,9 @@ function Card({
   children: ReactNode;
   style?: object;
 }) {
+  const phone = usePhone();
   return (
-    <View style={[styles.card, style]}>
+    <View style={[styles.card, style, phone && NO_FLEX]}>
       {title && (
         <View
           style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
@@ -437,6 +455,11 @@ function Pill({ label, small }: { label: string; small?: boolean }) {
     </Touchable>
   );
 }
+
+const PHONE = StyleSheet.create({
+  hero: { height: 'auto', paddingHorizontal: 32, paddingBottom: 48 },
+  main: { ...NO_FLEX, flexDirection: 'column', alignItems: 'stretch', gap: 56, marginTop: 40 },
+});
 
 const styles = StyleSheet.create({
   artistCard: { flex: 2, height: 300, padding: 0, flexDirection: 'row', overflow: 'hidden' },

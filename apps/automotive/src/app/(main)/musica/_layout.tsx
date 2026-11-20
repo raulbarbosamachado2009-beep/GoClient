@@ -1,11 +1,12 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { Slot, usePathname } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
+import { useBleed } from '../../../layout/form-factor';
 import { SpotifyConnect } from '../../../music/connect';
 import { usePrototype } from '../../../prototype/state';
 import { MiniPlayer } from '../../../shell/mini-player';
 import { useSpotify } from '../../../spotify/provider';
-import { layout, spacing, useColors } from '../../../theme';
+import { spacing, useColors } from '../../../theme';
 import { ScreenTransition } from '../../../ui/motion';
 
 /**
@@ -18,6 +19,7 @@ export default function MusicLayout() {
   const { musicConnected, setMusicConnected } = usePrototype();
   const pathname = usePathname();
   const sp = useSpotify();
+  const bleed = useBleed();
 
   // Enquanto lê as contas salvas, não pisca a tela de login.
   if (sp.enabled && !sp.ready) return null;
@@ -27,7 +29,7 @@ export default function MusicLayout() {
   return (
     <View style={{ flex: 1 }}>
       {/* O fundo continua por baixo da barra lateral, que o desfoca. */}
-      <View style={[styles.bleed, { backgroundColor: c.music.background }]}>
+      <View style={[styles.bleed, { left: -bleed, backgroundColor: c.music.background }]}>
         <LinearGradient
           colors={[c.music.ambient, `${c.music.ambient}00`]}
           style={[StyleSheet.absoluteFill, { height: 360 }]}
@@ -47,5 +49,5 @@ export default function MusicLayout() {
 }
 
 const styles = StyleSheet.create({
-  bleed: { position: 'absolute', top: 0, right: 0, bottom: 0, left: -layout.sidebarWidth },
+  bleed: { position: 'absolute', top: 0, right: 0, bottom: 0 },
 });

@@ -8,6 +8,7 @@ import {
   useState,
 } from 'react';
 import { Animated, Easing, StyleSheet, View, type ViewStyle } from 'react-native';
+import { usePhone } from '../layout/form-factor';
 import { nativeDriver, useColors } from '../theme';
 import { useTween } from '../ui/motion';
 import { BlurBackdrop } from '../ui/primitives';
@@ -33,6 +34,7 @@ export function Sheet({
   style?: ViewStyle;
 }) {
   const c = useColors();
+  const phone = usePhone();
   const [open, setOpen] = useState(true);
   const blur = useTween(open ? 1 : 0, DURATION);
   const rise = useRef(new Animated.Value(0)).current;
@@ -67,13 +69,15 @@ export function Sheet({
 
   return (
     <SheetCloseContext.Provider value={close}>
-      <View style={styles.root}>
+      <View style={[styles.root, phone && { justifyContent: 'flex-end' }]}>
         <BlurBackdrop progress={blur} onPress={() => close()} />
         <Animated.View
           style={[
             styles.sheet,
             { backgroundColor: c.mode === 'dark' ? '#1C1C1E' : '#F2F2F7' },
             style,
+            // Celular em pé: folha de baixo para cima, na largura toda.
+            phone && PHONE_SHEET,
             {
               opacity: rise,
               transform: [
@@ -89,6 +93,13 @@ export function Sheet({
     </SheetCloseContext.Provider>
   );
 }
+
+const PHONE_SHEET: ViewStyle = {
+  width: '100%',
+  height: '92%',
+  borderBottomLeftRadius: 0,
+  borderBottomRightRadius: 0,
+};
 
 const styles = StyleSheet.create({
   root: { flex: 1, alignItems: 'center', justifyContent: 'center' },

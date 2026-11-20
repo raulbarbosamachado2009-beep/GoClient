@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, ScrollView, StyleSheet, View } from 'react-native';
+import { usePhone } from '../../layout/form-factor';
 import { CLIENTS, REGIONS } from '../../mocks/data';
 import { usePrototype } from '../../prototype/state';
 import { layout, nativeDriver, spacing, useColors } from '../../theme';
@@ -31,6 +32,7 @@ export default function RoutesScreen() {
   const router = useRouter();
   const [region, setRegion] = useState<string>('Todas');
   const [selected, setSelected] = useState<string[]>(['c7', 'c1', 'c6']);
+  const phone = usePhone();
 
   // Filtro por região (apenas no protótipo).
   const visibleClients = region === 'Todas' ? CLIENTS : CLIENTS.filter((x) => x.region === region);
@@ -67,7 +69,7 @@ export default function RoutesScreen() {
         ))}
       </ScrollView>
 
-      <View style={styles.columns}>
+      <View style={[styles.columns, phone && { flexDirection: 'column', gap: spacing[4] }]}>
         <ScrollView
           style={{ flex: 1 }}
           showsVerticalScrollIndicator={false}
@@ -97,79 +99,99 @@ export default function RoutesScreen() {
           </Group>
         </ScrollView>
 
-        <View style={[styles.selection, { backgroundColor: c.grouped }]}>
-          <View>
-            <Text variant="title2">Rota de hoje</Text>
-            <Text variant="callout" tone="secondary">
-              {chosen.length === 0
-                ? 'Nenhum cliente'
-                : `${chosen.length} ${chosen.length === 1 ? 'cliente' : 'clientes'} · qua, 18 nov`}
-            </Text>
+        {/* Celular em pé: no lugar do painel lateral, um resumo fixo embaixo. */}
+        {phone ? (
+          <View style={[styles.phoneBar, { backgroundColor: c.grouped }]}>
+            <View style={{ flex: 1 }}>
+              <Text variant="headline">Rota de hoje</Text>
+              <Text variant="callout" tone="secondary">
+                {chosen.length === 0
+                  ? 'Toque nos clientes para escolher'
+                  : `${chosen.length} ${chosen.length === 1 ? 'cliente' : 'clientes'}`}
+              </Text>
+            </View>
+            <Button
+              label="Calcular"
+              icon="navigate"
+              onPress={calculate}
+              disabled={chosen.length === 0}
+            />
           </View>
+        ) : (
+          <View style={[styles.selection, { backgroundColor: c.grouped }]}>
+            <View>
+              <Text variant="title2">Rota de hoje</Text>
+              <Text variant="callout" tone="secondary">
+                {chosen.length === 0
+                  ? 'Nenhum cliente'
+                  : `${chosen.length} ${chosen.length === 1 ? 'cliente' : 'clientes'} · qua, 18 nov`}
+              </Text>
+            </View>
 
-          <ScrollView
-            style={{ flex: 1 }}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ gap: spacing[2] }}
-          >
-            {chosen.length === 0 ? (
-              <View style={styles.empty}>
-                <Icon name="git-network" size={56} color={c.textTertiary} />
-                <Text variant="callout" tone="secondary" style={{ textAlign: 'center' }}>
-                  Toque nos clientes ao lado para montar a rota do dia.
-                </Text>
-              </View>
-            ) : (
-              chosen.map((x, i) => (
-                <Appear key={x.id} axis="x" distance={20}>
-                  <View style={[styles.stop, { backgroundColor: c.fill }]}>
-                    <View style={[styles.num, { backgroundColor: c.accent }]}>
-                      <Text
-                        variant="bodyStrong"
-                        color="#FFFFFF"
-                        style={{ fontSize: 28, lineHeight: 34 }}
-                      >
-                        {i + 1}
-                      </Text>
+            <ScrollView
+              style={{ flex: 1 }}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ gap: spacing[2] }}
+            >
+              {chosen.length === 0 ? (
+                <View style={styles.empty}>
+                  <Icon name="git-network" size={56} color={c.textTertiary} />
+                  <Text variant="callout" tone="secondary" style={{ textAlign: 'center' }}>
+                    Toque nos clientes ao lado para montar a rota do dia.
+                  </Text>
+                </View>
+              ) : (
+                chosen.map((x, i) => (
+                  <Appear key={x.id} axis="x" distance={20}>
+                    <View style={[styles.stop, { backgroundColor: c.fill }]}>
+                      <View style={[styles.num, { backgroundColor: c.accent }]}>
+                        <Text
+                          variant="bodyStrong"
+                          color="#FFFFFF"
+                          style={{ fontSize: 28, lineHeight: 34 }}
+                        >
+                          {i + 1}
+                        </Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text
+                          variant="bodyStrong"
+                          numberOfLines={1}
+                          style={{ fontSize: 27, lineHeight: 33 }}
+                        >
+                          {x.tradeName}
+                        </Text>
+                        <Text
+                          variant="caption"
+                          tone="secondary"
+                          numberOfLines={1}
+                          style={{ fontSize: 20, lineHeight: 26 }}
+                        >
+                          {x.district}
+                        </Text>
+                      </View>
+                      <IconButton
+                        icon="close-circle"
+                        iconSize={42}
+                        color={c.textTertiary}
+                        accessibilityLabel="Remover"
+                        onPress={() => toggle(x.id)}
+                      />
                     </View>
-                    <View style={{ flex: 1 }}>
-                      <Text
-                        variant="bodyStrong"
-                        numberOfLines={1}
-                        style={{ fontSize: 27, lineHeight: 33 }}
-                      >
-                        {x.tradeName}
-                      </Text>
-                      <Text
-                        variant="caption"
-                        tone="secondary"
-                        numberOfLines={1}
-                        style={{ fontSize: 20, lineHeight: 26 }}
-                      >
-                        {x.district}
-                      </Text>
-                    </View>
-                    <IconButton
-                      icon="close-circle"
-                      iconSize={42}
-                      color={c.textTertiary}
-                      accessibilityLabel="Remover"
-                      onPress={() => toggle(x.id)}
-                    />
-                  </View>
-                </Appear>
-              ))
-            )}
-          </ScrollView>
+                  </Appear>
+                ))
+              )}
+            </ScrollView>
 
-          <Button
-            label="Calcular rota"
-            size="xl"
-            icon="navigate"
-            onPress={calculate}
-            disabled={chosen.length === 0}
-          />
-        </View>
+            <Button
+              label="Calcular rota"
+              size="xl"
+              icon="navigate"
+              onPress={calculate}
+              disabled={chosen.length === 0}
+            />
+          </View>
+        )}
       </View>
     </View>
   );
@@ -219,6 +241,14 @@ function Calculating({ count, onDone }: { count: number; onDone: () => void }) {
 
 const styles = StyleSheet.create({
   page: { flex: 1, paddingHorizontal: 48, paddingTop: 36, gap: spacing[5] },
+  phoneBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[5],
+    padding: spacing[5],
+    borderRadius: layout.radius.lg,
+    marginBottom: spacing[5],
+  },
   columns: { flex: 1, flexDirection: 'row', gap: spacing[6] },
   selection: {
     width: 540,

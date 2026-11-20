@@ -2,12 +2,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, View } from 'react-native';
+import { useBleed, usePhone } from '../../../../layout/form-factor';
 import { GENRES, type Genre } from '../../../../mocks/data';
 import { usePlaylistData } from '../../../../music/library';
 import { MusicBack, MusicChip } from '../../../../music/ui';
 import { usePlay } from '../../../../music/use-play';
 import { usePrototype } from '../../../../prototype/state';
-import { layout, spacing, useColors } from '../../../../theme';
+import { spacing, useColors } from '../../../../theme';
 import { Cover } from '../../../../ui/brand';
 import { Appear } from '../../../../ui/motion';
 import { Icon, IconButton, Text, Touchable } from '../../../../ui/primitives';
@@ -17,6 +18,8 @@ import { Icon, IconButton, Text, Touchable } from '../../../../ui/primitives';
  * protótipo); tocar numa música abre o player com a lista visível como fila.
  */
 export default function PlaylistScreen() {
+  const bleed = useBleed();
+  const phone = usePhone();
   const c = useColors();
   const { id, from } = useLocalSearchParams<{ id: string; from?: string }>();
   const data = usePlaylistData(id ?? 'l1');
@@ -47,17 +50,20 @@ export default function PlaylistScreen() {
       <LinearGradient
         colors={[playlist.cover, `${playlist.cover}00`]}
         locations={[0, 1]}
-        style={[StyleSheet.absoluteFill, { height: 340, left: -layout.sidebarWidth }]}
+        style={[StyleSheet.absoluteFill, { height: 340, left: -bleed }]}
       />
 
       <View style={styles.header}>
-        <MusicBack to={from === 'biblioteca' ? '/musica/biblioteca' : '/musica'} size={112} />
+        <MusicBack
+          to={from === 'biblioteca' ? '/musica/biblioteca' : '/musica'}
+          size={phone ? 88 : 112}
+        />
         <View style={{ flex: 1 }}>
           <Text
             variant="largeTitle"
             color="#FFFFFF"
             numberOfLines={1}
-            style={{ fontSize: 64, lineHeight: 72 }}
+            style={phone ? { fontSize: 44, lineHeight: 52 } : { fontSize: 64, lineHeight: 72 }}
           >
             {playlist.name}
           </Text>
@@ -71,8 +77,8 @@ export default function PlaylistScreen() {
         </View>
         <IconButton
           icon="shuffle"
-          size={96}
-          iconSize={60}
+          size={phone ? 80 : 96}
+          iconSize={phone ? 48 : 60}
           color="rgba(255,255,255,0.75)"
           accessibilityLabel="Aleatório"
           onPress={() => {
@@ -83,8 +89,8 @@ export default function PlaylistScreen() {
         />
         <IconButton
           icon="play"
-          size={128}
-          iconSize={64}
+          size={phone ? 104 : 128}
+          iconSize={phone ? 52 : 64}
           color="#000000"
           style={{ backgroundColor: c.music.accent }}
           accessibilityLabel="Tocar playlist"
@@ -92,7 +98,7 @@ export default function PlaylistScreen() {
         />
       </View>
 
-      <View style={styles.chips}>
+      <View style={[styles.chips, phone && { gap: spacing[3] }]}>
         {/* O Spotify não informa gêneros por faixa: os filtros ficam só na demonstração. */}
         {!live &&
           GENRES.map((g) => (
@@ -212,7 +218,7 @@ const styles = StyleSheet.create({
   rowMain: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing[10],
+    gap: spacing[6],
     paddingVertical: spacing[1],
     flex: 1,
   },

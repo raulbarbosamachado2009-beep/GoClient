@@ -2,7 +2,8 @@ import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { FONT, layout, spacing, useColors } from '../theme';
+import { NO_FLEX, useBleed, usePhone } from '../layout/form-factor';
+import { FONT, spacing, useColors } from '../theme';
 import { Appear } from '../ui/motion';
 import { Icon, type IconName, Text, Touchable } from '../ui/primitives';
 
@@ -19,30 +20,28 @@ export function SpotifyConnect({
   onConnect: () => void;
   real?: boolean;
 }) {
+  const bleed = useBleed();
+  const phone = usePhone();
   const c = useColors();
   const green = c.music.accent;
   return (
     <View style={{ flex: 1 }}>
-      <View
-        style={[
-          StyleSheet.absoluteFill,
-          { left: -layout.sidebarWidth, backgroundColor: '#000000' },
-        ]}
-      />
+      <View style={[StyleSheet.absoluteFill, { left: -bleed, backgroundColor: '#000000' }]} />
       <LinearGradient
         colors={['rgba(30,215,96,0.28)', 'rgba(30,215,96,0)']}
         start={{ x: 1, y: 0 }}
         end={{ x: 0.35, y: 0.65 }}
-        style={[StyleSheet.absoluteFill, { left: -layout.sidebarWidth }]}
+        style={[StyleSheet.absoluteFill, { left: -bleed }]}
       />
       <LinearGradient
         colors={['rgba(30,215,96,0)', 'rgba(30,215,96,0.18)']}
         start={{ x: 0.4, y: 0.4 }}
         end={{ x: 1, y: 1 }}
-        style={[StyleSheet.absoluteFill, { left: -layout.sidebarWidth }]}
+        style={[StyleSheet.absoluteFill, { left: -bleed }]}
       />
-      <View style={styles.page}>
-        <View style={styles.buttons}>
+      {/* Celular em pé: apresentação em cima, botões embaixo. */}
+      <View style={[styles.page, phone && PHONE_PAGE]}>
+        <View style={[styles.buttons, phone && { width: '100%' }]}>
           {[
             {
               label: 'Entrar com o Spotify',
@@ -91,20 +90,24 @@ export function SpotifyConnect({
           )}
         </View>
 
-        <Appear delay={200} style={styles.copy}>
+        <Appear delay={200} style={[styles.copy, phone && { ...NO_FLEX, gap: spacing[5] }]}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[5] }}>
-            <FontAwesome5 name="spotify" size={150} color={green} />
+            <FontAwesome5 name="spotify" size={phone ? 96 : 150} color={green} />
             <Text
               variant="largeTitle"
               color={green}
-              style={{ fontSize: 120, lineHeight: 130, letterSpacing: -3 }}
+              style={{
+                fontSize: phone ? 80 : 120,
+                lineHeight: phone ? 88 : 130,
+                letterSpacing: -3,
+              }}
             >
               Spotify
             </Text>
           </View>
-          <Text variant="largeTitle" color="#FFFFFF" style={styles.headline}>
+          <Text variant="largeTitle" color="#FFFFFF" style={[styles.headline, phone && SMALL]}>
             Milhões de músicas,{'\n'}
-            <Text variant="largeTitle" color={green} style={styles.headline}>
+            <Text variant="largeTitle" color={green} style={[styles.headline, phone && SMALL]}>
               para você.
             </Text>
           </Text>
@@ -159,6 +162,14 @@ function LoginButton({
     </Touchable>
   );
 }
+
+const PHONE_PAGE = {
+  flexDirection: 'column-reverse',
+  justifyContent: 'center',
+  paddingHorizontal: 40,
+  gap: 56,
+} as const;
+const SMALL = { fontSize: 50, lineHeight: 58 };
 
 const styles = StyleSheet.create({
   page: { flex: 1, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 64, gap: 72 },

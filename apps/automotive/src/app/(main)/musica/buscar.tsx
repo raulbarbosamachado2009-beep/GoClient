@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, StyleSheet, View } from 'react-native';
+import { usePhone } from '../../../layout/form-factor';
 import { BROWSE, SHOWS } from '../../../mocks/data';
 import { useTrackSearch } from '../../../music/library';
 import { MusicBack, MusicSection } from '../../../music/ui';
@@ -25,6 +26,7 @@ export default function Search() {
   const search = useTrackSearch(query);
   const ids = search.results.map((t) => t.id);
   const searching = query.trim() !== '';
+  const phone = usePhone();
   return (
     <ScrollView contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
       <View style={styles.head}>
@@ -78,9 +80,20 @@ export default function Search() {
       {/* Categorias e sugestões são só da demonstração (o Spotify removeu esses dados da API). */}
       {!live && !searching && (
         <>
-          <View style={{ flexDirection: 'row', gap: spacing[6] }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              flexWrap: 'wrap',
+              gap: phone ? spacing[4] : spacing[6],
+            }}
+          >
             {BROWSE.map((b, i) => (
-              <Appear key={b.id} delay={i * 50} distance={12} style={{ flex: 1 }}>
+              <Appear
+                key={b.id}
+                delay={i * 50}
+                distance={12}
+                style={phone ? { width: '48.4%' } : { flex: 1 }}
+              >
                 <Touchable
                   accessibilityRole="button"
                   style={[styles.tile, { backgroundColor: b.color }]}
@@ -99,30 +112,35 @@ export default function Search() {
           </View>
 
           <MusicSection title="Playlists que você pode assistir" />
-          <View style={{ flexDirection: 'row', gap: spacing[6] }}>
+          <Strip phone={phone} gap={spacing[6]}>
             {WATCH.map((w, i) => (
-              <Appear key={w.id} delay={200 + i * 60} distance={14} style={{ flex: 1 }}>
+              <Appear
+                key={w.id}
+                delay={200 + i * 60}
+                distance={14}
+                style={phone ? undefined : { flex: 1 }}
+              >
                 <Touchable accessibilityRole="button" onPress={() => play()} scaleTo={0.97}>
                   <Cover color={w.cover} size={460} height={250} radius={18} title={w.name} />
                 </Touchable>
               </Appear>
             ))}
-          </View>
+          </Strip>
 
           <MusicSection title="Descubra episódios pra você" />
-          <View style={{ flexDirection: 'row', gap: spacing[5] }}>
+          <Strip phone={phone} gap={spacing[5]}>
             {SHOWS.map((s) => (
               <Touchable
                 key={s.id}
                 accessibilityRole="button"
                 onPress={() => play()}
                 scaleTo={0.97}
-                style={{ flex: 1 }}
+                style={phone ? undefined : { flex: 1 }}
               >
                 <Cover color={s.cover} size={338} height={190} radius={14} title={s.name} />
               </Touchable>
             ))}
-          </View>
+          </Strip>
         </>
       )}
     </ScrollView>
@@ -130,7 +148,7 @@ export default function Search() {
 }
 
 const styles = StyleSheet.create({
-  page: { paddingHorizontal: 36, paddingTop: 28, paddingBottom: 32, gap: spacing[6] },
+  page: { paddingHorizontal: 32, paddingTop: 28, paddingBottom: 32, gap: spacing[6] },
   head: { flexDirection: 'row', alignItems: 'center', gap: spacing[8] },
   result: { flexDirection: 'row', alignItems: 'center', gap: spacing[8], paddingVertical: 4 },
   tile: { height: 132, borderRadius: 14, padding: spacing[6], overflow: 'hidden' },
@@ -145,3 +163,18 @@ const styles = StyleSheet.create({
     transform: [{ rotate: '25deg' }],
   },
 });
+
+/** Fileira de capas: no celular rola para o lado em vez de dividir a largura. */
+function Strip({ phone, gap, children }: { phone: boolean; gap: number; children: ReactNode }) {
+  if (!phone) return <View style={{ flexDirection: 'row', gap }}>{children}</View>;
+  return (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      style={{ marginHorizontal: -32 }}
+      contentContainerStyle={{ gap, paddingHorizontal: 32 }}
+    >
+      {children}
+    </ScrollView>
+  );
+}

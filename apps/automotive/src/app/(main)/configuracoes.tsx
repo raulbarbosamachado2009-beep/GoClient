@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { GOOGLE_MAPS_ENABLED } from '../../integrations/env';
+import { usePhone } from '../../layout/form-factor';
 import { useSpotify } from '../../spotify/provider';
 import { spacing, type ThemePreference, useColors, useTheme } from '../../theme';
 import { useEdgeFade } from '../../ui/edge-fade';
@@ -29,6 +30,7 @@ export default function SettingsScreen() {
   const [voiceReplies, setVoiceReplies] = useState(true);
   const [offline, setOffline] = useState(true);
   const sp = useSpotify();
+  const phone = usePhone();
   const spotifyValue = !sp.enabled
     ? 'Demonstração (sem Client ID)'
     : sp.active
@@ -56,7 +58,7 @@ export default function SettingsScreen() {
             <Segmented<ThemePreference>
               value={preference}
               onChange={setPreference}
-              segmentWidth={180}
+              segmentWidth={phone ? 128 : 180}
               options={[
                 { value: 'light', label: 'Claro' },
                 { value: 'dark', label: 'Escuro' },

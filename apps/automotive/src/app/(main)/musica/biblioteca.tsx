@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
 import { type ReactNode, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
+import { usePhone } from '../../../layout/form-factor';
 import { AccountButton } from '../../../music/accounts';
 import { useLibraryData } from '../../../music/library';
 import { MusicBack, MusicChip, PlaylistTile } from '../../../music/ui';
@@ -33,6 +34,7 @@ export default function Library() {
   const open = useOpenPlaylist();
   const playContext = usePlayContext();
   const { playlists, shows, artists } = useLibraryData();
+  const phone = usePhone();
 
   const pin = (text: string) => (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[2] }}>
@@ -110,8 +112,12 @@ export default function Library() {
       <View style={styles.head}>
         <MusicBack to="/musica" />
         <AccountButton />
-        <Text variant="largeTitle" style={{ flex: 1, fontSize: 56, lineHeight: 64 }}>
-          Sua Biblioteca
+        <Text
+          variant="largeTitle"
+          numberOfLines={1}
+          style={{ flex: 1, fontSize: phone ? 40 : 56, lineHeight: phone ? 48 : 64 }}
+        >
+          {phone ? 'Biblioteca' : 'Sua Biblioteca'}
         </Text>
         <IconButton
           icon="search"
@@ -119,10 +125,16 @@ export default function Library() {
           accessibilityLabel="Buscar"
           onPress={() => router.replace('/musica/buscar')}
         />
-        <IconButton icon="add" iconSize={52} accessibilityLabel="Criar playlist" />
+        {!phone && <IconButton icon="add" iconSize={52} accessibilityLabel="Criar playlist" />}
       </View>
 
-      <View style={{ flexDirection: 'row', gap: spacing[4] }}>
+      <ScrollView
+        horizontal
+        scrollEnabled={phone}
+        showsHorizontalScrollIndicator={false}
+        style={{ flexGrow: 0, flexShrink: 0, marginHorizontal: phone ? -32 : 0 }}
+        contentContainerStyle={{ gap: spacing[4], paddingHorizontal: phone ? 32 : 0 }}
+      >
         {FILTERS.map((f) => (
           <MusicChip
             key={f.label}
@@ -132,7 +144,7 @@ export default function Library() {
             onPress={() => setFilter((cur) => (cur === f.label ? null : f.label))}
           />
         ))}
-      </View>
+      </ScrollView>
 
       <View style={styles.sortRow}>
         <Touchable style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[6] }}>
@@ -172,8 +184,8 @@ export default function Library() {
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, paddingHorizontal: 36, paddingTop: 28, gap: spacing[5] },
-  head: { flexDirection: 'row', alignItems: 'center', gap: spacing[8] },
+  page: { flex: 1, paddingHorizontal: 32, paddingTop: 28, gap: spacing[5] },
+  head: { flexDirection: 'row', alignItems: 'center', gap: spacing[6] },
   sortRow: {
     flexDirection: 'row',
     alignItems: 'center',

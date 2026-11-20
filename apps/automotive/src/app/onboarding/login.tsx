@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
 import { Platform, StyleSheet, TextInput, View } from 'react-native';
 import Svg, { Rect } from 'react-native-svg';
+import { NO_FLEX, usePhone } from '../../layout/form-factor';
 import { spacing, type, useColors } from '../../theme';
 import { Appear } from '../../ui/motion';
 import { Button, Icon, Text } from '../../ui/primitives';
@@ -15,10 +16,11 @@ export default function Login() {
   const c = useColors();
   const router = useRouter();
   const enter = () => router.replace('/mapa');
+  const phone = usePhone();
 
   return (
     <View style={[styles.page, { backgroundColor: c.background }]}>
-      <View style={styles.column}>
+      <View style={[styles.column, phone && PHONE_COLUMN]}>
         <Appear distance={20}>
           <Icon name="person-circle" size={96} color={c.accent} />
         </Appear>
@@ -32,8 +34,12 @@ export default function Login() {
           </Text>
         </Appear>
 
-        <View style={styles.options}>
-          <Appear delay={220} distance={18} style={styles.side}>
+        <View style={[styles.options, phone && { flexDirection: 'column', gap: spacing[6] }]}>
+          <Appear
+            delay={220}
+            distance={18}
+            style={[styles.side, phone && { alignSelf: 'stretch', ...NO_FLEX }]}
+          >
             <View style={[styles.group, { backgroundColor: c.grouped }]}>
               <Field label="E-mail" placeholder="nome@empresa.com.br" />
               <View style={[styles.separator, { backgroundColor: c.separator }]} />
@@ -43,15 +49,23 @@ export default function Login() {
             <Button label="Esqueci minha senha" variant="plain" size="md" onPress={() => {}} />
           </Appear>
 
-          <Appear delay={300} distance={18} style={styles.divider}>
-            <View style={[styles.line, { backgroundColor: c.separator }]} />
+          <Appear
+            delay={300}
+            distance={18}
+            style={[styles.divider, phone && { flexDirection: 'row', alignSelf: 'stretch' }]}
+          >
+            <View style={[styles.line, { backgroundColor: c.separator }, phone && HLINE]} />
             <Text variant="subhead" tone="secondary">
               ou
             </Text>
-            <View style={[styles.line, { backgroundColor: c.separator }]} />
+            <View style={[styles.line, { backgroundColor: c.separator }, phone && HLINE]} />
           </Appear>
 
-          <Appear delay={380} distance={18} style={[styles.side, { alignItems: 'center' }]}>
+          <Appear
+            delay={380}
+            distance={18}
+            style={[styles.side, { alignItems: 'center' }, phone && NO_FLEX]}
+          >
             <View style={styles.qr}>
               <MockQr size={196} />
             </View>
@@ -146,6 +160,11 @@ function MockQr({ size }: { size: number }) {
     </Svg>
   );
 }
+
+const HLINE = { width: undefined, height: StyleSheet.hairlineWidth, flex: 1 } as const;
+
+/** Celular em pé: a coluna ocupa a largura toda, com margens. */
+const PHONE_COLUMN = { width: '100%', paddingHorizontal: 40 } as const;
 
 const styles = StyleSheet.create({
   page: { flex: 1, alignItems: 'center', justifyContent: 'center' },

@@ -2,6 +2,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { type ComponentRef, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { GOOGLE_MAPS_ENABLED } from '../../integrations/env';
+import { TAB_BAR_HEIGHT, usePhone } from '../../layout/form-factor';
 import {
   formatArrival,
   formatDuration,
@@ -34,6 +35,7 @@ import {
  * `?rota=dia` mostra a rota do dia.
  */
 export default function MapScreen() {
+  const phone = usePhone();
   const { rota, id } = useLocalSearchParams<{ rota?: string; id?: string }>();
   const mode: MapMode = rota === 'dia' ? 'day' : rota === 'cliente' ? 'client' : 'explore';
   const [stop, setStop] = useState(0);
@@ -108,7 +110,14 @@ export default function MapScreen() {
             pins={pins}
           />
         ) : (
-          <PannableMap mode={mode} focus={{ x: target.x + FOCUS_SHIFT, y: target.y }} />
+          <PannableMap
+            mode={mode}
+            focus={
+              phone
+                ? { x: target.x, y: target.y + 280 }
+                : { x: target.x + FOCUS_SHIFT, y: target.y }
+            }
+          />
         )}
       </BlurArea>
       {/* Os cartões por cima desfocam o mapa (no Android, ver ui/blur-target.tsx). */}
@@ -142,7 +151,7 @@ export default function MapScreen() {
           delay={80}
           duration={520}
           fade={false}
-          style={styles.cardSlot}
+          style={phone ? [PHONE.card, { height: client ? 620 : 500 }] : styles.cardSlot}
         >
           {client ? (
             <ClientCard
@@ -167,10 +176,11 @@ export default function MapScreen() {
 }
 
 function SearchPill() {
+  const phone = usePhone();
   const c = useColors();
   return (
-    <Appear delay={60} fade={false} style={styles.topLeft}>
-      <Material style={styles.search}>
+    <Appear delay={60} fade={false} style={phone ? PHONE.top : styles.topLeft}>
+      <Material style={[styles.search, phone && { width: '100%' }]}>
         <Icon name="search" size={28} color={c.textSecondary} />
         <Text variant="body" tone="secondary">
           Buscar cliente ou endereço
@@ -181,9 +191,10 @@ function SearchPill() {
 }
 
 function Guidance() {
+  const phone = usePhone();
   const c = useColors();
   return (
-    <Appear delay={60} fade={false} style={styles.topLeft}>
+    <Appear delay={60} fade={false} style={phone ? PHONE.top : styles.topLeft}>
       <Material style={styles.guidance}>
         <Icon name="return-up-forward" size={64} color={c.text} />
         <View>
@@ -209,9 +220,10 @@ function LiveGuidance({
   status: string;
   onNavigate?: () => void;
 }) {
+  const phone = usePhone();
   const c = useColors();
   return (
-    <Appear delay={60} fade={false} style={styles.topLeft}>
+    <Appear delay={60} fade={false} style={phone ? PHONE.top : styles.topLeft}>
       <Material style={[styles.guidance, { maxWidth: 820 }]}>
         <Icon name="navigate" size={56} color={c.accent} />
         <View style={{ flexShrink: 1 }}>
@@ -229,10 +241,11 @@ function LiveGuidance({
 }
 
 function TripBar({ mode, route }: { mode: MapMode; route?: LiveRoute | null }) {
+  const phone = usePhone();
   const router = useRouter();
   const time = route ? formatDuration(route.durationSeconds) : null;
   return (
-    <Appear delay={160} fade={false} distance={40} style={styles.bottomLeft}>
+    <Appear delay={160} fade={false} distance={40} style={phone ? PHONE.trip : styles.bottomLeft}>
       <Material style={styles.trip}>
         <Button
           label="Encerrar"
@@ -450,6 +463,18 @@ function InfoLine({
 /** Desloca a câmera para centralizar o conteúdo na área livre entre a barra lateral e o cartão. */
 const FOCUS_SHIFT = 190;
 const LEFT = layout.sidebarWidth + layout.gutter;
+
+/** Celular em pé: busca/orientação no topo, cartão embaixo (acima das abas). */
+const PHONE = StyleSheet.create({
+  top: { position: 'absolute', top: layout.gutter, left: layout.gutter, right: layout.gutter },
+  trip: { position: 'absolute', top: 150, left: layout.gutter, right: layout.gutter },
+  card: {
+    position: 'absolute',
+    left: layout.gutter,
+    right: layout.gutter,
+    bottom: TAB_BAR_HEIGHT + layout.gutter,
+  },
+});
 
 const styles = StyleSheet.create({
   topLeft: { position: 'absolute', top: layout.gutter, left: LEFT },
