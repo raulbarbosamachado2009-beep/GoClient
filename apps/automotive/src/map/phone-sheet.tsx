@@ -5,6 +5,7 @@ import {
   type ReactNode,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -22,7 +23,7 @@ import { CLIENTS, type MockClient, TODAY_ROUTE } from '../mocks/data';
 import { useFrameScale } from '../preview/automotive-frame';
 import { OutlineGlyph } from '../shell/app-icons';
 import { layout, spacing, useColors } from '../theme';
-import { Avatar, Blur, Icon, type IconName, Text, Touchable } from '../ui/primitives';
+import { Avatar, Icon, type IconName, Text, Touchable } from '../ui/primitives';
 
 /**
  * Aba puxável do Mapa no celular (referência: Apple Maps). Três alturas: recolhida (só a
@@ -46,6 +47,10 @@ function Tap({ onPress, ...rest }: ComponentProps<typeof Touchable>) {
 
 const NO_SELECT = (Platform.OS === 'web' ? { userSelect: 'none' } : null) as object;
 /** No navegador, põe a aba numa camada própria da GPU (o deslocamento não repinta o mapa). */
+/** Android/iOS: a mola e o arrasto rodam no driver nativo (fora do JavaScript). */
+const NATIVE = Platform.OS !== 'web';
+/** Margem do conteúdo até a borda da tela (fixa: o conteúdo nunca muda de largura). */
+const CONTENT_INSET = 20;
 const WILL_MOVE = (Platform.OS === 'web' ? { willChange: 'transform' } : null) as object;
 
 export function DragSheet({
@@ -80,11 +85,12 @@ export function DragSheet({
   scaleRef.current = scale;
   const dragged = useRef(false);
   const scrollTop = useRef(0);
-  const detentRef = useRef(detent);
-  detentRef.current = detent;
+  const detentRef = useRef<Detent>(initial);
 
   const snap = (d: Detent, velocity = 0) => {
-    setDetent(d);
+    // A troca de estado (que redesenha o conteúdo) fica para o fim do movimento: no meio
+    // da animação ela custaria quadros.
+    detentRef.current = d;
     const to = heightsRef.current[d] ?? collapsed;
     current.current = to;
     // Mola quase crítica, com a "resposta" (~0,45 s) da aba do Apple Maps: desliza contínua,
@@ -97,8 +103,8 @@ export function DragSheet({
       mass: 1,
       restDisplacementThreshold: 0.5,
       restSpeedThreshold: 0.5,
-      useNativeDriver: false,
-    }).start();
+      useNativeDriver: NATIVE,
+    }).start(() => setDetent(detentRef.current));
   };
   const snapRef = useRef(snap);
   snapRef.current = snap;
@@ -177,31 +183,33 @@ export function DragSheet({
   const H0 = heights[0] ?? collapsed;
   const H1 = Math.max(heights[1] ?? 0, H0 + 1);
   const H2 = Math.max(heights[2] ?? 0, H1 + 1);
-  const range = [H0, H1, H2];
-  const side = h.interpolate({ inputRange: range, outputRange: [28, 16, 0], extrapolate: 'clamp' });
-  const bottom = h.interpolate({
-    inputRange: range,
-    outputRange: [GAP, GAP, 0],
-    extrapolate: 'clamp',
-  });
-  const radius = h.interpolate({
-    inputRange: range,
-    outputRange: [56, 48, 0],
-    extrapolate: 'clamp',
-  });
-  const topRadius = h.interpolate({
-    inputRange: range,
-    outputRange: [56, 48, 28],
-    extrapolate: 'clamp',
-  });
-  // A altura conta a partir da borda de baixo da tela: desconta a distância quando flutua.
-  const height = Animated.subtract(h, bottom);
-  // Fluidez: a aba inteira tem a altura da tela e só é *deslocada* (translateY); o conteúdo
-  // tem tamanho fixo e nunca é recalculado durante o gesto. O que muda de forma (margens,
-  // cantos, altura visível) é só uma moldura que recorta — barata de redesenhar.
-  const lift = Animated.subtract(screen, h);
-  const CONTENT_INSET = 20;
-  const shift = Animated.subtract(CONTENT_INSET, side);
+  // Desempenho: durante o gesto só mudam transformações (deslocar e esticar na horizontal),
+  // que a placa de vídeo faz sem recalcular nem redesenhar nada — e no Android rodam fora
+  // do JavaScript (driver nativo). Tamanho, cantos e conteúdo da aba ficam fixos.
+  //  - clip: recorte de cantos arredondados embaixo; sobe `gap` (flutuando sobre a barra de
+  //    abas) e encolhe na horizontal `s` (margens laterais da pílula/cartão).
+  //  - fundo e conteúdo: sobem com a aba; o conteúdo desfaz o encolhimento horizontal.
+  const anim = useMemo(() => {
+    const range = [H0, H1, H2];
+    const w = Math.max(width, 1);
+    const s = h.interpolate({
+      inputRange: range,
+      outputRange: [(w - 56) / w, (w - 32) / w, 1],
+      extrapolate: 'clamp',
+    });
+    const gap = h.interpolate({
+      inputRange: range,
+      outputRange: [GAP, GAP, 0],
+      extrapolate: 'clamp',
+    });
+    // Topo da aba (a partir do topo do recorte, que já subiu `gap`).
+    const top = Animated.add(Animated.subtract(screen, h), gap);
+    return {
+      clip: [{ translateY: Animated.multiply(gap, -1) }, { scaleX: s }],
+      bg: [{ translateY: top }],
+      body: [{ translateY: top }, { scaleX: Animated.divide(1, s) }],
+    };
+  }, [h, H0, H1, H2, GAP, screen, width]);
 
   return (
     <DraggedContext.Provider value={dragged}>
@@ -216,72 +224,60 @@ export function DragSheet({
         {screen > 0 && width > 0 && (
           <Animated.View
             pointerEvents="box-none"
-            style={[styles.track, { height: screen, transform: [{ translateY: lift }] }, WILL_MOVE]}
+            style={[styles.clip, { height: screen, transform: anim.clip }, WILL_MOVE, NO_SELECT]}
           >
             <Animated.View
+              pointerEvents="none"
               style={[
-                styles.sheet,
+                styles.sheetBg,
                 {
-                  left: side,
-                  right: side,
-                  height,
-                  borderTopLeftRadius: topRadius,
-                  borderTopRightRadius: topRadius,
-                  borderBottomLeftRadius: radius,
-                  borderBottomRightRadius: radius,
+                  height: screen,
                   borderColor: c.material.border,
+                  backgroundColor: c.mode === 'dark' ? '#1E1E20' : '#F6F6F8',
+                  transform: anim.bg,
                 },
-                NO_SELECT,
+                WILL_MOVE,
+              ]}
+            />
+            <Animated.View
+              style={[
+                styles.body,
+                {
+                  left: CONTENT_INSET,
+                  width: width - CONTENT_INSET * 2,
+                  height: screen,
+                  transform: anim.body,
+                },
+                WILL_MOVE,
               ]}
             >
-              {/* No navegador o desfoque por trás é refeito a cada quadro e engasga o gesto;
-                  como o fundo é quase opaco, lá usamos só a cor. */}
-              {Platform.OS !== 'web' && <Blur radius={44} tint={c.material.tint} />}
-              <View
-                style={[
-                  StyleSheet.absoluteFill,
-                  {
-                    backgroundColor:
-                      c.mode === 'dark' ? 'rgba(30,30,32,0.94)' : 'rgba(246,246,248,0.96)',
-                  },
-                ]}
-              />
-              <Animated.View
-                style={[
-                  styles.body,
-                  {
-                    width: width - CONTENT_INSET * 2,
-                    height: screen,
-                    transform: [{ translateX: shift }],
-                  },
-                ]}
-              >
-                {/* Cabeçalho fixo: a busca nunca rola junto com a lista. */}
-                <View {...pan.panHandlers}>
-                  <Touchable
-                    accessibilityRole="button"
-                    accessibilityLabel={detent === 2 ? 'Recolher aba' : 'Expandir aba'}
-                    onPress={() => snap(detent === 2 ? 0 : ((detent + 1) as Detent))}
-                    style={styles.grabArea}
-                  >
-                    <View style={[styles.grabber, { backgroundColor: c.textTertiary }]} />
-                  </Touchable>
-                  <View style={styles.header}>{header}</View>
-                </View>
-                <ScrollView
-                  style={{ flex: 1 }}
-                  scrollEnabled={detent === 2}
-                  showsVerticalScrollIndicator={detent === 2}
-                  contentContainerStyle={styles.content}
-                  scrollEventThrottle={16}
-                  onScroll={(e) => {
-                    scrollTop.current = e.nativeEvent.contentOffset.y;
-                  }}
-                  {...contentPan.panHandlers}
+              {/* Cabeçalho fixo: a busca nunca rola junto com a lista. */}
+              <View {...pan.panHandlers}>
+                <Touchable
+                  accessibilityRole="button"
+                  accessibilityLabel={detent === 2 ? 'Recolher aba' : 'Expandir aba'}
+                  onPress={() =>
+                    snap(detentRef.current === 2 ? 0 : ((detentRef.current + 1) as Detent))
+                  }
+                  style={styles.grabArea}
                 >
-                  {children}
-                </ScrollView>
-              </Animated.View>
+                  <View style={[styles.grabber, { backgroundColor: c.textTertiary }]} />
+                </Touchable>
+                <View style={styles.header}>{header}</View>
+              </View>
+              <ScrollView
+                style={{ flex: 1 }}
+                scrollEnabled={detent === 2}
+                showsVerticalScrollIndicator={detent === 2}
+                contentContainerStyle={styles.content}
+                scrollEventThrottle={16}
+                onScroll={(e) => {
+                  scrollTop.current = e.nativeEvent.contentOffset.y;
+                }}
+                {...contentPan.panHandlers}
+              >
+                {children}
+              </ScrollView>
             </Animated.View>
           </Animated.View>
         )}
@@ -668,20 +664,26 @@ const styles = StyleSheet.create({
     bottom: 0,
     overflow: 'hidden',
   },
-  track: { position: 'absolute', left: 0, right: 0, top: 0 },
-  body: { position: 'absolute', top: 0, left: 0 },
-  sheet: {
+  // Recorte da aba: cantos de baixo arredondados (os de cima vêm do fundo).
+  clip: {
     position: 'absolute',
-    left: 8,
-    right: 8,
+    left: 0,
+    right: 0,
     top: 0,
-    borderTopLeftRadius: 48,
-    borderTopRightRadius: 48,
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
-    borderWidth: 1,
+    borderBottomLeftRadius: 52,
+    borderBottomRightRadius: 52,
     overflow: 'hidden',
   },
+  sheetBg: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    borderTopLeftRadius: 52,
+    borderTopRightRadius: 52,
+    borderWidth: 1,
+  },
+  body: { position: 'absolute', top: 0 },
   grabArea: { height: 36, alignItems: 'center', justifyContent: 'center' },
   grabber: { width: 72, height: 8, borderRadius: 4, opacity: 0.6 },
   header: { paddingHorizontal: 24, paddingBottom: 14 },

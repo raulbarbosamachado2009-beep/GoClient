@@ -141,7 +141,7 @@ export function Sidebar() {
           );
         })}
         <Tile top={ITEMS.length * SLOT} label="Falar com a Havena" onPress={openHavena}>
-          <HavenaOrb size={64} />
+          <HavenaOrb size={64} ambient />
         </Tile>
       </View>
 

@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef } from 'react';
-import { Animated, StyleSheet, View, type ViewStyle } from 'react-native';
+import { Animated, Easing, Platform, StyleSheet, View, type ViewStyle } from 'react-native';
 import Svg, { Circle, Defs, Ellipse, LinearGradient, RadialGradient, Stop } from 'react-native-svg';
 
 /**
@@ -61,18 +61,46 @@ export function HavenaOrb({
   size = 144,
   state = 'idle',
   style,
+  ambient = false,
 }: {
   size?: number;
   state?: OrbState;
   style?: ViewStyle;
+  /**
+   * Só a deriva de repouso, sem JavaScript a cada quadro: animação CSS no navegador e
+   * driver nativo no Android. Para a bolinha que fica sempre na tela (barra de abas), que
+   * não pode disputar o processador com gestos como o da aba do Mapa.
+   */
+  ambient?: boolean;
 }) {
   const uid = useId().replace(/[^a-zA-Z0-9]/g, '');
   const pos = useRef(BLOBS.map(() => new Animated.ValueXY({ x: 0, y: 0 }))).current;
   const breath = useRef(new Animated.Value(1)).current;
   const target = useRef(MOTION[state]);
   target.current = MOTION[state];
+  const phases = useRef(BLOBS.map(() => new Animated.Value(0))).current;
+
+  // Modo ambiente no Android/iOS: cada mancha percorre sua órbita num laço do driver nativo.
+  useEffect(() => {
+    if (!ambient || Platform.OS === 'web') return;
+    const loops = BLOBS.map((b, i) =>
+      Animated.loop(
+        Animated.timing(phases[i] as Animated.Value, {
+          toValue: 1,
+          duration: orbitSeconds(b.w) * 1000,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        }),
+      ),
+    );
+    for (const l of loops) l.start();
+    return () => {
+      for (const l of loops) l.stop();
+    };
+  }, [ambient, phases]);
 
   useEffect(() => {
+    if (ambient) return;
     // Relógio próprio: o ritmo muda suavemente entre estados, sem saltos.
     const live = { ...MOTION.idle };
     let t = 0;
@@ -105,7 +133,7 @@ export function HavenaOrb({
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [pos, breath, size]);
+  }, [pos, breath, size, ambient]);
 
   return (
     <Animated.View
@@ -137,7 +165,9 @@ export function HavenaOrb({
             key={b.key}
             style={[
               StyleSheet.absoluteFill,
-              { transform: (pos[i] as Animated.ValueXY).getTranslateTransform() },
+              ambient
+                ? ambientMotion(b, i, size, phases[i] as Animated.Value)
+                : { transform: (pos[i] as Animated.ValueXY).getTranslateTransform() },
             ]}
           >
             <Svg width={size} height={size}>
@@ -161,4 +191,68 @@ export function HavenaOrb({
       </View>
     </Animated.View>
   );
+}
+
+/** Duração de uma volta da mancha no ritmo de repouso (mesma conta do relógio acima). */
+function orbitSeconds(w: number) {
+  return 2 / (Math.abs(w) * MOTION.idle.speed);
+}
+
+/** Pontos da órbita de repouso de uma mancha (deriva em volta do ponto de descanso). */
+function orbitPoints(b: (typeof BLOBS)[number], i: number, size: number, n = 12) {
+  const drift = MOTION.idle.drift;
+  return Array.from({ length: n + 1 }, (_, k) => {
+    const a = Math.sign(b.w) * ((2 * Math.PI * k) / n) + i * 1.7;
+    return {
+      x: Math.sin(a) * b.ox * size * drift,
+      y: Math.cos(a) * b.oy * size * drift,
+    };
+  });
+}
+
+/** Estilo da mancha no modo ambiente: keyframes CSS (Web) ou interpolação nativa. */
+function ambientMotion(
+  b: (typeof BLOBS)[number],
+  i: number,
+  size: number,
+  phase: Animated.Value,
+): object {
+  const pts = orbitPoints(b, i, size);
+  const n = pts.length - 1;
+  if (Platform.OS === 'web') {
+    const name = `goclientOrb_${b.key}_${Math.round(size)}`;
+    ensureKeyframes(
+      name,
+      pts
+        .map(
+          (p, k) =>
+            `${((100 * k) / n).toFixed(2)}%{transform:translate(${p.x.toFixed(2)}px,${p.y.toFixed(2)}px)}`,
+        )
+        .join(''),
+    );
+    return {
+      animationName: name,
+      animationDuration: `${orbitSeconds(b.w).toFixed(2)}s`,
+      animationIterationCount: 'infinite',
+      animationTimingFunction: 'linear',
+      willChange: 'transform',
+    };
+  }
+  const input = pts.map((_, k) => k / n);
+  return {
+    transform: [
+      { translateX: phase.interpolate({ inputRange: input, outputRange: pts.map((p) => p.x) }) },
+      { translateY: phase.interpolate({ inputRange: input, outputRange: pts.map((p) => p.y) }) },
+    ],
+  };
+}
+
+/** Web: registra (uma vez) os @keyframes de uma órbita na folha de estilos da página. */
+const registered = new Set<string>();
+function ensureKeyframes(name: string, body: string) {
+  if (registered.has(name) || typeof document === 'undefined') return;
+  registered.add(name);
+  const tag = document.createElement('style');
+  tag.textContent = `@keyframes ${name}{${body}}`;
+  document.head.appendChild(tag);
 }

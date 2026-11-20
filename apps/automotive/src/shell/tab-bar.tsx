@@ -182,7 +182,7 @@ export function TabBar() {
           <FontAwesome5 name="spotify" size={44} color={col} />
         );
       case 'havena':
-        return <HavenaOrb size={72} />;
+        return <HavenaOrb size={72} ambient />;
       case 'kyte':
         return <OutlineGlyph glyph="kyte" size={46} color={col} />;
       default:
