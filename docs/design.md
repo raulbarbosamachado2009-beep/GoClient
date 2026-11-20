@@ -138,3 +138,10 @@ Por decisão do produto, a interface usa **somente SF Pro** (Display e Text), ob
   Buscar) e o bloco "Sua Biblioteca" na grade (no lugar de "Piscina de Diamante", que segue na Biblioteca).
 - Buscar, Biblioteca e playlists têm botão de voltar (`MusicBack`) com destino explícito; a playlist volta
   para onde foi aberta (`?from=inicio|biblioteca`). A lupa da Biblioteca também leva a Buscar.
+
+## Escala em qualquer tela
+
+- O app é desenhado para 1600×900 e, em qualquer aparelho, é montado nesse tamanho e reduzido por igual
+  para caber na área útil (sem entalhe nem barras do sistema). Em telas mais largas que 16:9 (celular) a
+  área de desenho cresce para os lados; em mais altas (tablet), para baixo. Nunca é ampliado acima de 1.
+- Gestos que usam distâncias em pixels da tela (arrastar o mapa) dividem pela escala (`useFrameScale`).
