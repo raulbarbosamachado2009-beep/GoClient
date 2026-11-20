@@ -22,6 +22,10 @@ module.exports = ({ config }) => {
     plugins: [
       ...config.plugins,
       [
+        'expo-audio',
+        { microphonePermission: 'O GoClient usa o microfone para você conversar com a Havena.' },
+      ],
+      [
         'expo-location',
         {
           locationWhenInUsePermission:

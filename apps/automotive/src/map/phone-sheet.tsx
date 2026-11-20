@@ -19,7 +19,7 @@ import {
   View,
 } from 'react-native';
 import { TAB_BAR_HEIGHT } from '../layout/form-factor';
-import { CLIENTS, type MockClient, PRODUCTS, TODAY_ROUTE } from '../mocks/data';
+import { CLIENTS, type MockClient, TODAY_ROUTE } from '../mocks/data';
 import { useFrameScale } from '../preview/automotive-frame';
 import { OutlineGlyph } from '../shell/app-icons';
 import { layout, spacing, useColors } from '../theme';
@@ -262,17 +262,17 @@ export function ExploreSheet() {
       <View style={styles.shortcuts}>
         <Shortcut
           label="Clientes"
-          sub={`${CLIENTS.length} na carteira`}
+          sub="no Kyte"
           color="#0A84FF"
           icon={<OutlineGlyph glyph="clientes" size={46} color="#FFFFFF" />}
-          onPress={() => router.replace('/clientes')}
+          onPress={() => router.replace({ pathname: '/kyte', params: { secao: 'clientes' } })}
         />
         <Shortcut
           label="Produtos"
-          sub={`${PRODUCTS.length} itens`}
+          sub="no Kyte"
           color="#FF9F0A"
           icon={<OutlineGlyph glyph="produtos" size={46} color="#FFFFFF" />}
-          onPress={() => router.replace('/produtos')}
+          onPress={() => router.replace({ pathname: '/kyte', params: { secao: 'produtos' } })}
         />
         <Shortcut
           label="Rotas"

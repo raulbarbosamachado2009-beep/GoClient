@@ -3,6 +3,7 @@ import { ActivityIndicator, Image, ScrollView, StyleSheet, View } from 'react-na
 import { usePhone } from '../../../layout/form-factor';
 import { BROWSE, SHOWS } from '../../../mocks/data';
 import { useTrackSearch } from '../../../music/library';
+import { PhoneSearch } from '../../../music/phone';
 import { MusicBack, MusicSection } from '../../../music/ui';
 import { usePlay } from '../../../music/use-play';
 import { useSpotifyLive } from '../../../spotify/provider';
@@ -18,7 +19,7 @@ const WATCH = [
 ];
 
 /** Buscar (referência: imagem 7). */
-export default function Search() {
+function CarSearch() {
   const c = useColors();
   const play = usePlay();
   const live = useSpotifyLive();
@@ -177,4 +178,9 @@ function Strip({ phone, gap, children }: { phone: boolean; gap: number; children
       {children}
     </ScrollView>
   );
+}
+
+/** Celular em pé: versão no estilo do app do Spotify; multimídia: a de cima. */
+export default function Screen() {
+  return usePhone() ? <PhoneSearch /> : <CarSearch />;
 }

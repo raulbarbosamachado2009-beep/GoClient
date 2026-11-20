@@ -2,6 +2,7 @@ import { Slot, usePathname } from 'expo-router';
 import { type ComponentRef, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { TAB_BAR_HEIGHT, usePhone } from '../../layout/form-factor';
+import { SpotifyBar } from '../../music/phone';
 import { usePrototype } from '../../prototype/state';
 import { Sidebar } from '../../shell/sidebar';
 import { TabBar } from '../../shell/tab-bar';
@@ -46,7 +47,10 @@ export default function MainLayout() {
             </ScreenTransition>
           </BlurTargetProvider>
         </BlurArea>
-        <BlurTargetProvider value={content}>{phone ? <TabBar /> : <Sidebar />}</BlurTargetProvider>
+        <BlurTargetProvider value={content}>
+          {/* Na Música do celular, a barra de baixo vira a do Spotify (com volta ao app). */}
+          {phone ? section === 'musica' ? <SpotifyBar /> : <TabBar /> : <Sidebar />}
+        </BlurTargetProvider>
       </BlurArea>
       {overlay && (
         <BlurTargetProvider value={screen}>

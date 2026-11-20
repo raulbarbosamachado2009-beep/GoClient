@@ -33,6 +33,26 @@ está dito explicitamente.
 Pendente de validação com a Kyte: formato exato dos arquivos atuais, se há identificador estável
 dos registros nas exportações (necessário para vincular sem duplicar) e o plano necessário.
 
+### Kyte Web com a interface do GoClient (Automotive e celular)
+
+O GoClient abre o **sistema real** do Kyte Web (`https://web.kyteapp.com`) e troca a casca: título,
+subtítulo, busca e botões de seção (Clientes, Produtos, Rotas, Pedidos, Vendas, Finanças,
+Estatísticas, Catálogo, Ajustes do Kyte) são do app; a tela de cada seção é a do Kyte.
+Código: `apps/automotive/src/kyte/bridge.ts` (rotas e script injetado) e `src/app/(main)/kyte.tsx`.
+
+- **Rotas reais** lidas do código público do Kyte Web (20/11/2026): `/products`, `/customers`,
+  `/orders`, `/sales`, `/finances`, `/analytics`, `/catalog`, `/config`. "Rotas" é a tela do GoClient.
+- **Script injetado (Android):** fonte do sistema, cantos arredondados, tema escuro (inversão de
+  cores com fotos preservadas), esconde o chat flutuante e o **menu lateral do Kyte** (achado pelos
+  textos do menu, porque o Kyte usa classes CSS geradas, sem nomes fixos), avisa o app da tela
+  atual e do login, e repassa a busca do app para o campo de busca da tela aberta.
+- **Testado:** na página de login real do Kyte (tema e detecção de "não logado") e numa página de
+  teste com menu lateral (menu escondido, busca preenchida). **Falta confirmar** as telas logadas
+  (Produtos, Clientes...) no primeiro login de verdade: se o Kyte desenhar algo diferente do
+  esperado, o menu dele pode continuar aparecendo — o resto funciona igual.
+- **Web/Preview:** o navegador não deixa o app mexer na página de outro site; ali os botões só
+  trocam o endereço da janela, sem o visual adaptado.
+
 ## Spotify
 
 **O que foi encontrado:**

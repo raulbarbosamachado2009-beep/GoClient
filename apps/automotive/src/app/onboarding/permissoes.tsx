@@ -1,6 +1,9 @@
 import { useRouter } from 'expo-router';
+import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { usePhone } from '../../layout/form-factor';
+import { requestPermission } from '../../onboarding/permissions';
+import { PhonePermission } from '../../onboarding/phone';
 import { spacing, useColors } from '../../theme';
 import { Appear } from '../../ui/motion';
 import { Button, Icon, type IconName, Text } from '../../ui/primitives';
@@ -31,6 +34,39 @@ export default function Permissions() {
   const router = useRouter();
   const go = () => router.replace('/onboarding/login');
   const phone = usePhone();
+  const [step, setStep] = useState(0);
+
+  // Celular em pé: uma tela por permissão; "Continuar" abre o pop-up do próprio sistema.
+  if (phone) {
+    const steps = [
+      {
+        art: 'location' as const,
+        kind: 'location' as const,
+        title: 'Rotas até seus clientes',
+        text: 'Permita a localização para o GoClient mostrar onde você está e traçar o caminho até cada visita.',
+      },
+      {
+        art: 'microphone' as const,
+        kind: 'microphone' as const,
+        title: 'Converse com a Havena',
+        text: 'Permita o microfone para pedir rotas, consultar clientes e organizar o dia por voz.',
+      },
+    ];
+    const cur = steps[Math.min(step, steps.length - 1)] as (typeof steps)[number];
+    const next = () => (step + 1 < steps.length ? setStep(step + 1) : go());
+    return (
+      <PhonePermission
+        key={step}
+        art={cur.art}
+        title={cur.title}
+        text={cur.text}
+        onAllow={() => {
+          requestPermission(cur.kind).finally(next);
+        }}
+        onSkip={next}
+      />
+    );
+  }
 
   return (
     <View style={[styles.page, { backgroundColor: c.background }]}>

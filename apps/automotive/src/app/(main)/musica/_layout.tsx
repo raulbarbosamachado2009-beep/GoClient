@@ -1,8 +1,9 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { Slot, usePathname } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
-import { useBleed } from '../../../layout/form-factor';
+import { useBleed, usePhone } from '../../../layout/form-factor';
 import { SpotifyConnect } from '../../../music/connect';
+import { PhoneSpotifyLogin, SP_BG } from '../../../music/phone';
 import { usePrototype } from '../../../prototype/state';
 import { MiniPlayer } from '../../../shell/mini-player';
 import { useSpotify } from '../../../spotify/provider';
@@ -20,11 +21,31 @@ export default function MusicLayout() {
   const pathname = usePathname();
   const sp = useSpotify();
   const bleed = useBleed();
+  const phone = usePhone();
 
   // Enquanto lê as contas salvas, não pisca a tela de login.
   if (sp.enabled && !sp.ready) return null;
   if (!musicConnected)
-    return <SpotifyConnect real={sp.enabled} onConnect={() => setMusicConnected(true)} />;
+    return phone ? (
+      <PhoneSpotifyLogin real={sp.enabled} onConnect={() => setMusicConnected(true)} />
+    ) : (
+      <SpotifyConnect real={sp.enabled} onConnect={() => setMusicConnected(true)} />
+    );
+
+  // Celular em pé: fundo preto do Spotify, sem o degradê verde da multimídia.
+  if (phone)
+    return (
+      <View style={{ flex: 1, backgroundColor: SP_BG }}>
+        <View style={{ flex: 1 }}>
+          <ScreenTransition routeKey={pathname}>
+            <Slot />
+          </ScreenTransition>
+        </View>
+        <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
+          <MiniPlayer />
+        </View>
+      </View>
+    );
 
   return (
     <View style={{ flex: 1 }}>

@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, StyleSheet, View } from 'react-native';
 import { usePhone } from '../../layout/form-factor';
+import { PhoneWelcome } from '../../onboarding/phone';
 import { nativeDriver, spacing, useColors } from '../../theme';
 import { LogoMark } from '../../ui/brand';
 import { Appear } from '../../ui/motion';
@@ -70,6 +71,9 @@ export default function Welcome() {
       </View>
     );
   }
+
+  // Celular em pé: boas-vindas no estilo do app Apple TV.
+  if (phone) return <PhoneWelcome onContinue={() => router.push('/onboarding/permissoes')} />;
 
   return (
     <View style={[styles.page, { backgroundColor: c.background }]}>

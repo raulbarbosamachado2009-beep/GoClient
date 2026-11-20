@@ -4,6 +4,7 @@ import { type ReactNode, useRef, useState } from 'react';
 import { Animated, Image, type ImageSourcePropType, StyleSheet, View } from 'react-native';
 import { NO_FLEX, usePhone } from '../layout/form-factor';
 import { COVERS, NOW_PLAYING } from '../mocks/data';
+import { PhonePlayer } from '../music/phone-player';
 import { usePrototype } from '../prototype/state';
 import { layout, spacing } from '../theme';
 import { Cover } from '../ui/brand';
@@ -19,7 +20,7 @@ const GREEN = '#1ED760';
  * informações e um cabeçalho compacto fixo. A seta para baixo minimiza o player para o
  * rodapé da Música (imagem 8).
  */
-export default function Player() {
+function CarPlayer() {
   const router = useRouter();
   const { nowPlaying, upNext, playing, togglePlaying, next, previous } = usePrototype();
   const track = nowPlaying ?? NOW_PLAYING;
@@ -535,3 +536,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
 });
+
+/** Celular em pé: versão no estilo do app do Spotify; multimídia: a de cima. */
+export default function Screen() {
+  return usePhone() ? <PhonePlayer /> : <CarPlayer />;
+}

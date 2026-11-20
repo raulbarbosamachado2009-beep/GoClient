@@ -5,6 +5,7 @@ import { usePhone } from '../../../layout/form-factor';
 import type { MockPlaylist, MockShow } from '../../../mocks/data';
 import { AccountButton } from '../../../music/accounts';
 import { type Feature, useHomeData } from '../../../music/library';
+import { PhoneMusicHome } from '../../../music/phone';
 import { MusicChip, MusicSection, PlaylistTile } from '../../../music/ui';
 import { useOpenPlaylist, usePlay, usePlayContext } from '../../../music/use-play';
 import { spacing, useColors } from '../../../theme';
@@ -18,7 +19,7 @@ type Filter = 'Tudo' | 'Músicas' | 'Podcasts' | 'Audiolivros';
  * Início da Música (referência: imagem 3). Os filtros mudam o conteúdo exibido
  * (apenas no protótipo).
  */
-export default function MusicHome() {
+function CarMusicHome() {
   const router = useRouter();
   const [filter, setFilter] = useState<Filter>('Tudo');
   const showMusic = filter === 'Tudo' || filter === 'Músicas';
@@ -272,3 +273,8 @@ const styles = StyleSheet.create({
   vline: { width: 1.5, height: 72 },
   empty: { alignItems: 'center', gap: spacing[3], paddingVertical: 96 },
 });
+
+/** Celular em pé: versão no estilo do app do Spotify; multimídia: a de cima. */
+export default function Screen() {
+  return usePhone() ? <PhoneMusicHome /> : <CarMusicHome />;
+}

@@ -4,6 +4,7 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import { usePhone } from '../../../layout/form-factor';
 import { AccountButton } from '../../../music/accounts';
 import { useLibraryData } from '../../../music/library';
+import { PhoneLibrary } from '../../../music/phone';
 import { MusicBack, MusicChip, PlaylistTile } from '../../../music/ui';
 import { useOpenPlaylist, usePlayContext } from '../../../music/use-play';
 import { spacing, useColors } from '../../../theme';
@@ -26,7 +27,7 @@ const FILTERS: { label: Filter; icon: IconName }[] = [
  * Sua Biblioteca (referência: imagem 5). Os filtros mostram só o tipo escolhido; tocar
  * de novo no filtro ativo volta a mostrar tudo (apenas no protótipo).
  */
-export default function Library() {
+function CarLibrary() {
   const c = useColors();
   const fade = useEdgeFade(c.music.background);
   const router = useRouter();
@@ -195,3 +196,8 @@ const styles = StyleSheet.create({
   artist: { flexDirection: 'row', alignItems: 'center', gap: spacing[8], height: 112 },
   empty: { alignItems: 'center', gap: spacing[3], paddingVertical: 96 },
 });
+
+/** Celular em pé: versão no estilo do app do Spotify; multimídia: a de cima. */
+export default function Screen() {
+  return usePhone() ? <PhoneLibrary /> : <CarLibrary />;
+}
