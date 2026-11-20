@@ -23,7 +23,7 @@ const ORB_PHONE = 236;
 const BOTTOM_PHONE = 150;
 const CAPTION_PHONE = 620;
 /** Altura da faixa de desfoque no celular e quanto ela desce para sair da tela. */
-const HAZE_H = 1100;
+const HAZE_H = 1600;
 const OFFSCREEN_PHONE = BOTTOM_PHONE + ORB_PHONE + 60;
 
 /**
@@ -212,54 +212,64 @@ function FadingBlur({ enter }: { enter: Animated.Value }) {
 }
 
 /**
- * Celular: desfoque que nasce embaixo e esvanece para cima. Sem máscara em degradê (o Safari
- * do iPhone não aplica `backdrop-filter` junto com máscara, e o fundo ficava só parado):
- * faixas sobrepostas, cada vez mais baixas, que somam mais desfoque perto da borda de baixo.
+ * Celular: desfoque com escurecimento que cresce para baixo.
+ * Web: uma única camada de desfoque na tela toda (o Safari do iPhone não aplica desfoque com
+ * máscara e desenha camadas sobrepostas deslocadas dentro da moldura reduzida).
+ * Android: faixas de desfoque sobrepostas, mais fortes embaixo, subindo da borda.
  */
 const PHONE_BANDS = [
-  { h: 1, blur: 10, intensity: 12 },
-  { h: 0.75, blur: 14, intensity: 22 },
-  { h: 0.52, blur: 18, intensity: 34 },
-  { h: 0.32, blur: 22, intensity: 48 },
+  { h: 1, intensity: 12 },
+  { h: 0.75, intensity: 22 },
+  { h: 0.52, intensity: 34 },
+  { h: 0.32, intensity: 48 },
 ];
 
 function RisingBlur({ enter }: { enter: Animated.Value }) {
   const c = useColors();
   const target = useBlurTarget();
   const dark = c.mode === 'dark';
-  const shade = dark ? 'rgba(0,0,0,0.66)' : 'rgba(225,228,236,0.62)';
+  const shade = dark ? 'rgba(0,0,0,0.7)' : 'rgba(225,228,236,0.66)';
+  const web = Platform.OS === 'web';
   return (
     <Animated.View
       pointerEvents="none"
       style={[
-        styles.riseRegion,
-        {
-          transform: [
+        StyleSheet.absoluteFill,
+        web
+          ? // Web (inclusive Safari do iPhone): uma camada só, na tela inteira, que aparece
+            // suavemente. Camadas sobrepostas ou máscara saem deslocadas no Safari.
             {
-              translateY: enter.interpolate({
+              opacity: enter.interpolate({
                 inputRange: [0, 1],
-                outputRange: [HAZE_H, 0],
+                outputRange: [0, 1],
                 extrapolate: 'clamp',
               }),
+            }
+          : {
+              transform: [
+                {
+                  translateY: enter.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [HAZE_H, 0],
+                    extrapolate: 'clamp',
+                  }),
+                },
+              ],
             },
-          ],
-        },
       ]}
     >
-      {PHONE_BANDS.map((b) =>
-        Platform.OS === 'web' ? (
-          <View
-            key={b.h}
-            style={[
-              styles.hband,
-              {
-                height: `${b.h * 100}%`,
-                backdropFilter: `blur(${b.blur}px)`,
-                WebkitBackdropFilter: `blur(${b.blur}px)`,
-              } as object,
-            ]}
-          />
-        ) : (
+      {web ? (
+        <View
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              backdropFilter: 'blur(16px) saturate(120%)',
+              WebkitBackdropFilter: 'blur(16px) saturate(120%)',
+            } as object,
+          ]}
+        />
+      ) : (
+        PHONE_BANDS.map((b) => (
           <BlurView
             key={b.h}
             tint={dark ? 'dark' : 'light'}
@@ -268,11 +278,12 @@ function RisingBlur({ enter }: { enter: Animated.Value }) {
             blurMethod={target ? 'dimezisBlurView' : 'none'}
             style={[styles.hband, { height: `${b.h * 100}%` }]}
           />
-        ),
+        ))
       )}
+      {/* Escurece mais embaixo, onde ficam o círculo e a legenda. */}
       <LinearGradient
-        colors={['transparent', shade]}
-        locations={[0, 0.75]}
+        colors={['rgba(0,0,0,0)', shade]}
+        locations={[0.15, 0.85]}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
         style={StyleSheet.absoluteFill}
@@ -282,7 +293,6 @@ function RisingBlur({ enter }: { enter: Animated.Value }) {
 }
 
 const styles = StyleSheet.create({
-  riseRegion: { position: 'absolute', left: 0, right: 0, bottom: 0, height: HAZE_H },
   hband: { position: 'absolute', left: 0, right: 0, bottom: 0 },
   orbPhone: {
     position: 'absolute',

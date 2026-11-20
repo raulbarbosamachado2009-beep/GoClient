@@ -233,7 +233,7 @@ export function ExploreSheet() {
   return (
     <DragSheet
       initial={0}
-      collapsed={164}
+      collapsed={146}
       header={
         <View style={styles.searchRow}>
           <Tap
@@ -242,18 +242,18 @@ export function ExploreSheet() {
             onPress={() => router.replace('/clientes')}
             style={[styles.search, { backgroundColor: c.fill }]}
           >
-            <Icon name="search" size={34} color={c.textSecondary} />
+            <Icon name="search" size={30} color={c.textSecondary} />
             <Text variant="body" tone="secondary" style={{ flex: 1 }} numberOfLines={1}>
               Buscar cliente ou endereço
             </Text>
-            <Icon name="mic" size={34} color={c.textSecondary} />
+            <Icon name="mic" size={30} color={c.textSecondary} />
           </Tap>
           <Tap
             accessibilityRole="button"
             accessibilityLabel="Ajustes da conta"
             onPress={() => router.replace('/configuracoes')}
           >
-            <Avatar name="Raul Barbosa" size={88} colors={['#8E9BD6', '#6A76B8']} />
+            <Avatar name="Raul Barbosa" size={76} colors={['#8E9BD6', '#6A76B8']} />
           </Tap>
         </View>
       }
@@ -264,14 +264,14 @@ export function ExploreSheet() {
           label="Clientes"
           sub={`${CLIENTS.length} na carteira`}
           color="#0A84FF"
-          icon={<OutlineGlyph glyph="clientes" size={64} color="#FFFFFF" />}
+          icon={<OutlineGlyph glyph="clientes" size={46} color="#FFFFFF" />}
           onPress={() => router.replace('/clientes')}
         />
         <Shortcut
           label="Produtos"
           sub={`${PRODUCTS.length} itens`}
           color="#FF9F0A"
-          icon={<OutlineGlyph glyph="produtos" size={64} color="#FFFFFF" />}
+          icon={<OutlineGlyph glyph="produtos" size={46} color="#FFFFFF" />}
           onPress={() => router.replace('/produtos')}
         />
         <Shortcut
@@ -279,7 +279,7 @@ export function ExploreSheet() {
           sub="Montar"
           subTone="accent"
           color="#30D158"
-          icon={<OutlineGlyph glyph="rotas" size={64} color="#FFFFFF" />}
+          icon={<OutlineGlyph glyph="rotas" size={46} color="#FFFFFF" />}
           onPress={() => router.replace('/rotas')}
         />
       </View>
@@ -296,10 +296,10 @@ export function ExploreSheet() {
               style={styles.recent}
             >
               <View style={[styles.pin, { backgroundColor: '#FF375F' }]}>
-                <Icon name="location" size={36} color="#FFFFFF" />
+                <Icon name="location" size={30} color="#FFFFFF" />
               </View>
               <View style={{ flex: 1 }}>
-                <Text variant="title2" numberOfLines={1}>
+                <Text variant="headline" numberOfLines={1}>
                   {x.tradeName}
                 </Text>
                 <Text variant="callout" tone="secondary" numberOfLines={1}>
@@ -320,7 +320,7 @@ export function ExploreSheet() {
         style={[styles.guide, { backgroundColor: c.fill }]}
       >
         <View style={[styles.guideArt, { backgroundColor: '#0A84FF' }]}>
-          <OutlineGlyph glyph="rotas" size={96} color="#FFFFFF" />
+          <OutlineGlyph glyph="rotas" size={64} color="#FFFFFF" />
         </View>
         <Text variant="title2">Visitas de hoje</Text>
         <Text variant="callout" tone="secondary">
@@ -369,13 +369,13 @@ export function RouteSheet({
     <DragSheet
       key={client.id}
       initial={1}
-      collapsed={392}
+      collapsed={338}
       header={
         <View style={{ gap: spacing[5] }}>
           <View style={styles.titleRow}>
-            <Avatar name={client.name} size={96} square />
+            <Avatar name={client.name} size={80} square />
             <View style={{ flex: 1 }}>
-              <Text variant="title" numberOfLines={1}>
+              <Text variant="title2" numberOfLines={1}>
                 {client.tradeName}
               </Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[2] }}>
@@ -394,7 +394,7 @@ export function RouteSheet({
               onPress={onEnd}
               style={[styles.close, { backgroundColor: c.fill }]}
             >
-              <Icon name="close" size={36} color={c.textSecondary} />
+              <Icon name="close" size={30} color={c.textSecondary} />
             </Tap>
           </View>
 
@@ -414,8 +414,8 @@ export function RouteSheet({
               scaleTo={0.97}
               style={[styles.go, { backgroundColor: c.accent }]}
             >
-              <Icon name="navigate" size={40} color="#FFFFFF" />
-              <Text variant="title2" color="#FFFFFF">
+              <Icon name="navigate" size={34} color="#FFFFFF" />
+              <Text variant="headline" color="#FFFFFF">
                 Navegar
               </Text>
             </Tap>
@@ -462,10 +462,10 @@ function Section({ title, onPress }: { title: string; onPress?: () => void }) {
   const c = useColors();
   return (
     <Tap accessibilityRole="header" onPress={onPress} disabled={!onPress} style={styles.section}>
-      <Text variant="title" style={{ fontSize: 44, lineHeight: 52 }}>
+      <Text variant="title2" style={{ fontSize: 36, lineHeight: 44 }}>
         {title}
       </Text>
-      {onPress && <Icon name="chevron-forward" size={38} color={c.textSecondary} />}
+      {onPress && <Icon name="chevron-forward" size={32} color={c.textSecondary} />}
     </Tap>
   );
 }
@@ -519,8 +519,8 @@ function WideAction({
       scaleTo={0.98}
       style={[styles.wide, { backgroundColor: c.mode === 'dark' ? '#13243A' : '#E3EEFC' }]}
     >
-      <Icon name={icon} size={44} color={c.accent} />
-      <Text variant="title2" tone="accent" style={{ flex: 1, textAlign: 'center' }}>
+      <Icon name={icon} size={36} color={c.accent} />
+      <Text variant="headline" tone="accent" style={{ flex: 1, textAlign: 'center' }}>
         {label}
       </Text>
       <View style={{ width: 44 }} />
@@ -531,7 +531,7 @@ function WideAction({
 function Stat({ value, label }: { value: string; label: string }) {
   return (
     <View>
-      <Text variant="largeTitle" style={{ fontSize: 48, lineHeight: 54 }}>
+      <Text variant="largeTitle" style={{ fontSize: 40, lineHeight: 46 }}>
         {value}
       </Text>
       <Text variant="callout" tone="secondary">
@@ -558,7 +558,7 @@ function SquareButton({
       onPress={onPress}
       style={[styles.square, { backgroundColor: c.fill }]}
     >
-      <Icon name={icon} size={44} />
+      <Icon name={icon} size={38} />
     </Tap>
   );
 }
@@ -567,8 +567,8 @@ function Quick({ icon, label }: { icon: IconName; label: string }) {
   const c = useColors();
   return (
     <Tap accessibilityRole="button" style={[styles.quick, { backgroundColor: c.fill }]}>
-      <Icon name={icon} size={40} color={c.accent} />
-      <Text variant="subhead" tone="accent">
+      <Icon name={icon} size={34} color={c.accent} />
+      <Text variant="caption" tone="accent">
         {label}
       </Text>
     </Tap>
@@ -587,8 +587,6 @@ function Detail({ label, value, tone }: { label: string; value: string; tone?: '
     </View>
   );
 }
-
-export const ROUTE_SHEET_COLLAPSED = 392;
 
 const styles = StyleSheet.create({
   area: {
@@ -613,15 +611,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     overflow: 'hidden',
   },
-  grabArea: { height: 40, alignItems: 'center', justifyContent: 'center' },
-  grabber: { width: 88, height: 10, borderRadius: 5, opacity: 0.6 },
+  grabArea: { height: 36, alignItems: 'center', justifyContent: 'center' },
+  grabber: { width: 72, height: 8, borderRadius: 4, opacity: 0.6 },
   header: { paddingHorizontal: 28, paddingBottom: spacing[5] },
   content: { paddingHorizontal: 28, paddingBottom: 120, gap: spacing[4] },
   searchRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
   search: {
     flex: 1,
-    height: 96,
-    borderRadius: 48,
+    height: 80,
+    borderRadius: 40,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[3],
@@ -635,36 +633,36 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   shortcuts: { flexDirection: 'row', gap: spacing[6] },
-  shortcut: { alignItems: 'center', gap: 4, width: 180 },
+  shortcut: { alignItems: 'center', gap: 2, width: 140 },
   circle: {
-    width: 152,
-    height: 152,
-    borderRadius: 76,
+    width: 112,
+    height: 112,
+    borderRadius: 56,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing[2],
   },
-  card: { borderRadius: 32, overflow: 'hidden' },
-  sep: { height: StyleSheet.hairlineWidth, marginLeft: 128 },
+  card: { borderRadius: 28, overflow: 'hidden' },
+  sep: { height: StyleSheet.hairlineWidth, marginLeft: 108 },
   recent: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[5],
-    paddingVertical: spacing[5],
+    paddingVertical: spacing[4],
     paddingHorizontal: spacing[5],
   },
-  pin: { width: 80, height: 80, borderRadius: 40, alignItems: 'center', justifyContent: 'center' },
-  guide: { width: 340, borderRadius: 32, padding: spacing[5], gap: 4 },
+  pin: { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center' },
+  guide: { width: 280, borderRadius: 28, padding: spacing[4], gap: 2 },
   guideArt: {
-    height: 200,
-    borderRadius: 22,
+    height: 140,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing[4],
   },
   wide: {
-    height: 104,
-    borderRadius: 52,
+    height: 84,
+    borderRadius: 42,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: spacing[8],
@@ -673,9 +671,9 @@ const styles = StyleSheet.create({
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[5] },
   dot: { width: 18, height: 18, borderRadius: 9 },
   close: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -683,7 +681,7 @@ const styles = StyleSheet.create({
   actions: { flexDirection: 'row', gap: spacing[3] },
   go: {
     flex: 1,
-    height: 104,
+    height: 88,
     borderRadius: layout.radius.md,
     flexDirection: 'row',
     alignItems: 'center',
@@ -691,8 +689,8 @@ const styles = StyleSheet.create({
     gap: spacing[3],
   },
   square: {
-    width: 104,
-    height: 104,
+    width: 88,
+    height: 88,
     borderRadius: layout.radius.md,
     alignItems: 'center',
     justifyContent: 'center',
@@ -700,11 +698,11 @@ const styles = StyleSheet.create({
   quickRow: { flexDirection: 'row', gap: spacing[3] },
   quick: {
     flex: 1,
-    height: 112,
+    height: 96,
     borderRadius: layout.radius.md,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
+    gap: 2,
   },
   detail: { paddingVertical: spacing[4], paddingHorizontal: spacing[6], gap: 2 },
 });
