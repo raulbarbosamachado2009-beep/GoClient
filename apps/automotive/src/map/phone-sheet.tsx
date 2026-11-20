@@ -45,6 +45,8 @@ function Tap({ onPress, ...rest }: ComponentProps<typeof Touchable>) {
 }
 
 const NO_SELECT = (Platform.OS === 'web' ? { userSelect: 'none' } : null) as object;
+/** No navegador, põe a aba numa camada própria da GPU (o deslocamento não repinta o mapa). */
+const WILL_MOVE = (Platform.OS === 'web' ? { willChange: 'transform' } : null) as object;
 
 export function DragSheet({
   header,
@@ -61,6 +63,7 @@ export function DragSheet({
   const c = useColors();
   // Altura da tela do Mapa (a aba se adapta a qualquer celular).
   const [screen, setScreen] = useState(0);
+  const [width, setWidth] = useState(0);
   const [detent, setDetent] = useState<Detent>(initial);
   // Alturas medidas a partir da borda de baixo da tela (incluindo a distância até a barra
   // de abas enquanto a aba flutua).
@@ -84,11 +87,16 @@ export function DragSheet({
     setDetent(d);
     const to = heightsRef.current[d] ?? collapsed;
     current.current = to;
+    // Mola quase crítica, com a "resposta" (~0,45 s) da aba do Apple Maps: desliza contínua,
+    // herda a velocidade do dedo e assenta sem quicar.
     Animated.spring(h, {
       toValue: to,
       velocity,
-      damping: 30,
-      stiffness: 280,
+      stiffness: 190,
+      damping: 26,
+      mass: 1,
+      restDisplacementThreshold: 0.5,
+      restSpeedThreshold: 0.5,
       useNativeDriver: false,
     }).start();
   };
@@ -188,66 +196,93 @@ export function DragSheet({
   });
   // A altura conta a partir da borda de baixo da tela: desconta a distância quando flutua.
   const height = Animated.subtract(h, bottom);
+  // Fluidez: a aba inteira tem a altura da tela e só é *deslocada* (translateY); o conteúdo
+  // tem tamanho fixo e nunca é recalculado durante o gesto. O que muda de forma (margens,
+  // cantos, altura visível) é só uma moldura que recorta — barata de redesenhar.
+  const lift = Animated.subtract(screen, h);
+  const CONTENT_INSET = 20;
+  const shift = Animated.subtract(CONTENT_INSET, side);
 
   return (
     <DraggedContext.Provider value={dragged}>
       <View
         pointerEvents="box-none"
         style={styles.area}
-        onLayout={(e) => setScreen(Math.round(e.nativeEvent.layout.height))}
+        onLayout={(e) => {
+          setScreen(Math.round(e.nativeEvent.layout.height));
+          setWidth(Math.round(e.nativeEvent.layout.width));
+        }}
       >
-        {screen > 0 && (
+        {screen > 0 && width > 0 && (
           <Animated.View
-            style={[
-              styles.sheet,
-              {
-                left: side,
-                right: side,
-                bottom,
-                height,
-                borderTopLeftRadius: topRadius,
-                borderTopRightRadius: topRadius,
-                borderBottomLeftRadius: radius,
-                borderBottomRightRadius: radius,
-                borderColor: c.material.border,
-              },
-              NO_SELECT,
-            ]}
+            pointerEvents="box-none"
+            style={[styles.track, { height: screen, transform: [{ translateY: lift }] }, WILL_MOVE]}
           >
-            <Blur radius={44} tint={c.material.tint} />
-            <View
+            <Animated.View
               style={[
-                StyleSheet.absoluteFill,
+                styles.sheet,
                 {
-                  backgroundColor:
-                    c.mode === 'dark' ? 'rgba(30,30,32,0.9)' : 'rgba(246,246,248,0.92)',
+                  left: side,
+                  right: side,
+                  height,
+                  borderTopLeftRadius: topRadius,
+                  borderTopRightRadius: topRadius,
+                  borderBottomLeftRadius: radius,
+                  borderBottomRightRadius: radius,
+                  borderColor: c.material.border,
                 },
+                NO_SELECT,
               ]}
-            />
-            {/* Cabeçalho fixo: a busca nunca rola junto com a lista. */}
-            <View {...pan.panHandlers}>
-              <Touchable
-                accessibilityRole="button"
-                accessibilityLabel={detent === 2 ? 'Recolher aba' : 'Expandir aba'}
-                onPress={() => snap(detent === 2 ? 0 : ((detent + 1) as Detent))}
-                style={styles.grabArea}
-              >
-                <View style={[styles.grabber, { backgroundColor: c.textTertiary }]} />
-              </Touchable>
-              <View style={styles.header}>{header}</View>
-            </View>
-            <ScrollView
-              scrollEnabled={detent === 2}
-              showsVerticalScrollIndicator={detent === 2}
-              contentContainerStyle={styles.content}
-              scrollEventThrottle={16}
-              onScroll={(e) => {
-                scrollTop.current = e.nativeEvent.contentOffset.y;
-              }}
-              {...contentPan.panHandlers}
             >
-              {children}
-            </ScrollView>
+              {/* No navegador o desfoque por trás é refeito a cada quadro e engasga o gesto;
+                  como o fundo é quase opaco, lá usamos só a cor. */}
+              {Platform.OS !== 'web' && <Blur radius={44} tint={c.material.tint} />}
+              <View
+                style={[
+                  StyleSheet.absoluteFill,
+                  {
+                    backgroundColor:
+                      c.mode === 'dark' ? 'rgba(30,30,32,0.94)' : 'rgba(246,246,248,0.96)',
+                  },
+                ]}
+              />
+              <Animated.View
+                style={[
+                  styles.body,
+                  {
+                    width: width - CONTENT_INSET * 2,
+                    height: screen,
+                    transform: [{ translateX: shift }],
+                  },
+                ]}
+              >
+                {/* Cabeçalho fixo: a busca nunca rola junto com a lista. */}
+                <View {...pan.panHandlers}>
+                  <Touchable
+                    accessibilityRole="button"
+                    accessibilityLabel={detent === 2 ? 'Recolher aba' : 'Expandir aba'}
+                    onPress={() => snap(detent === 2 ? 0 : ((detent + 1) as Detent))}
+                    style={styles.grabArea}
+                  >
+                    <View style={[styles.grabber, { backgroundColor: c.textTertiary }]} />
+                  </Touchable>
+                  <View style={styles.header}>{header}</View>
+                </View>
+                <ScrollView
+                  style={{ flex: 1 }}
+                  scrollEnabled={detent === 2}
+                  showsVerticalScrollIndicator={detent === 2}
+                  contentContainerStyle={styles.content}
+                  scrollEventThrottle={16}
+                  onScroll={(e) => {
+                    scrollTop.current = e.nativeEvent.contentOffset.y;
+                  }}
+                  {...contentPan.panHandlers}
+                >
+                  {children}
+                </ScrollView>
+              </Animated.View>
+            </Animated.View>
           </Animated.View>
         )}
       </View>
@@ -631,12 +666,15 @@ const styles = StyleSheet.create({
     right: 0,
     top: 0,
     bottom: 0,
+    overflow: 'hidden',
   },
+  track: { position: 'absolute', left: 0, right: 0, top: 0 },
+  body: { position: 'absolute', top: 0, left: 0 },
   sheet: {
     position: 'absolute',
     left: 8,
     right: 8,
-    bottom: 0,
+    top: 0,
     borderTopLeftRadius: 48,
     borderTopRightRadius: 48,
     borderBottomLeftRadius: 28,

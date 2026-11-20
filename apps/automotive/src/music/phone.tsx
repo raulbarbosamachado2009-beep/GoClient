@@ -2,6 +2,7 @@ import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { useRouter } from 'expo-router';
 import { type ReactNode, useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { PHONE_SCROLL_END } from '../layout/form-factor';
 import { BROWSE, type MockPlaylist, type MockShow } from '../mocks/data';
 import { spacing } from '../theme';
 import { Cover, shade } from '../ui/brand';
@@ -497,7 +498,9 @@ export function PhoneLibrary() {
         </Text>
         <Icon name="grid-outline" size={40} color={W} />
       </View>
-      <ScrollView contentContainerStyle={{ paddingHorizontal: PAD, paddingBottom: 48, gap: 28 }}>
+      <ScrollView
+        contentContainerStyle={{ paddingHorizontal: PAD, paddingBottom: PHONE_SCROLL_END, gap: 28 }}
+      >
         {rows.map((r, i) => (
           <Appear key={r.key} delay={i * 25} distance={8}>
             {r.node}
@@ -600,7 +603,7 @@ function Pill({
 
 const styles = StyleSheet.create({
   fill: { flex: 1 },
-  page: { paddingHorizontal: PAD, paddingTop: 28, paddingBottom: 48, gap: 24 },
+  page: { paddingHorizontal: PAD, paddingTop: 28, paddingBottom: PHONE_SCROLL_END, gap: 24 },
   logoCircle: {
     width: 136,
     height: 136,

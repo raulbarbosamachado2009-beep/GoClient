@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { Slot, usePathname } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
-import { useBleed, usePhone } from '../../../layout/form-factor';
+import { TAB_BAR_HEIGHT, useBleed, usePhone } from '../../../layout/form-factor';
 import { SpotifyConnect } from '../../../music/connect';
 import { PhoneSpotifyLogin, SP_BG } from '../../../music/phone';
 import { usePrototype } from '../../../prototype/state';
@@ -35,13 +35,13 @@ export default function MusicLayout() {
   // Celular em pé: fundo preto do Spotify, sem o degradê verde da multimídia.
   if (phone)
     return (
+      // Tela cheia: o conteúdo vai até o rodapé, por trás da barra de abas flutuante; o player
+      // minimizado flutua logo acima dela.
       <View style={{ flex: 1, backgroundColor: SP_BG }}>
-        <View style={{ flex: 1 }}>
-          <ScreenTransition routeKey={pathname}>
-            <Slot />
-          </ScreenTransition>
-        </View>
-        <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
+        <ScreenTransition routeKey={pathname}>
+          <Slot />
+        </ScreenTransition>
+        <View pointerEvents="box-none" style={styles.phoneMini}>
           <MiniPlayer />
         </View>
       </View>
@@ -71,4 +71,5 @@ export default function MusicLayout() {
 
 const styles = StyleSheet.create({
   bleed: { position: 'absolute', top: 0, right: 0, bottom: 0 },
+  phoneMini: { position: 'absolute', left: 16, right: 16, bottom: TAB_BAR_HEIGHT + 4 },
 });

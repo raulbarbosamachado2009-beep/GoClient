@@ -2,7 +2,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, View } from 'react-native';
-import { useBleed, usePhone } from '../../../../layout/form-factor';
+import { PHONE_SCROLL_END, useBleed, usePhone } from '../../../../layout/form-factor';
 import { GENRES, type Genre } from '../../../../mocks/data';
 import { usePlaylistData } from '../../../../music/library';
 import { MusicBack, MusicChip } from '../../../../music/ui';
@@ -118,7 +118,7 @@ export default function PlaylistScreen() {
         keyExtractor={(t) => t.id}
         contentContainerStyle={{
           paddingHorizontal: 36,
-          paddingBottom: spacing[6],
+          paddingBottom: phone ? PHONE_SCROLL_END : spacing[6],
           gap: spacing[2],
         }}
         showsVerticalScrollIndicator={false}

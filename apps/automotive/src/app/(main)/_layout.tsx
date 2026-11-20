@@ -27,6 +27,8 @@ export default function MainLayout() {
   const phone = usePhone();
   // O Mapa passa por baixo da barra (lateral ou de abas), que é translúcida.
   const underBar = section === 'mapa';
+  // No celular, o Spotify também vai até o rodapé, por trás da barra de abas flutuante.
+  const fullHeight = underBar || section === 'musica';
   return (
     <View style={[styles.root, { backgroundColor: c.background }]}>
       <BlurArea targetRef={screen} style={StyleSheet.absoluteFill}>
@@ -36,7 +38,7 @@ export default function MainLayout() {
           style={{
             flex: 1,
             marginLeft: phone || underBar ? 0 : layout.sidebarWidth,
-            marginBottom: phone && !underBar ? TAB_BAR_HEIGHT : 0,
+            marginBottom: phone && !fullHeight ? TAB_BAR_HEIGHT : 0,
           }}
         >
           {/* Dentro das telas não há área definida: cada tela define a sua (ex.: o Mapa). */}

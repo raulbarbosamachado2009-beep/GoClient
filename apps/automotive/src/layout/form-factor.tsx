@@ -16,6 +16,11 @@ export type FormFactor = 'car' | 'phone';
 export const PHONE_WIDTH = 720;
 /** Altura da barra de abas do celular (sem a área de gestos do sistema). */
 export const TAB_BAR_HEIGHT = 132;
+/**
+ * Espaço livre no fim das listas das telas que vão até o rodapé (atrás da barra flutuante e
+ * do player minimizado), para o último item ainda poder ser rolado até ficar visível.
+ */
+export const PHONE_SCROLL_END = TAB_BAR_HEIGHT + 96 + 72;
 
 const FormFactorContext = createContext<FormFactor>('car');
 export const FormFactorProvider = FormFactorContext.Provider;

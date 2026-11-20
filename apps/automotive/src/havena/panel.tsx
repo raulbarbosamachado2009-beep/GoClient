@@ -217,6 +217,18 @@ function FadingBlur({ enter }: { enter: Animated.Value }) {
  * máscara e desenha camadas sobrepostas deslocadas dentro da moldura reduzida).
  * Android: faixas de desfoque sobrepostas, mais fortes embaixo, subindo da borda.
  */
+/** Web: faixas do desfoque do celular (altura relativa à tela e raio de cada uma). */
+const WEB_BANDS = [
+  { h: 1, blur: 1, sat: 102 },
+  { h: 0.86, blur: 2, sat: 104 },
+  { h: 0.72, blur: 3, sat: 106 },
+  { h: 0.6, blur: 4, sat: 108 },
+  { h: 0.48, blur: 5.5, sat: 110 },
+  { h: 0.38, blur: 7, sat: 112 },
+  { h: 0.28, blur: 8, sat: 114 },
+  { h: 0.18, blur: 9, sat: 116 },
+];
+
 const PHONE_BANDS = [
   { h: 1, intensity: 12 },
   { h: 0.75, intensity: 22 },
@@ -258,32 +270,36 @@ function RisingBlur({ enter }: { enter: Animated.Value }) {
             },
       ]}
     >
-      {web ? (
-        <View
-          style={[
-            StyleSheet.absoluteFill,
-            {
-              backdropFilter: 'blur(16px) saturate(120%)',
-              WebkitBackdropFilter: 'blur(16px) saturate(120%)',
-            } as object,
-          ]}
-        />
-      ) : (
-        PHONE_BANDS.map((b) => (
-          <BlurView
-            key={b.h}
-            tint={dark ? 'dark' : 'light'}
-            intensity={b.intensity}
-            blurTarget={target ?? undefined}
-            blurMethod={target ? 'dimezisBlurView' : 'none'}
-            style={[styles.hband, { height: `${b.h * 100}%` }]}
-          />
-        ))
-      )}
+      {web
+        ? // Faixas presas no rodapé, cada uma um pouco mais curta e mais desfocada: os
+          // desfoques se somam embaixo e quase somem em cima. Sem máscara e sem deslocamento
+          // nas faixas (o Safari do iPhone erra os dois); só a opacidade do conjunto anima.
+          WEB_BANDS.map((b) => {
+            const f = `blur(${b.blur}px) saturate(${b.sat}%)`;
+            return (
+              <View
+                key={b.h}
+                style={[
+                  styles.hband,
+                  { height: `${b.h * 100}%`, backdropFilter: f, WebkitBackdropFilter: f } as object,
+                ]}
+              />
+            );
+          })
+        : PHONE_BANDS.map((b) => (
+            <BlurView
+              key={b.h}
+              tint={dark ? 'dark' : 'light'}
+              intensity={b.intensity}
+              blurTarget={target ?? undefined}
+              blurMethod={target ? 'dimezisBlurView' : 'none'}
+              style={[styles.hband, { height: `${b.h * 100}%` }]}
+            />
+          ))}
       {/* Escurece mais embaixo, onde ficam o círculo e a legenda. */}
       <LinearGradient
         colors={['rgba(0,0,0,0)', shade]}
-        locations={[0.15, 0.85]}
+        locations={[0.25, 0.95]}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
         style={StyleSheet.absoluteFill}

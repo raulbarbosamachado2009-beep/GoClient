@@ -49,36 +49,34 @@ export default function Login() {
             <Button label="Esqueci minha senha" variant="plain" size="md" onPress={() => {}} />
           </Appear>
 
-          <Appear
-            delay={300}
-            distance={18}
-            style={[styles.divider, phone && { flexDirection: 'row', alignSelf: 'stretch' }]}
-          >
-            <View style={[styles.line, { backgroundColor: c.separator }, phone && HLINE]} />
-            <Text variant="subhead" tone="secondary">
-              ou
-            </Text>
-            <View style={[styles.line, { backgroundColor: c.separator }, phone && HLINE]} />
-          </Appear>
+          {/* "Entrar com o celular" (QR) só faz sentido na central multimídia: no celular,
+              o login é direto. */}
+          {!phone && (
+            <Appear delay={300} distance={18} style={styles.divider}>
+              <View style={[styles.line, { backgroundColor: c.separator }]} />
+              <Text variant="subhead" tone="secondary">
+                ou
+              </Text>
+              <View style={[styles.line, { backgroundColor: c.separator }]} />
+            </Appear>
+          )}
 
-          <Appear
-            delay={380}
-            distance={18}
-            style={[styles.side, { alignItems: 'center' }, phone && NO_FLEX]}
-          >
-            <View style={styles.qr}>
-              <MockQr size={196} />
-            </View>
-            <Text variant="headline" style={{ textAlign: 'center' }}>
-              Entrar com o celular
-            </Text>
-            <Text variant="callout" tone="secondary" style={{ textAlign: 'center' }}>
-              Aponte a câmera do celular para o código, ou abra o GoClient no celular e digite
-            </Text>
-            <Text variant="title2" style={{ letterSpacing: 6 }}>
-              GK7 · 42Q
-            </Text>
-          </Appear>
+          {!phone && (
+            <Appear delay={380} distance={18} style={[styles.side, { alignItems: 'center' }]}>
+              <View style={styles.qr}>
+                <MockQr size={196} />
+              </View>
+              <Text variant="headline" style={{ textAlign: 'center' }}>
+                Entrar com o celular
+              </Text>
+              <Text variant="callout" tone="secondary" style={{ textAlign: 'center' }}>
+                Aponte a câmera do celular para o código, ou abra o GoClient no celular e digite
+              </Text>
+              <Text variant="title2" style={{ letterSpacing: 6 }}>
+                GK7 · 42Q
+              </Text>
+            </Appear>
+          )}
         </View>
       </View>
     </View>
@@ -160,8 +158,6 @@ function MockQr({ size }: { size: number }) {
     </Svg>
   );
 }
-
-const HLINE = { width: undefined, height: StyleSheet.hairlineWidth, flex: 1 } as const;
 
 /** Celular em pé: a coluna ocupa a largura toda, com margens. */
 const PHONE_COLUMN = { width: '100%', paddingHorizontal: 40 } as const;
