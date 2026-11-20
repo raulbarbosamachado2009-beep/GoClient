@@ -127,3 +127,15 @@ Library nos apps Expo e Playwright na Web).
 
 Se o módulo for sincronizável: adicione a coleção em `SYNC_COLLECTIONS`
 (`packages/core/src/sync.ts`) e a tabela em `TABLES` (`apps/api/src/sync/service.ts`).
+
+## APK Android (GoClient Automotive)
+
+- Cada envio para a `main` que mexe em `apps/automotive`, `packages` ou no lockfile dispara o workflow
+  `.github/workflows/android-apk.yml`: `expo prebuild` + `gradlew assembleRelease` (arm64-v8a e
+  armeabi-v7a), publicado em Releases como `automotive-latest` → `GoClient-Automotive.apk`.
+  Também dá para rodar manualmente na aba Actions ("Run workflow").
+- Assinatura: chave de depuração padrão do modelo do Expo (igual em toda compilação, então atualizar =
+  instalar por cima). Uso familiar; não serve para a Play Store.
+- Compilação local validada em 19/11/2026 (JDK 21, SDK 37, NDK 27.1). Com pouca memória, use
+  `--max-workers=2 -Pkotlin.compiler.execution.strategy=in-process`.
+- Atualizações pelo ar (EAS Update) ficam para quando houver conta Expo.
