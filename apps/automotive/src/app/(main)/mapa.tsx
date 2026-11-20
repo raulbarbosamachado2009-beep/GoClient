@@ -13,6 +13,7 @@ import {
 } from '../../map/google';
 import { GoogleMap, type MapPin } from '../../map/google-map';
 import { PannableMap } from '../../map/pannable-map';
+import { ExploreSheet, RouteSheet, type TripInfo } from '../../map/phone-sheet';
 import { useCarPosition, useClientPlaces, useLiveRoute } from '../../map/use-live-map';
 import { CLIENT_FOCUS, DAY_FOCUS, type MapMode, USER } from '../../map/world';
 import { CLIENTS, type MockClient, TODAY_ROUTE } from '../../mocks/data';
@@ -98,6 +99,85 @@ export default function MapScreen() {
   };
 
   const mapArea = useRef<ComponentRef<typeof View>>(null);
+  const router = useRouter();
+  // Dados da viagem: da rota real (Google) ou os de exemplo do protótipo.
+  const liveTime = live && route ? formatDuration(route.durationSeconds) : null;
+  const trip: TripInfo =
+    live && route && liveTime
+      ? {
+          arrival: formatArrival(route.durationSeconds),
+          duration: liveTime,
+          km: formatKm(route.distanceMeters),
+        }
+      : mode === 'day'
+        ? { arrival: '11:58', duration: { value: '1:12', unit: 'hrs' }, km: '24,6' }
+        : { arrival: '09:59', duration: { value: '18', unit: 'min' }, km: '7,4' };
+  const stopLabel =
+    mode === 'day'
+      ? `Parada ${wrap(stop, routeClients.length) + 1} de ${routeClients.length}`
+      : undefined;
+
+  // Celular em pé: mapa aberto + aba puxável (estilo Apple Maps) no lugar dos cartões.
+  if (phone) {
+    return (
+      <View style={{ flex: 1 }}>
+        <BlurArea targetRef={mapArea} style={StyleSheet.absoluteFill}>
+          {live ? (
+            <GoogleMap
+              dark={c.mode === 'dark'}
+              user={position}
+              path={route?.path ?? []}
+              pins={pins}
+            />
+          ) : (
+            <PannableMap mode={mode} focus={{ x: target.x, y: target.y + 220 }} />
+          )}
+        </BlurArea>
+        <BlurTargetProvider value={mapArea}>
+          {mode !== 'explore' &&
+            (live ? (
+              <LiveGuidance
+                to={client?.name ?? ''}
+                status={
+                  !position
+                    ? 'Aguardando o GPS…'
+                    : routeError
+                      ? routeError
+                      : !route
+                        ? 'Calculando o caminho…'
+                        : 'Navegação com voz pelo Google Maps'
+                }
+              />
+            ) : (
+              <Guidance />
+            ))}
+          {client ? (
+            <RouteSheet
+              client={client}
+              stopLabel={stopLabel}
+              trip={trip}
+              onNext={mode === 'day' ? () => setStop((s) => s + 1) : undefined}
+              onPrevious={mode === 'day' ? () => setStop((s) => s - 1) : undefined}
+              onNavigate={() =>
+                mode === 'explore'
+                  ? router.replace({
+                      pathname: '/mapa',
+                      params: { rota: 'cliente', id: client.id },
+                    })
+                  : live
+                    ? navigate()
+                    : undefined
+              }
+              onEnd={() => router.replace('/mapa')}
+            />
+          ) : (
+            <ExploreSheet />
+          )}
+        </BlurTargetProvider>
+      </View>
+    );
+  }
+
   return (
     <View style={{ flex: 1 }}>
       {/* O foco é deslocado para a direita para que o conteúdo fique centrado na área livre à esquerda do cartão. */}

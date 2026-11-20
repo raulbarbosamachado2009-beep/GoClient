@@ -165,8 +165,19 @@ O app do Automotive tem dois formatos, escolhidos pela orientação da tela
   real do aparelho (≈0,55× num celular comum). Assim os mesmos componentes ficam do tamanho
   usual de apps de celular, sem uma segunda biblioteca de interface.
 
-No celular, a barra lateral vira **barra de abas**: Mapa · Clientes · Havena (orbe no centro) ·
-Música · Mais (Produtos, Rotas, Kyte, Ajustes). As rotas são as mesmas nos dois formatos, então
+No celular, a barra lateral vira **barra de abas**: Mapa · Spotify · Havena (orbe no centro) ·
+Kyte · Ajustes. Clientes, Produtos e Rotas abrem pela aba puxável do Mapa.
+
+**Mapa no celular (referência: Apple Maps):** mapa aberto e uma aba puxável com três alturas
+(recolhida = só a busca; média; cheia). Explorando: busca, Atalhos (Clientes, Produtos, Rotas),
+Recentes, Rota de hoje. Com destino escolhido, a mesma aba mostra o cliente, chegada/tempo/km,
+Navegar, anterior/próximo (rota do dia), ações rápidas, pedido e detalhes. Arrasta-se pela alça
+e pelo cabeçalho; com a aba cheia, puxar a lista para baixo no topo recolhe. Botões dentro da
+aba ignoram o toque que encerra um arrasto. Código: `src/map/phone-sheet.tsx`.
+
+**Havena no celular:** o círculo sobe de baixo e fica embaixo, centrado (236), com a legenda em
+cima. O desfoque nasce embaixo e esvanece para cima com faixas sobrepostas (sem máscara: o
+Safari do iPhone não aplica `backdrop-filter` junto com `mask-image`). As rotas são as mesmas nos dois formatos, então
 girar o celular mantém a tela, a música tocando e o resto do estado.
 
 Adaptações em pé: cartão do Mapa vira painel acima das abas; fichas (cliente, produto) viram
