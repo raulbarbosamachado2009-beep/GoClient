@@ -70,11 +70,14 @@ jobs:
           [ -n "$EXPO_PUBLIC_SPOTIFY_CLIENT_ID" ] && echo "Spotify: com Client ID" || echo "Spotify: demonstração (sem segredo SPOTIFY_CLIENT_ID)"
 
       # Tenta até 3 vezes: às vezes o portal de plugins do Gradle falha no download.
+      # R8 (encolher/ofuscar o código) desligado: no modelo do Expo 58 ele vem ligado e
+      # quebrava o banco interno do WorkManager (usado pelo react-native-maps), fechando
+      # o app logo ao abrir. Para um app de uso familiar o ganho de tamanho não compensa.
       - name: Compilar APK
         working-directory: apps/automotive/android
         run: |
           for i in 1 2 3; do
-            ./gradlew assembleRelease -PreactNativeArchitectures=${{ startsWith(github.ref, 'refs/heads/debug/') && 'x86_64' || 'arm64-v8a,armeabi-v7a' }} && exit 0
+            ./gradlew assembleRelease -Pandroid.enableMinifyInReleaseBuilds=false -PreactNativeArchitectures=${{ startsWith(github.ref, 'refs/heads/debug/') && 'x86_64' || 'arm64-v8a,armeabi-v7a' }} && exit 0
             echo "Tentativa $i falhou; tentando de novo em 20 s"; sleep 20
           done
           exit 1
