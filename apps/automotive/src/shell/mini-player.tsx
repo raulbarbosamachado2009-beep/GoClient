@@ -12,7 +12,7 @@ import { IconButton, Text, Touchable } from '../ui/primitives';
  */
 export function MiniPlayer() {
   const c = useColors();
-  const { nowPlaying } = usePrototype();
+  const { nowPlaying, playing, togglePlaying } = usePrototype();
   const router = useRouter();
   const enter = useRef(new Animated.Value(0)).current;
 
@@ -31,47 +31,57 @@ export function MiniPlayer() {
 
   if (!nowPlaying) return null;
 
+  // Duas camadas: a entrada anima no driver nativo e a cor no JavaScript. Misturar os
+  // dois na mesma view fecha o app no Android.
   return (
     <Animated.View
-      style={[
-        styles.bar,
-        { backgroundColor: tint },
-        {
-          opacity: enter,
-          transform: [
-            { translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) },
-          ],
-        },
-      ]}
+      style={{
+        opacity: enter,
+        transform: [
+          { translateY: enter.interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) },
+        ],
+      }}
     >
-      <Touchable
-        accessibilityRole="button"
-        accessibilityLabel={`Abrir player: ${nowPlaying.title}`}
-        onPress={() => router.push('/player')}
-        scaleTo={0.985}
-        style={styles.open}
-      >
-        <Cover color={nowPlaying.cover} image={nowPlaying.image} size={72} radius={8} />
-        <View style={{ flex: 1 }}>
-          <Text variant="bodyStrong" color="#FFFFFF" numberOfLines={1}>
-            {nowPlaying.title}
-          </Text>
-          <Text variant="caption" color="rgba(255,255,255,0.7)" numberOfLines={1}>
-            {nowPlaying.artists}
-          </Text>
+      <Animated.View style={[styles.bar, { backgroundColor: tint }]}>
+        <Touchable
+          accessibilityRole="button"
+          accessibilityLabel={`Abrir player: ${nowPlaying.title}`}
+          onPress={() => router.push('/player')}
+          scaleTo={0.985}
+          style={styles.open}
+        >
+          <Cover color={nowPlaying.cover} image={nowPlaying.image} size={72} radius={8} />
+          <View style={{ flex: 1 }}>
+            <Text variant="bodyStrong" color="#FFFFFF" numberOfLines={1}>
+              {nowPlaying.title}
+            </Text>
+            <Text variant="caption" color="rgba(255,255,255,0.7)" numberOfLines={1}>
+              {nowPlaying.artists}
+            </Text>
+          </View>
+        </Touchable>
+        <IconButton
+          icon="phone-portrait-outline"
+          color="#FFFFFF"
+          accessibilityLabel="Dispositivos"
+        />
+        <IconButton
+          icon="checkmark-circle"
+          iconSize={40}
+          color={c.music.accent}
+          accessibilityLabel="Salva na biblioteca"
+        />
+        <IconButton
+          icon={playing ? 'pause' : 'play'}
+          iconSize={40}
+          color="#FFFFFF"
+          accessibilityLabel={playing ? 'Pausar' : 'Tocar'}
+          onPress={togglePlaying}
+        />
+        <View style={styles.track}>
+          <View style={styles.fill} />
         </View>
-      </Touchable>
-      <IconButton icon="phone-portrait-outline" color="#FFFFFF" accessibilityLabel="Dispositivos" />
-      <IconButton
-        icon="checkmark-circle"
-        iconSize={40}
-        color={c.music.accent}
-        accessibilityLabel="Salva na biblioteca"
-      />
-      <IconButton icon="pause" iconSize={40} color="#FFFFFF" accessibilityLabel="Pausar" />
-      <View style={styles.track}>
-        <View style={styles.fill} />
-      </View>
+      </Animated.View>
     </Animated.View>
   );
 }
