@@ -8,7 +8,7 @@ name: Android APK
 
 on:
   push:
-    branches: [main]
+    branches: [main, "debug/**"]
     paths:
       - "apps/automotive/**"
       - "packages/**"
@@ -20,7 +20,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: android-apk
+  group: android-apk-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -74,7 +74,7 @@ jobs:
         working-directory: apps/automotive/android
         run: |
           for i in 1 2 3; do
-            ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a,armeabi-v7a && exit 0
+            ./gradlew assembleRelease -PreactNativeArchitectures=${{ startsWith(github.ref, 'refs/heads/debug/') && 'x86_64' || 'arm64-v8a,armeabi-v7a' }} && exit 0
             echo "Tentativa $i falhou; tentando de novo em 20 s"; sleep 20
           done
           exit 1
@@ -90,11 +90,13 @@ jobs:
           path: out/GoClient-Automotive.apk
 
       - name: Mover a etiqueta automotive-latest para este commit
+        if: github.ref == 'refs/heads/main'
         run: |
           git tag -f automotive-latest
           git push -f origin automotive-latest
 
       - uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main'
         with:
           tag_name: automotive-latest
           name: GoClient Automotive (mais recente)
