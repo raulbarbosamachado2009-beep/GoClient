@@ -1,10 +1,11 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { COVERS, PLAYLISTS, SHOWS } from '../../../mocks/data';
+import type { MockPlaylist, MockShow } from '../../../mocks/data';
 import { AccountButton } from '../../../music/accounts';
+import { type Feature, useHomeData } from '../../../music/library';
 import { MusicChip, MusicSection, PlaylistTile } from '../../../music/ui';
-import { useOpenPlaylist, usePlay } from '../../../music/use-play';
+import { useOpenPlaylist, usePlay, usePlayContext } from '../../../music/use-play';
 import { spacing, useColors } from '../../../theme';
 import { Cover } from '../../../ui/brand';
 import { Appear } from '../../../ui/motion';
@@ -21,6 +22,7 @@ export default function MusicHome() {
   const [filter, setFilter] = useState<Filter>('Tudo');
   const showMusic = filter === 'Tudo' || filter === 'Músicas';
   const showShows = filter === 'Tudo' || filter === 'Podcasts';
+  const home = useHomeData();
 
   return (
     <ScrollView contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
@@ -55,20 +57,24 @@ export default function MusicHome() {
       </View>
 
       <View key={filter} style={{ gap: spacing[6] }}>
-        {showMusic && <MusicGrid />}
-        {showMusic && <NewRelease />}
-        {showShows && <Shows big={filter === 'Podcasts'} />}
+        {showMusic && <MusicGrid playlists={home.playlists} live={home.live} />}
+        {showMusic && home.feature && <NewRelease feature={home.feature} />}
+        {showShows && home.shows.length > 0 && (
+          <Shows shows={home.shows} big={filter === 'Podcasts'} />
+        )}
         {filter === 'Audiolivros' && <EmptyState />}
       </View>
     </ScrollView>
   );
 }
 
-function MusicGrid() {
+function MusicGrid({ playlists, live }: { playlists: MockPlaylist[]; live: boolean }) {
   const open = useOpenPlaylist();
   const router = useRouter();
-  // "Sua Biblioteca" ocupa o lugar de "Piscina de Diamante" (que continua na Biblioteca).
-  const tiles = PLAYLISTS.slice(0, 6).map((p) => (p.id === 'l2' ? LIBRARY : p));
+  // "Sua Biblioteca" ocupa o 2º bloco (no protótipo, o lugar de "Piscina de Diamante").
+  const tiles = live
+    ? [playlists[0], LIBRARY, ...playlists.slice(1, 5)].filter((p): p is MockPlaylist => !!p)
+    : playlists.slice(0, 6).map((p) => (p.id === 'l2' ? LIBRARY : p));
   return (
     <View style={styles.grid}>
       {tiles.map((p, i) => (
@@ -99,9 +105,9 @@ function MusicGrid() {
 }
 
 /** Marcador do bloco "Sua Biblioteca" na grade do Início. */
-const LIBRARY = { id: 'biblioteca' } as (typeof PLAYLISTS)[number];
+const LIBRARY = { id: 'biblioteca' } as MockPlaylist;
 
-function NewRelease() {
+function NewRelease({ feature }: { feature: Feature }) {
   const c = useColors();
   const play = usePlay();
   return (
@@ -109,23 +115,25 @@ function NewRelease() {
       <View
         style={[styles.release, { backgroundColor: c.music.card, borderColor: c.music.cardBorder }]}
       >
-        <Cover color="#8A7A55" image={COVERS.piscina} size={124} radius={62} />
+        <Cover color="#4A3A2A" image={feature.image} size={124} radius={62} />
         <View style={{ width: 400 }}>
           <Text variant="callout" tone="secondary">
-            Novo lançamento de
+            {feature.eyebrow}
           </Text>
           <Text variant="largeTitle" numberOfLines={1} style={{ fontSize: 58, lineHeight: 66 }}>
-            MC Kevin
+            {feature.headline}
           </Text>
         </View>
-        <Cover color="#4A3A2A" image={COVERS.donos} size={136} radius={8} />
+        <Cover color="#4A3A2A" image={feature.image} size={136} radius={8} />
         <View style={{ flex: 1 }}>
           <Text variant="callout" tone="secondary">
-            Single
+            {feature.track ? 'Música' : 'Single'}
           </Text>
-          <Text variant="title2">Donos da Capital</Text>
+          <Text variant="title2" numberOfLines={1}>
+            {feature.title}
+          </Text>
           <Text variant="callout" tone="secondary" numberOfLines={1}>
-            MC Kevin, MC Ryan SP, MC GP, MC Lele JP, MC IG
+            {feature.subtitle}
           </Text>
         </View>
         <IconButton
@@ -134,7 +142,7 @@ function NewRelease() {
           size={92}
           iconSize={44}
           accessibilityLabel="Tocar"
-          onPress={() => play('t2')}
+          onPress={() => play(feature.trackId, undefined, undefined, feature.track)}
         />
         <View style={[styles.vline, { backgroundColor: c.music.cardBorder }]} />
         <IconButton icon="ellipsis-horizontal" iconSize={40} accessibilityLabel="Mais opções" />
@@ -143,22 +151,23 @@ function NewRelease() {
   );
 }
 
-function Shows({ big }: { big: boolean }) {
-  const play = usePlay();
+function Shows({ shows, big }: { shows: MockShow[]; big: boolean }) {
+  const playContext = usePlayContext();
   return (
     <>
       <MusicSection title={big ? 'Seus podcasts' : 'Seus programas'} action="Ver mais" />
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing[5] }}>
-        {SHOWS.map((s, i) => (
+        {shows.map((s, i) => (
           <Appear
             key={s.id}
             delay={300 + i * 50}
             distance={14}
             style={{ width: big ? '48.9%' : '23.6%' }}
           >
-            <Touchable accessibilityRole="button" onPress={() => play()} scaleTo={0.97}>
+            <Touchable accessibilityRole="button" onPress={() => playContext(s.uri)} scaleTo={0.97}>
               <Cover
                 color={s.cover}
+                image={s.image}
                 size={big ? 704 : 338}
                 height={big ? 260 : 190}
                 radius={14}

@@ -1,7 +1,18 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { type ComponentRef, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
+import { GOOGLE_MAPS_ENABLED } from '../../integrations/env';
+import {
+  formatArrival,
+  formatDuration,
+  formatKm,
+  type LatLng,
+  type LiveRoute,
+  openInGoogleMaps,
+} from '../../map/google';
+import { GoogleMap, type MapPin } from '../../map/google-map';
 import { PannableMap } from '../../map/pannable-map';
+import { useCarPosition, useClientPlaces, useLiveRoute } from '../../map/use-live-map';
 import { CLIENT_FOCUS, DAY_FOCUS, type MapMode, USER } from '../../map/world';
 import { CLIENTS, type MockClient, TODAY_ROUTE } from '../../mocks/data';
 import { layout, spacing, useColors } from '../../theme';
@@ -28,25 +39,102 @@ export default function MapScreen() {
   const [stop, setStop] = useState(0);
   const target = mode === 'explore' ? USER : mode === 'day' ? DAY_FOCUS : CLIENT_FOCUS;
 
-  const routeClients = TODAY_ROUTE.map((cid) => CLIENTS.find((c) => c.id === cid) as MockClient);
+  const plannedDay = TODAY_ROUTE.map((cid) => CLIENTS.find((c) => c.id === cid) as MockClient);
+  const picked = CLIENTS.find((c) => c.id === id) ?? null;
+
+  // Mapa real (compilação com chave do Google): GPS, endereços dos clientes e rota.
+  const live = GOOGLE_MAPS_ENABLED;
+  const c = useColors();
+  const { position } = useCarPosition(live);
+  const places = useClientPlaces(live ? CLIENTS : [], live);
+  const targets = mode === 'day' ? plannedDay : mode === 'client' && picked ? [picked] : [];
+  const located = targets.filter((t) => places[t.id]);
+  const { route, error: routeError } = useLiveRoute(
+    live && mode !== 'explore' ? position : null,
+    located.map((t) => places[t.id] as LatLng),
+    mode === 'day',
+  );
+  // Na rota do dia, segue a ordem otimizada pelo Google (o último cliente continua o último).
+  const routeClients =
+    live && mode === 'day' && route && located.length > 1
+      ? [
+          ...route.order.map((i) => located[i] as MockClient),
+          located[located.length - 1] as MockClient,
+        ]
+      : plannedDay;
+
   // Sem rota e sem cliente escolhido (ex.: primeira entrada no app), o cartão convida o
   // usuário a escolher para onde ir.
   const client =
-    mode === 'day'
-      ? (routeClients[wrap(stop, routeClients.length)] as MockClient)
-      : (CLIENTS.find((c) => c.id === id) ?? null);
+    mode === 'day' ? (routeClients[wrap(stop, routeClients.length)] as MockClient) : picked;
+
+  const pins: MapPin[] =
+    mode === 'explore'
+      ? CLIENTS.filter((x) => places[x.id]).map((x) => ({
+          id: x.id,
+          coordinate: places[x.id] as LatLng,
+          label: x.name.charAt(0),
+          kind: 'client',
+        }))
+      : routeClients
+          .filter((x) => places[x.id])
+          .map((x, i) => ({
+            id: x.id,
+            coordinate: places[x.id] as LatLng,
+            label: mode === 'day' ? String(i + 1) : undefined,
+            kind: 'stop',
+          }));
+  const navigate = () => {
+    const from = mode === 'day' ? wrap(stop, routeClients.length) : 0;
+    const coords = routeClients
+      .slice(from)
+      .map((x) => places[x.id])
+      .filter((p): p is LatLng => !!p);
+    openInGoogleMaps(
+      mode === 'day' ? coords : client && places[client.id] ? [places[client.id] as LatLng] : [],
+    );
+  };
 
   const mapArea = useRef<ComponentRef<typeof View>>(null);
   return (
     <View style={{ flex: 1 }}>
       {/* O foco é deslocado para a direita para que o conteúdo fique centrado na área livre à esquerda do cartão. */}
       <BlurArea targetRef={mapArea} style={StyleSheet.absoluteFill}>
-        <PannableMap mode={mode} focus={{ x: target.x + FOCUS_SHIFT, y: target.y }} />
+        {live ? (
+          <GoogleMap
+            dark={c.mode === 'dark'}
+            user={position}
+            path={route?.path ?? []}
+            pins={pins}
+          />
+        ) : (
+          <PannableMap mode={mode} focus={{ x: target.x + FOCUS_SHIFT, y: target.y }} />
+        )}
       </BlurArea>
       {/* Os cartões por cima desfocam o mapa (no Android, ver ui/blur-target.tsx). */}
       <BlurTargetProvider value={mapArea}>
-        {mode === 'explore' ? <SearchPill /> : <Guidance />}
-        {mode !== 'explore' && <TripBar mode={mode} />}
+        {mode === 'explore' ? (
+          <SearchPill />
+        ) : live ? (
+          <LiveGuidance
+            to={client?.name ?? ''}
+            status={
+              !position
+                ? 'Aguardando o GPS…'
+                : routeError
+                  ? routeError
+                  : !route
+                    ? located.length < targets.length
+                      ? 'Localizando o endereço…'
+                      : 'Calculando o caminho…'
+                    : 'Navegação com voz pelo Google Maps'
+            }
+            onNavigate={located.length > 0 ? navigate : undefined}
+          />
+        ) : (
+          <Guidance />
+        )}
+        {mode !== 'explore' && <TripBar mode={mode} route={live ? route : undefined} />}
 
         <Appear
           axis="x"
@@ -111,8 +199,38 @@ function Guidance() {
   );
 }
 
-function TripBar({ mode }: { mode: MapMode }) {
+/** Mapa real: destino atual e o botão que abre o Google Maps já navegando, com voz. */
+function LiveGuidance({
+  to,
+  status,
+  onNavigate,
+}: {
+  to: string;
+  status: string;
+  onNavigate?: () => void;
+}) {
+  const c = useColors();
+  return (
+    <Appear delay={60} fade={false} style={styles.topLeft}>
+      <Material style={[styles.guidance, { maxWidth: 820 }]}>
+        <Icon name="navigate" size={56} color={c.accent} />
+        <View style={{ flexShrink: 1 }}>
+          <Text variant="title2" numberOfLines={1}>
+            {to}
+          </Text>
+          <Text variant="headline" tone="secondary" numberOfLines={2}>
+            {status}
+          </Text>
+        </View>
+        {onNavigate && <Button label="Navegar" icon="navigate" size="md" onPress={onNavigate} />}
+      </Material>
+    </Appear>
+  );
+}
+
+function TripBar({ mode, route }: { mode: MapMode; route?: LiveRoute | null }) {
   const router = useRouter();
+  const time = route ? formatDuration(route.durationSeconds) : null;
   return (
     <Appear delay={160} fade={false} distance={40} style={styles.bottomLeft}>
       <Material style={styles.trip}>
@@ -123,9 +241,22 @@ function TripBar({ mode }: { mode: MapMode }) {
           onPress={() => router.replace('/mapa')}
         />
         <View style={{ flexDirection: 'row', gap: spacing[8] }}>
-          <Stat value={mode === 'day' ? '11:58' : '09:59'} label="chegada" />
-          <Stat value={mode === 'day' ? '1:12' : '18'} label={mode === 'day' ? 'hrs' : 'min'} />
-          <Stat value={mode === 'day' ? '24,6' : '7,4'} label="km" />
+          {route === undefined ? (
+            <>
+              <Stat value={mode === 'day' ? '11:58' : '09:59'} label="chegada" />
+              <Stat value={mode === 'day' ? '1:12' : '18'} label={mode === 'day' ? 'hrs' : 'min'} />
+              <Stat value={mode === 'day' ? '24,6' : '7,4'} label="km" />
+            </>
+          ) : (
+            <>
+              <Stat
+                value={route ? formatArrival(route.durationSeconds) : '--:--'}
+                label="chegada"
+              />
+              <Stat value={time?.value ?? '--'} label={time?.unit ?? 'min'} />
+              <Stat value={route ? formatKm(route.distanceMeters) : '--'} label="km" />
+            </>
+          )}
         </View>
       </Material>
     </Appear>

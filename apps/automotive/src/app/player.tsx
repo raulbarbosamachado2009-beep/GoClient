@@ -43,6 +43,7 @@ export default function Player() {
       <Appear key={`bg-${track.id}`} distance={0} duration={600} style={StyleSheet.absoluteFill}>
         <Image
           source={track.backdrop}
+          blurRadius={track.backdropBlur}
           resizeMode="cover"
           style={[styles.backdrop, { transform: [{ scale: 1.25 }] }]}
         />
@@ -361,6 +362,7 @@ export default function Player() {
       >
         <Image
           source={track.backdrop}
+          blurRadius={track.backdropBlur}
           resizeMode="cover"
           style={[styles.backdrop, { transform: [{ scale: 1.25 }] }]}
         />

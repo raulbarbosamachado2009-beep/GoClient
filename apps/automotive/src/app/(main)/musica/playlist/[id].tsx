@@ -1,8 +1,9 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { FlatList, StyleSheet, View } from 'react-native';
-import { GENRES, type Genre, playlistById, trackById } from '../../../../mocks/data';
+import { ActivityIndicator, FlatList, StyleSheet, View } from 'react-native';
+import { GENRES, type Genre } from '../../../../mocks/data';
+import { usePlaylistData } from '../../../../music/library';
 import { MusicBack, MusicChip } from '../../../../music/ui';
 import { usePlay } from '../../../../music/use-play';
 import { usePrototype } from '../../../../prototype/state';
@@ -18,17 +19,28 @@ import { Icon, IconButton, Text, Touchable } from '../../../../ui/primitives';
 export default function PlaylistScreen() {
   const c = useColors();
   const { id, from } = useLocalSearchParams<{ id: string; from?: string }>();
-  const playlist = playlistById(id ?? 'l1');
-  const { nowPlaying } = usePrototype();
+  const data = usePlaylistData(id ?? 'l1');
+  const { playlist, live, note } = data;
+  const { nowPlaying, playContext } = usePrototype();
   const play = usePlay();
+  const router = useRouter();
   const [genre, setGenre] = useState<Genre | null>(null);
 
-  const tracks = useMemo(() => {
-    const all = playlist.tracks.map(trackById);
-    return genre ? all.filter((t) => t.genres.includes(genre)) : all;
-  }, [playlist, genre]);
+  const tracks = useMemo(
+    () => (genre ? data.tracks.filter((t) => t.genres.includes(genre)) : data.tracks),
+    [data.tracks, genre],
+  );
   const ids = tracks.map((t) => t.id);
-  const total = playlist.tracks.length;
+  const total = data.total;
+  // No Spotify, toca a partir da playlist/álbum (a fila segue a ordem do Spotify).
+  const context = live ? playlist.uri : undefined;
+  const playAll = () => {
+    if (ids[0]) play(ids[0], ids, context, tracks[0]);
+    else if (context) {
+      playContext(context);
+      router.push('/player');
+    }
+  };
 
   return (
     <View style={{ flex: 1 }}>
@@ -64,8 +76,9 @@ export default function PlaylistScreen() {
           color="rgba(255,255,255,0.75)"
           accessibilityLabel="Aleatório"
           onPress={() => {
-            const pick = ids[Math.floor(Math.random() * ids.length)];
-            if (pick) play(pick, ids);
+            const i = Math.floor(Math.random() * ids.length);
+            const pick = ids[i];
+            if (pick) play(pick, ids, context, tracks[i]);
           }}
         />
         <IconButton
@@ -75,20 +88,22 @@ export default function PlaylistScreen() {
           color="#000000"
           style={{ backgroundColor: c.music.accent }}
           accessibilityLabel="Tocar playlist"
-          onPress={() => ids[0] && play(ids[0], ids)}
+          onPress={playAll}
         />
       </View>
 
       <View style={styles.chips}>
-        {GENRES.map((g) => (
-          <MusicChip
-            key={g}
-            label={g}
-            selected={genre === g}
-            onPress={() => setGenre((cur) => (cur === g ? null : g))}
-          />
-        ))}
-        <MusicChip label="Adicionar músicas" icon="add" />
+        {/* O Spotify não informa gêneros por faixa: os filtros ficam só na demonstração. */}
+        {!live &&
+          GENRES.map((g) => (
+            <MusicChip
+              key={g}
+              label={g}
+              selected={genre === g}
+              onPress={() => setGenre((cur) => (cur === g ? null : g))}
+            />
+          ))}
+        {!live && <MusicChip label="Adicionar músicas" icon="add" />}
       </View>
 
       <FlatList
@@ -102,12 +117,23 @@ export default function PlaylistScreen() {
         }}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
-          <View style={styles.empty}>
-            <Icon name="musical-notes-outline" size={64} color={c.textTertiary} />
-            <Text variant="headline" tone="secondary">
-              Nenhuma música de {genre} nesta playlist
-            </Text>
-          </View>
+          data.loading ? (
+            <View style={styles.empty}>
+              <ActivityIndicator size="large" color={c.music.accent} />
+            </View>
+          ) : (
+            <View style={styles.empty}>
+              <Icon name="musical-notes-outline" size={64} color={c.textTertiary} />
+              <Text
+                variant="headline"
+                tone="secondary"
+                style={{ textAlign: 'center', maxWidth: 900 }}
+              >
+                {note ??
+                  (genre ? `Nenhuma música de ${genre} nesta playlist` : 'Nenhuma música aqui')}
+              </Text>
+            </View>
+          )
         }
         renderItem={({ item, index }) => {
           const current = nowPlaying?.id === item.id;
@@ -117,7 +143,7 @@ export default function PlaylistScreen() {
                 {/* Área tocável da faixa; o botão "mais opções" fica fora dela. */}
                 <Touchable
                   accessibilityRole="button"
-                  onPress={() => play(item.id, ids)}
+                  onPress={() => play(item.id, ids, context, item)}
                   scaleTo={0.985}
                   style={styles.rowMain}
                 >

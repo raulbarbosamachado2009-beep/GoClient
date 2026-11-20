@@ -2,6 +2,8 @@ import { type ComponentRef, useCallback, useEffect, useRef, useState } from 'rea
 import { Animated, Easing, Pressable, StyleSheet, View } from 'react-native';
 import { SPOTIFY_ACCOUNTS } from '../mocks/data';
 import { usePrototype } from '../prototype/state';
+import { avatarColors } from '../spotify/mapping';
+import { useSpotify } from '../spotify/provider';
 import { nativeDriver, spacing, useColors } from '../theme';
 import { Avatar, Icon, Text, Touchable } from '../ui/primitives';
 
@@ -13,7 +15,7 @@ interface Anchor {
 
 /**
  * Foto do perfil do Spotify no topo da Música. Tocar abre o mini menu para alternar
- * entre as contas salvas no aparelho (protótipo: só troca a foto exibida).
+ * entre as contas que já entraram neste aparelho ou adicionar outra.
  */
 export function AccountButton({ size = 84 }: { size?: number }) {
   const { spotifyAccount, setOverlay } = usePrototype();
@@ -43,6 +45,11 @@ export function AccountButton({ size = 84 }: { size?: number }) {
 function AccountMenu({ anchor, onClose }: { anchor: Anchor; onClose: () => void }) {
   const c = useColors();
   const { spotifyAccount, setSpotifyAccount } = usePrototype();
+  const sp = useSpotify();
+  // Com Spotify real: as contas que já entraram neste aparelho; senão, as do protótipo.
+  const list = sp.enabled
+    ? sp.accounts.map((a) => ({ id: a.id, name: a.name, colors: avatarColors(a.id) }))
+    : SPOTIFY_ACCOUNTS;
   const enter = useRef(new Animated.Value(0)).current;
   const rootRef = useRef<ComponentRef<typeof View>>(null);
   const [origin, setOrigin] = useState<{ x: number; y: number; scale: number } | null>(null);
@@ -110,7 +117,7 @@ function AccountMenu({ anchor, onClose }: { anchor: Anchor; onClose: () => void 
             },
           ]}
         >
-          {SPOTIFY_ACCOUNTS.map((a) => {
+          {list.map((a) => {
             const current = a.id === spotifyAccount.id;
             return (
               <Touchable
@@ -134,7 +141,7 @@ function AccountMenu({ anchor, onClose }: { anchor: Anchor; onClose: () => void 
           <Touchable
             accessibilityRole="button"
             accessibilityLabel="Adicionar outra conta"
-            onPress={() => close()}
+            onPress={() => close(sp.enabled ? sp.openLogin : undefined)}
             scaleTo={0.97}
             style={styles.row}
           >

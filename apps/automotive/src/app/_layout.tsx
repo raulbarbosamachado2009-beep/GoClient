@@ -6,6 +6,9 @@ import type { ReactNode } from 'react';
 import { fontAssets } from '../fonts';
 import { AutomotiveFrame } from '../preview/automotive-frame';
 import { PrototypeProvider } from '../prototype/state';
+import { SpotifyLoginHost } from '../spotify/login';
+import { SpotifyNotice } from '../spotify/notice';
+import { SpotifyProvider } from '../spotify/provider';
 import { ThemeProvider, useColors } from '../theme';
 
 export default function RootLayout() {
@@ -13,10 +16,20 @@ export default function RootLayout() {
   return (
     <ScaleProvider scale={automotiveScale}>
       <ThemeProvider>
-        <PrototypeProvider>
-          <StatusBar hidden />
-          <Frame>{fontsLoaded ? <Routes /> : null}</Frame>
-        </PrototypeProvider>
+        <SpotifyProvider>
+          <PrototypeProvider>
+            <StatusBar hidden />
+            <Frame>
+              {fontsLoaded ? (
+                <>
+                  <Routes />
+                  <SpotifyNotice />
+                  <SpotifyLoginHost />
+                </>
+              ) : null}
+            </Frame>
+          </PrototypeProvider>
+        </SpotifyProvider>
       </ThemeProvider>
     </ScaleProvider>
   );

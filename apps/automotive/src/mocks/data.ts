@@ -374,6 +374,8 @@ export interface MockTrack {
   image: ImageSourcePropType;
   /** A mesma capa já desfocada (fundo do player). */
   backdrop: ImageSourcePropType;
+  /** Desfoque a aplicar no fundo do player (capas remotas do Spotify, já não desfocadas). */
+  backdropBlur?: number;
   /**
    * Cor predominante da capa, escurecida para o texto branco ficar legível (usada no
    * player minimizado, como no Spotify). Extraída das imagens em assets/covers.
@@ -497,6 +499,10 @@ export interface MockPlaylist {
   image?: ImageSourcePropType;
   liked?: boolean;
   tracks: string[];
+  /** Spotify: endereço para tocar a playlist/álbum inteiro. */
+  uri?: string;
+  /** Spotify: total de faixas (a lista em si é carregada na página). */
+  total?: number;
 }
 
 export const PLAYLISTS: MockPlaylist[] = [
@@ -578,14 +584,29 @@ export function playlistById(id: string): MockPlaylist {
   return PLAYLISTS.find((p) => p.id === id) ?? (PLAYLISTS[0] as MockPlaylist);
 }
 
-export const ARTISTS = [
+export interface MockShow {
+  id: string;
+  name: string;
+  cover: string;
+  image?: ImageSourcePropType;
+  uri?: string;
+}
+
+export interface MockArtist {
+  id: string;
+  name: string;
+  image?: ImageSourcePropType;
+  uri?: string;
+}
+
+export const ARTISTS: MockArtist[] = [
   { id: 'a1', name: 'MC Kevin', image: COVERS.piscina },
   { id: 'a2', name: 'MC Ryan SP', image: undefined },
   { id: 'a3', name: 'DJ Nene MPC', image: undefined },
   { id: 'a4', name: 'MC IG', image: undefined },
 ];
 
-export const SHOWS = [
+export const SHOWS: MockShow[] = [
   { id: 's1', name: 'Vendas na Estrada', cover: '#C9A227' },
   { id: 's2', name: 'Bom Dia, Rodovia', cover: '#2E6E8E' },
   { id: 's3', name: 'Papo de Representante', cover: '#6C4FA3' },

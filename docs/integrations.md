@@ -56,10 +56,43 @@ dos registros nas exportações (necessário para vincular sem duplicar) e o pla
    comanda qualquer player ativo (Spotify incluso) sem a Web API — perde-se a navegação por
    playlists dentro do GoClient, mas não há limite de usuários.
 
-**Decisão necessária do produto** antes da fase de Música: aceitar o limite (piloto), adotar o
-controle via MediaSession, ou ambos. (Controlar a sessão de mídia de
-outro app exige que o usuário conceda ao GoClient acesso às notificações — a validar nas
-centrais-alvo.)
+### Implementado (Automotive, Android) — Web API + Spotify Connect
+
+Decisão: Web API com login PKCE e controle via **Spotify Connect** (o som sai do app oficial do
+Spotify na multimídia). Sem `EXPO_PUBLIC_SPOTIFY_CLIENT_ID` na compilação, a Música continua em
+demonstração. Código em `apps/automotive/src/spotify/`.
+
+- **Login:** janela interna (WebView) com a página do próprio Spotify; o retorno vai para
+  `http://127.0.0.1:43821/callback`, que a janela intercepta (não há servidor). Tokens ficam no
+  armazenamento seguro do Android (`expo-secure-store`), uma entrada por conta; várias contas no
+  mesmo aparelho, trocadas pelo menu da foto do perfil.
+- **Dados:** Músicas Curtidas, playlists, álbuns e programas salvos, artistas seguidos,
+  tocadas recentemente, busca de músicas (máx. 10 resultados, regra de fev/2026).
+- **Reprodução:** tocar/pausar/próxima/anterior e tocar playlist/álbum/programa pela Web API; o
+  estado é lido a cada 4 s. Sem aparelho ativo, o GoClient usa o primeiro disponível ou abre o
+  app do Spotify.
+
+**Limitações reais (não contornáveis pelo GoClient):**
+
+- Conta **Premium** para controlar a reprodução; no máximo **5 contas** liberadas por Client ID
+  (painel do app → User Management).
+- Playlists de **outras pessoas** (ex.: editoriais seguidas) não têm a lista de faixas liberada em
+  modo de desenvolvimento: a página mostra um aviso e o play toca a playlist inteira.
+- Categorias do "Buscar", lançamentos e gêneros por faixa não existem mais na API: essas partes
+  só aparecem na demonstração.
+- O login pelo **Google** é bloqueado pelo Google dentro de WebViews: usar e-mail e senha.
+- A cor de fundo do player/mini player das capas remotas é um tom estável derivado do item, não
+  a cor extraída da capa (exigiria biblioteca nativa).
+- O áudio sai pelo Spotify da conta ativa: se outra pessoa da família trocar de conta, o app do
+  Spotify da multimídia precisa estar com a mesma conta, senão o som toca no aparelho dela.
+
+**Configuração (uma vez):**
+
+1. developer.spotify.com/dashboard → Create app → APIs: **Web API**. Redirect URI:
+   `http://127.0.0.1:43821/callback`.
+2. User Management: adicionar o e-mail Spotify de cada pessoa (até 5).
+3. GitHub → Settings → Secrets and variables → Actions → New repository secret:
+   `SPOTIFY_CLIENT_ID` = Client ID do app. Rodar de novo o workflow "Android APK".
 
 ## WhatsApp
 
@@ -68,12 +101,34 @@ aprovação. Implementado em `packages/core/src/whatsapp.ts` (normalização de 
 
 ## Mapas e rotas
 
-Ainda não definido. A otimização de sequência de visitas (problema do caixeiro-viajante para
-dezenas de paradas) pode rodar no servidor; o que exige provedor externo é a **matriz de
-distâncias/tempos reais** e a **geocodificação** de endereços. Opções a comparar na fase de Rotas
-(custos e limites mudam com frequência): Google Routes API, Mapbox, OpenRouteService/OSRM
-auto-hospedado. A navegação curva a curva continua no app de navegação do usuário (Waze/Google
-Maps), aberto por link.
+### Implementado (Automotive, Android) — Google Maps Platform
+
+Sem `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` na compilação, o app usa o mapa de demonstração (o SDK do
+Google fecha o app se abrir sem chave). Código em `apps/automotive/src/map/`.
+
+- **Mapa:** Maps SDK for Android via `react-native-maps` (uso móvel sem cobrança), tema noturno,
+  posição do carro pelo GPS (`expo-location`), trânsito durante a rota.
+- **Endereços → coordenadas:** Places API (New) · Text Search, com cache durante o uso.
+- **Rotas:** Routes API `computeRoutes` com trânsito; rota do dia com
+  `optimizeWaypointOrder` (o Google reordena as paradas do meio; o último cliente continua o
+  último). Recalcula ao mudar as paradas ou a cada ~2 km rodados, para não gastar a cota.
+- **Navegação com voz:** botão **Navegar** abre o app do Google Maps já navegando (com as
+  paradas restantes). Sem custo. O Navigation SDK (curva a curva dentro do GoClient) não foi
+  incluído: cobra por destino acima de 1.000/mês e exige integração nativa própria.
+
+**Limitações:** a multimídia precisa ter os **serviços do Google Play** (sem eles o mapa não
+carrega); o desfoque dos cartões por cima do mapa real pode virar só translucidez em alguns
+Android (o mapa do Google é desenhado numa superfície que o desfoque não captura) — a confirmar
+no aparelho.
+
+**Configuração (uma vez):**
+
+1. console.cloud.google.com → novo projeto → ativar faturamento (cobre a cota gratuita).
+2. Ativar: **Maps SDK for Android**, **Routes API**, **Places API (New)**.
+3. Credenciais → Criar chave de API → Restrições: app Android `com.goclient.automotive` com
+   SHA-1 `5E:8F:16:06:2E:A3:CD:2C:4A:0D:54:78:76:BA:A6:F3:8C:AB:F6:25`; APIs: as três acima.
+4. GitHub → Secrets → `GOOGLE_MAPS_API_KEY` = a chave. Rodar de novo o workflow "Android APK".
+5. Recomendado: cotas diárias por API no console, para não haver cobrança surpresa.
 
 ## Fontes
 

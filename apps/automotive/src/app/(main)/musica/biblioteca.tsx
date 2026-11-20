@@ -1,10 +1,10 @@
 import { useRouter } from 'expo-router';
 import { type ReactNode, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { ARTISTS, PLAYLISTS, SHOWS } from '../../../mocks/data';
 import { AccountButton } from '../../../music/accounts';
+import { useLibraryData } from '../../../music/library';
 import { MusicBack, MusicChip, PlaylistTile } from '../../../music/ui';
-import { useOpenPlaylist, usePlay } from '../../../music/use-play';
+import { useOpenPlaylist, usePlayContext } from '../../../music/use-play';
 import { spacing, useColors } from '../../../theme';
 import { Cover } from '../../../ui/brand';
 import { useEdgeFade } from '../../../ui/edge-fade';
@@ -31,7 +31,8 @@ export default function Library() {
   const router = useRouter();
   const [filter, setFilter] = useState<Filter | null>(null);
   const open = useOpenPlaylist();
-  const play = usePlay();
+  const playContext = usePlayContext();
+  const { playlists, shows, artists } = useLibraryData();
 
   const pin = (text: string) => (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[2] }}>
@@ -45,7 +46,7 @@ export default function Library() {
   const rows: { key: string; node: ReactNode }[] = [];
   const show = (f: Filter) => filter === null || filter === f;
 
-  for (const p of PLAYLISTS) {
+  for (const p of playlists) {
     if (!show(p.kind === 'Playlist' ? 'Playlists' : 'Álbuns')) continue;
     rows.push({
       key: p.id,
@@ -60,14 +61,14 @@ export default function Library() {
     });
   }
   if (show('Podcasts')) {
-    for (const s of SHOWS) {
+    for (const s of shows) {
       rows.push({
         key: s.id,
         node: (
           <PlaylistTile
-            cover={<Cover color={s.cover} size={104} radius={0} />}
+            cover={<Cover color={s.cover} image={s.image} size={104} radius={0} />}
             title={s.name}
-            onPress={() => play()}
+            onPress={() => playContext(s.uri)}
             subtitle={pin('Podcast')}
           />
         ),
@@ -75,11 +76,16 @@ export default function Library() {
     }
   }
   if (show('Artistas')) {
-    for (const a of ARTISTS) {
+    for (const a of artists) {
       rows.push({
         key: a.id,
         node: (
-          <Touchable accessibilityRole="button" scaleTo={0.985} style={styles.artist}>
+          <Touchable
+            accessibilityRole="button"
+            onPress={() => a.uri && playContext(a.uri)}
+            scaleTo={0.985}
+            style={styles.artist}
+          >
             {a.image ? (
               <Cover color="#333" image={a.image} size={104} radius={52} />
             ) : (

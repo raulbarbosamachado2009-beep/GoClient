@@ -1,7 +1,10 @@
-import { Image, ScrollView, StyleSheet, View } from 'react-native';
+import { useState } from 'react';
+import { ActivityIndicator, Image, ScrollView, StyleSheet, View } from 'react-native';
 import { BROWSE, SHOWS } from '../../../mocks/data';
+import { useTrackSearch } from '../../../music/library';
 import { MusicBack, MusicSection } from '../../../music/ui';
 import { usePlay } from '../../../music/use-play';
+import { useSpotifyLive } from '../../../spotify/provider';
 import { spacing, useColors } from '../../../theme';
 import { Cover, shade } from '../../../ui/brand';
 import { Appear } from '../../../ui/motion';
@@ -17,6 +20,11 @@ const WATCH = [
 export default function Search() {
   const c = useColors();
   const play = usePlay();
+  const live = useSpotifyLive();
+  const [query, setQuery] = useState('');
+  const search = useTrackSearch(query);
+  const ids = search.results.map((t) => t.id);
+  const searching = query.trim() !== '';
   return (
     <ScrollView contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
       <View style={styles.head}>
@@ -33,51 +41,90 @@ export default function Search() {
         background={c.music.search}
         foreground={c.music.onSearch}
         style={{ height: 84, borderRadius: 14 }}
+        value={query}
+        onChangeText={setQuery}
       />
 
-      <View style={{ flexDirection: 'row', gap: spacing[6] }}>
-        {BROWSE.map((b, i) => (
-          <Appear key={b.id} delay={i * 50} distance={12} style={{ flex: 1 }}>
+      {searching && (
+        <View style={{ gap: spacing[2] }}>
+          {search.loading && <ActivityIndicator size="large" color={c.music.accent} />}
+          {!search.loading && search.results.length === 0 && (
+            <Text variant="headline" tone="secondary">
+              Nada encontrado para “{query.trim()}”.
+            </Text>
+          )}
+          {search.results.map((t) => (
             <Touchable
+              key={t.id}
               accessibilityRole="button"
-              style={[styles.tile, { backgroundColor: b.color }]}
+              onPress={() => play(t.id, ids, undefined, t)}
+              scaleTo={0.985}
+              style={styles.result}
             >
-              <Text variant="title2" color="#FFFFFF" style={{ fontSize: 34, lineHeight: 40 }}>
-                {b.name}
-              </Text>
-              <View style={[styles.tileArt, { backgroundColor: shade(b.color, 0.3) }]}>
-                {b.image && <Image source={b.image} style={{ width: '100%', height: '100%' }} />}
+              <Cover color={t.cover} image={t.image} size={96} radius={6} />
+              <View style={{ flex: 1 }}>
+                <Text variant="body" numberOfLines={1} style={{ fontSize: 32, lineHeight: 38 }}>
+                  {t.title}
+                </Text>
+                <Text variant="body" tone="secondary" numberOfLines={1}>
+                  {t.artists}
+                </Text>
               </View>
             </Touchable>
-          </Appear>
-        ))}
-      </View>
+          ))}
+        </View>
+      )}
 
-      <MusicSection title="Playlists que você pode assistir" />
-      <View style={{ flexDirection: 'row', gap: spacing[6] }}>
-        {WATCH.map((w, i) => (
-          <Appear key={w.id} delay={200 + i * 60} distance={14} style={{ flex: 1 }}>
-            <Touchable accessibilityRole="button" onPress={() => play()} scaleTo={0.97}>
-              <Cover color={w.cover} size={460} height={250} radius={18} title={w.name} />
-            </Touchable>
-          </Appear>
-        ))}
-      </View>
+      {/* Categorias e sugestões são só da demonstração (o Spotify removeu esses dados da API). */}
+      {!live && !searching && (
+        <>
+          <View style={{ flexDirection: 'row', gap: spacing[6] }}>
+            {BROWSE.map((b, i) => (
+              <Appear key={b.id} delay={i * 50} distance={12} style={{ flex: 1 }}>
+                <Touchable
+                  accessibilityRole="button"
+                  style={[styles.tile, { backgroundColor: b.color }]}
+                >
+                  <Text variant="title2" color="#FFFFFF" style={{ fontSize: 34, lineHeight: 40 }}>
+                    {b.name}
+                  </Text>
+                  <View style={[styles.tileArt, { backgroundColor: shade(b.color, 0.3) }]}>
+                    {b.image && (
+                      <Image source={b.image} style={{ width: '100%', height: '100%' }} />
+                    )}
+                  </View>
+                </Touchable>
+              </Appear>
+            ))}
+          </View>
 
-      <MusicSection title="Descubra episódios pra você" />
-      <View style={{ flexDirection: 'row', gap: spacing[5] }}>
-        {SHOWS.map((s) => (
-          <Touchable
-            key={s.id}
-            accessibilityRole="button"
-            onPress={() => play()}
-            scaleTo={0.97}
-            style={{ flex: 1 }}
-          >
-            <Cover color={s.cover} size={338} height={190} radius={14} title={s.name} />
-          </Touchable>
-        ))}
-      </View>
+          <MusicSection title="Playlists que você pode assistir" />
+          <View style={{ flexDirection: 'row', gap: spacing[6] }}>
+            {WATCH.map((w, i) => (
+              <Appear key={w.id} delay={200 + i * 60} distance={14} style={{ flex: 1 }}>
+                <Touchable accessibilityRole="button" onPress={() => play()} scaleTo={0.97}>
+                  <Cover color={w.cover} size={460} height={250} radius={18} title={w.name} />
+                </Touchable>
+              </Appear>
+            ))}
+          </View>
+
+          <MusicSection title="Descubra episódios pra você" />
+          <View style={{ flexDirection: 'row', gap: spacing[5] }}>
+            {SHOWS.map((s) => (
+              <Touchable
+                key={s.id}
+                accessibilityRole="button"
+                onPress={() => play()}
+                scaleTo={0.97}
+                style={{ flex: 1 }}
+              >
+                <Cover color={s.cover} size={338} height={190} radius={14} title={s.name} />
+              </Touchable>
+            ))}
+          </View>
+        </>
+      )}
     </ScrollView>
   );
 }
@@ -85,6 +132,7 @@ export default function Search() {
 const styles = StyleSheet.create({
   page: { paddingHorizontal: 36, paddingTop: 28, paddingBottom: 32, gap: spacing[6] },
   head: { flexDirection: 'row', alignItems: 'center', gap: spacing[8] },
+  result: { flexDirection: 'row', alignItems: 'center', gap: spacing[8], paddingVertical: 4 },
   tile: { height: 132, borderRadius: 14, padding: spacing[6], overflow: 'hidden' },
   tileArt: {
     position: 'absolute',

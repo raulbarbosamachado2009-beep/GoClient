@@ -301,8 +301,12 @@ export function SearchField({
   background,
   foreground,
   compact = false,
+  value,
+  onChangeText,
 }: {
   placeholder: string;
+  value?: string;
+  onChangeText?: (text: string) => void;
   style?: StyleProp<ViewStyle>;
   background?: string;
   foreground?: string;
@@ -327,6 +331,9 @@ export function SearchField({
       />
       <TextInput
         placeholder={placeholder}
+        value={value}
+        onChangeText={onChangeText}
+        returnKeyType="search"
         placeholderTextColor={foreground ? `${foreground}88` : c.textSecondary}
         style={[
           type.body,

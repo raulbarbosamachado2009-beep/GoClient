@@ -6,10 +6,13 @@ import {
   SPOTIFY_ACCOUNTS,
   trackById,
 } from '../mocks/data';
+import { avatarColors } from '../spotify/mapping';
+import { useSpotify } from '../spotify/provider';
 
 /**
- * Estado APENAS visual do protótipo de design: o que está aberto, minimizado ou tocando.
- * Nada aqui é persistido nem fala com a API ou com o Spotify.
+ * Estado da interface: o que está aberto, minimizado ou tocando.
+ * Com uma conta do Spotify conectada (compilação com Client ID), a reprodução e a conta
+ * vêm do Spotify (spotify/provider.tsx); sem ela, tudo é a demonstração do protótipo.
  */
 interface PrototypeState {
   musicConnected: boolean;
@@ -26,8 +29,13 @@ interface PrototypeState {
   queue: string[];
   upNext: MockTrack | null;
   playing: boolean;
-  /** Toca uma faixa; a fila padrão é a lista inteira. */
-  playTrack: (trackId: string, queue?: string[]) => void;
+  /**
+   * Toca uma faixa; a fila padrão é a lista inteira. No Spotify, `context` é a playlist ou
+   * álbum de onde ela veio e `hint` a própria faixa (mostrada na hora no player).
+   */
+  playTrack: (trackId: string, queue?: string[], context?: string, hint?: MockTrack) => void;
+  /** Toca uma playlist, álbum ou programa inteiro do Spotify. */
+  playContext: (uri: string) => void;
   next: () => void;
   previous: () => void;
   togglePlaying: () => void;
@@ -38,6 +46,8 @@ interface PrototypeState {
 const Ctx = createContext<PrototypeState | null>(null);
 
 export function PrototypeProvider({ children }: { children: ReactNode }) {
+  const sp = useSpotify();
+  const live = sp.enabled && sp.active !== null;
   const [musicConnected, setMusicConnected] = useState(false);
   const [kyteOpen, setKyteOpen] = useState(false);
   const [accountId, setSpotifyAccount] = useState('raul');
@@ -64,10 +74,42 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
   const value = useMemo<PrototypeState>(() => {
     const currentId = index === null ? null : queue[index];
     const nextId = index === null ? null : queue[(index + 1) % queue.length];
-    return {
-      musicConnected,
+    const base = {
       kyteOpen,
       setKyteOpen,
+      overlay,
+      setOverlay,
+    };
+    if (sp.enabled) {
+      // Compilação com Spotify real: sem conta conectada, a Música mostra o login.
+      const acc = sp.active;
+      return {
+        ...base,
+        musicConnected: live,
+        setMusicConnected: (v: boolean) => (v ? sp.openLogin() : undefined),
+        spotifyAccount: acc
+          ? { id: acc.id, name: acc.name, colors: avatarColors(acc.id) }
+          : (SPOTIFY_ACCOUNTS[0] as MockSpotifyAccount),
+        setSpotifyAccount: sp.setActive,
+        nowPlaying: sp.playback.track,
+        upNext: sp.playback.upNext,
+        queue: [],
+        playing: sp.playback.isPlaying,
+        playTrack: (trackId, list, context, hint) =>
+          sp.play(
+            context
+              ? { contextUri: context, offsetUri: trackId, hint }
+              : { uris: list && list.length > 0 ? list : [trackId], offsetUri: trackId, hint },
+          ),
+        playContext: (uri) => sp.play({ contextUri: uri }),
+        next: sp.next,
+        previous: sp.previous,
+        togglePlaying: sp.toggle,
+      };
+    }
+    return {
+      ...base,
+      musicConnected,
       setMusicConnected,
       spotifyAccount:
         SPOTIFY_ACCOUNTS.find((a) => a.id === accountId) ??
@@ -78,13 +120,24 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
       queue,
       playing,
       playTrack,
+      playContext: () => playTrack('t1'),
       next: () => step(1),
       previous: () => step(-1),
       togglePlaying: () => setPlaying((p) => !p),
-      overlay,
-      setOverlay,
     };
-  }, [musicConnected, kyteOpen, accountId, index, queue, playing, playTrack, step, overlay]);
+  }, [
+    sp,
+    live,
+    musicConnected,
+    kyteOpen,
+    accountId,
+    index,
+    queue,
+    playing,
+    playTrack,
+    step,
+    overlay,
+  ]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

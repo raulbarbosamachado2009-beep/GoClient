@@ -4,6 +4,7 @@ import { StyleSheet, View } from 'react-native';
 import { SpotifyConnect } from '../../../music/connect';
 import { usePrototype } from '../../../prototype/state';
 import { MiniPlayer } from '../../../shell/mini-player';
+import { useSpotify } from '../../../spotify/provider';
 import { layout, spacing, useColors } from '../../../theme';
 import { ScreenTransition } from '../../../ui/motion';
 
@@ -16,8 +17,12 @@ export default function MusicLayout() {
   const c = useColors();
   const { musicConnected, setMusicConnected } = usePrototype();
   const pathname = usePathname();
+  const sp = useSpotify();
 
-  if (!musicConnected) return <SpotifyConnect onConnect={() => setMusicConnected(true)} />;
+  // Enquanto lê as contas salvas, não pisca a tela de login.
+  if (sp.enabled && !sp.ready) return null;
+  if (!musicConnected)
+    return <SpotifyConnect real={sp.enabled} onConnect={() => setMusicConnected(true)} />;
 
   return (
     <View style={{ flex: 1 }}>

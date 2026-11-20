@@ -9,11 +9,16 @@ import { Icon, type IconName, Text, Touchable } from '../ui/primitives';
 /**
  * Apresentação / login do Spotify (referência: imagem 2).
  *
- * Na integração real, o login acontece na página de autorização do próprio Spotify, que
- * já oferece Google, Apple, Facebook e e-mail; no app final os cinco botões devem virar
- * um único "Entrar com o Spotify".
+ * Com o Spotify real (`real`), o login acontece na página do próprio Spotify, então fica
+ * um único botão "Entrar com o Spotify". Na demonstração, os cinco botões só entram.
  */
-export function SpotifyConnect({ onConnect }: { onConnect: () => void }) {
+export function SpotifyConnect({
+  onConnect,
+  real = false,
+}: {
+  onConnect: () => void;
+  real?: boolean;
+}) {
   const c = useColors();
   const green = c.music.accent;
   return (
@@ -44,28 +49,46 @@ export function SpotifyConnect({ onConnect }: { onConnect: () => void }) {
               primary: true,
               icon: <FontAwesome5 name="spotify" size={46} color="#000" />,
             },
-            { label: 'Entrar com o Google', icon: <Brand name="logo-google" /> },
-            { label: 'Entrar com a Apple', icon: <Brand name="logo-apple" /> },
-            { label: 'Entrar com o Facebook', icon: <Brand name="logo-facebook" /> },
+            ...(real
+              ? []
+              : [
+                  { label: 'Entrar com o Google', icon: <Brand name="logo-google" /> },
+                  { label: 'Entrar com a Apple', icon: <Brand name="logo-apple" /> },
+                  { label: 'Entrar com o Facebook', icon: <Brand name="logo-facebook" /> },
+                ]),
           ].map((b, i) => (
             <Appear key={b.label} delay={80 + i * 70} axis="x" distance={-24}>
               <LoginButton label={b.label} icon={b.icon} primary={b.primary} onPress={onConnect} />
             </Appear>
           ))}
-          <Appear delay={380} style={styles.or}>
-            <View style={styles.line} />
-            <Text variant="callout" color="rgba(255,255,255,0.6)">
-              ou
+          {!real && (
+            <>
+              <Appear delay={380} style={styles.or}>
+                <View style={styles.line} />
+                <Text variant="callout" color="rgba(255,255,255,0.6)">
+                  ou
+                </Text>
+                <View style={styles.line} />
+              </Appear>
+              <Appear delay={440} axis="x" distance={-24}>
+                <LoginButton
+                  label="Entrar com e-mail"
+                  icon={<Brand name="mail-outline" />}
+                  onPress={onConnect}
+                />
+              </Appear>
+            </>
+          )}
+          {real && (
+            <Text
+              variant="callout"
+              color="rgba(255,255,255,0.6)"
+              style={{ paddingHorizontal: spacing[4] }}
+            >
+              A página de login é a do próprio Spotify. Conta Premium necessária para tocar músicas
+              por aqui.
             </Text>
-            <View style={styles.line} />
-          </Appear>
-          <Appear delay={440} axis="x" distance={-24}>
-            <LoginButton
-              label="Entrar com e-mail"
-              icon={<Brand name="mail-outline" />}
-              onPress={onConnect}
-            />
-          </Appear>
+          )}
         </View>
 
         <Appear delay={200} style={styles.copy}>

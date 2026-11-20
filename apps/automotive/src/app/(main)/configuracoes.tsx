@@ -1,6 +1,8 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
+import { GOOGLE_MAPS_ENABLED } from '../../integrations/env';
+import { useSpotify } from '../../spotify/provider';
 import { spacing, type ThemePreference, useColors, useTheme } from '../../theme';
 import { useEdgeFade } from '../../ui/edge-fade';
 import { Appear } from '../../ui/motion';
@@ -26,6 +28,12 @@ export default function SettingsScreen() {
   const [wakeWord, setWakeWord] = useState(true);
   const [voiceReplies, setVoiceReplies] = useState(true);
   const [offline, setOffline] = useState(true);
+  const sp = useSpotify();
+  const spotifyValue = !sp.enabled
+    ? 'Demonstração (sem Client ID)'
+    : sp.active
+      ? sp.active.name
+      : 'Não conectado';
 
   const sections = [
     <Group key="perfil" inset={148}>
@@ -87,19 +95,31 @@ export default function SettingsScreen() {
       <SectionHeader title="Navegação e integrações" />
       <Group inset={128}>
         <Row
+          leading={<AppIcon icon="map" color="#30D158" size={68} />}
+          title="Mapa"
+          value={GOOGLE_MAPS_ENABLED ? 'Google Maps' : 'Demonstração (sem chave)'}
+        />
+        <Row
           leading={<AppIcon icon="navigate" color="#30D158" size={68} />}
-          title="App de navegação"
-          value="GoClient"
-          chevron
-          onPress={() => {}}
+          title="Navegação com voz"
+          value="Google Maps"
         />
         <Row
           leading={<AppIcon icon="musical-notes" color="#1ED760" glyph="#000" size={68} />}
           title="Spotify"
-          value="Não conectado"
-          chevron
-          onPress={() => {}}
+          value={spotifyValue}
+          chevron={sp.enabled}
+          onPress={() =>
+            sp.enabled ? (sp.active ? router.replace('/musica') : sp.openLogin()) : undefined
+          }
         />
+        {sp.enabled && sp.active && (
+          <Row
+            title={`Desconectar ${sp.active.name} do Spotify`}
+            titleColor={c.danger}
+            onPress={() => sp.active && sp.removeAccount(sp.active.id)}
+          />
+        )}
         <Row
           leading={<AppIcon icon="storefront" color="#AC8E68" size={68} />}
           title="Kyte"
