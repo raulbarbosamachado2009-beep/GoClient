@@ -1,23 +1,44 @@
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { type Href, usePathname, useRouter } from 'expo-router';
-import type { ReactNode } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { type ComponentRef, type ReactNode, useEffect, useRef, useState } from 'react';
+import { Animated, PanResponder, StyleSheet, View } from 'react-native';
 import { HavenaOrb } from '../havena/orb';
 import { HavenaPanel } from '../havena/panel';
 import { TAB_BAR_HEIGHT } from '../layout/form-factor';
+import { useFrameScale } from '../preview/automotive-frame';
 import { usePrototype } from '../prototype/state';
 import { useColors } from '../theme';
-import { Blur, Text, Touchable } from '../ui/primitives';
+import { Blur, Touchable } from '../ui/primitives';
 import { OutlineGlyph } from './app-icons';
 import { NowPlayingTile } from './now-playing-tile';
 
 /** Telas abertas a partir da aba puxável do Mapa (a aba Mapa fica marcada nelas). */
 export const MAP_ROUTES = ['/mapa', '/clientes', '/produtos', '/rotas', '/mais'];
 
+/** Altura da pílula e margem até a borda de baixo (a soma cabe em TAB_BAR_HEIGHT). */
+const BAR_H = 112;
+const SIDE = 40;
+const BOTTOM = TAB_BAR_HEIGHT - BAR_H - 4;
+
+interface TabDef {
+  key: string;
+  label: string;
+  href?: Href;
+}
+
+const TABS: TabDef[] = [
+  { key: 'mapa', label: 'Mapa', href: '/mapa' },
+  { key: 'musica', label: 'Spotify', href: '/musica' },
+  { key: 'havena', label: 'Falar com a Havena' },
+  { key: 'kyte', label: 'Kyte', href: '/kyte' },
+  { key: 'ajustes', label: 'Ajustes', href: '/configuracoes' },
+];
+
 /**
- * Barra de abas do celular em pé (estilo iOS), da esquerda para a direita: Mapa, Spotify,
- * Havena (no centro), Kyte e Ajustes. Clientes, Produtos e Rotas abrem pela aba puxável do
- * Mapa. Fica por cima do conteúdo, com desfoque.
+ * Barra de abas do celular em pé (referência: Instagram no iOS 26): pílula flutuante de
+ * vidro, só ícones, com uma bolha clara atrás do ícone ativo. A bolha desliza ao trocar de
+ * aba; arrastando o dedo pela barra ela acompanha (um pouco maior, como uma lente) e a tela
+ * troca ao soltar. A Havena (centro) abre por cima, sem trocar de tela.
  */
 export function TabBar() {
   const c = useColors();
@@ -25,88 +46,230 @@ export function TabBar() {
   const router = useRouter();
   const { setOverlay, nowPlaying, playing } = usePrototype();
   const dark = c.mode === 'dark';
-  const ink = dark ? '#8E8E93' : '#6C6C70';
-  const openHavena = () => setOverlay(<HavenaPanel onClose={() => setOverlay(null)} />);
+  const ink = dark ? '#F2F2F7' : '#1C1C1E';
+  const muted = dark ? '#9A9AA0' : '#6C6C70';
 
   const is = (p: string) => pathname.startsWith(p);
-  const onMap = MAP_ROUTES.some(is);
-  const tab = (label: string, href: Href, active: boolean, icon: (color: string) => ReactNode) => (
-    <Touchable
-      key={label}
-      accessibilityRole="tab"
-      accessibilityLabel={label}
-      accessibilityState={{ selected: active }}
-      onPress={() => router.replace(href)}
-      scaleTo={0.9}
-      style={styles.tab}
-    >
-      {icon(active ? c.accent : ink)}
-      <Text variant="caption" color={active ? c.accent : ink} style={styles.label}>
-        {label}
-      </Text>
-    </Touchable>
-  );
+  const active = MAP_ROUTES.some(is)
+    ? 0
+    : is('/musica')
+      ? 1
+      : is('/kyte')
+        ? 3
+        : is('/configuracoes')
+          ? 4
+          : 0;
 
-  return (
-    <View style={[styles.bar, { borderTopColor: c.material.border }]}>
-      <Blur radius={40} tint={c.material.tint} />
-      <View
-        style={[
-          StyleSheet.absoluteFill,
-          { backgroundColor: dark ? 'rgba(18,18,20,0.72)' : 'rgba(248,248,250,0.72)' },
-        ]}
-      />
-      {tab('Mapa', '/mapa', onMap, (col) => (
-        <OutlineGlyph glyph="mapa" size={44} color={col} />
-      ))}
-      {tab('Spotify', '/musica', is('/musica'), (col) =>
-        // Fora da Música, mostra a capa da música tocando no lugar do logo.
-        nowPlaying && !is('/musica') ? (
+  // Largura de cada item (medida) e posição da bolha.
+  const [width, setWidth] = useState(0);
+  const item = width / TABS.length;
+  const x = useRef(new Animated.Value(0)).current;
+  const lens = useRef(new Animated.Value(1)).current;
+  const [hover, setHover] = useState<number | null>(null);
+  const placed = useRef(false);
+
+  useEffect(() => {
+    if (!item) return;
+    const to = active * item;
+    if (!placed.current) {
+      placed.current = true;
+      x.setValue(to);
+      return;
+    }
+    Animated.spring(x, {
+      toValue: to,
+      damping: 22,
+      stiffness: 260,
+      useNativeDriver: false,
+    }).start();
+  }, [active, item, x]);
+
+  const choose = (i: number) => {
+    const t = TABS[i];
+    if (!t) return;
+    if (t.key === 'havena') {
+      setOverlay(<HavenaPanel onClose={() => setOverlay(null)} />);
+      // A bolha volta para a tela atual.
+      Animated.spring(x, {
+        toValue: active * item,
+        damping: 22,
+        stiffness: 260,
+        useNativeDriver: false,
+      }).start();
+      return;
+    }
+    if (t.href) router.replace(t.href);
+  };
+
+  // Arrastar pela barra: a bolha segue o dedo e a aba troca ao soltar.
+  const scale = useFrameScale();
+  const geo = useRef({ left: 0, item: 0, scale: 1, active: 0 });
+  geo.current = { ...geo.current, item, scale, active };
+  const bar = useRef<ComponentRef<typeof View>>(null);
+  const chooseRef = useRef(choose);
+  chooseRef.current = choose;
+  const indexAt = (pageX: number) => {
+    const g = geo.current;
+    const local = (pageX - g.left) / g.scale;
+    return Math.max(0, Math.min(TABS.length - 1, Math.floor(local / Math.max(1, g.item))));
+  };
+  const pan = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponderCapture: (_e, g) =>
+        Math.abs(g.dx) > 10 && Math.abs(g.dx) > Math.abs(g.dy),
+      onPanResponderGrant: () => {
+        bar.current?.measureInWindow((left) => {
+          geo.current.left = left;
+        });
+        Animated.spring(lens, {
+          toValue: 1.18,
+          damping: 16,
+          stiffness: 300,
+          useNativeDriver: false,
+        }).start();
+      },
+      onPanResponderMove: (e) => {
+        const g = geo.current;
+        const local = (e.nativeEvent.pageX - g.left) / g.scale;
+        const clamped = Math.max(0, Math.min((TABS.length - 1) * g.item, local - g.item / 2));
+        x.setValue(clamped);
+        setHover(indexAt(e.nativeEvent.pageX));
+      },
+      onPanResponderRelease: (e) => {
+        Animated.spring(lens, {
+          toValue: 1,
+          damping: 16,
+          stiffness: 300,
+          useNativeDriver: false,
+        }).start();
+        const i = indexAt(e.nativeEvent.pageX);
+        setHover(null);
+        Animated.spring(x, {
+          toValue: i * geo.current.item,
+          damping: 22,
+          stiffness: 260,
+          useNativeDriver: false,
+        }).start();
+        chooseRef.current(i);
+      },
+      onPanResponderTerminate: () => {
+        setHover(null);
+        Animated.spring(lens, { toValue: 1, useNativeDriver: false }).start();
+        Animated.spring(x, {
+          toValue: geo.current.active * geo.current.item,
+          useNativeDriver: false,
+        }).start();
+      },
+    }),
+  ).current;
+
+  const highlighted = hover ?? active;
+  const icon = (i: number, col: string): ReactNode => {
+    switch (TABS[i]?.key) {
+      case 'mapa':
+        return <OutlineGlyph glyph="mapa" size={46} color={col} />;
+      case 'musica':
+        return nowPlaying && !is('/musica') ? (
           <NowPlayingTile
             cover={nowPlaying.image}
             tint={nowPlaying.tint}
             playing={playing}
-            width={56}
-            height={44}
-            radius={10}
+            width={60}
+            height={46}
+            radius={12}
           />
         ) : (
-          <FontAwesome5 name="spotify" size={42} color={col} />
-        ),
-      )}
-      <Touchable
-        accessibilityRole="button"
-        accessibilityLabel="Falar com a Havena"
-        onPress={openHavena}
-        scaleTo={0.9}
-        style={styles.tab}
+          <FontAwesome5 name="spotify" size={44} color={col} />
+        );
+      case 'havena':
+        return <HavenaOrb size={72} />;
+      case 'kyte':
+        return <OutlineGlyph glyph="kyte" size={46} color={col} />;
+      default:
+        return <OutlineGlyph glyph="ajustes" size={46} color={col} />;
+    }
+  };
+
+  return (
+    <View pointerEvents="box-none" style={styles.wrap}>
+      <View
+        ref={bar}
+        collapsable={false}
+        onLayout={(e) => setWidth(e.nativeEvent.layout.width - 16)}
+        style={[
+          styles.bar,
+          {
+            borderColor: dark ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.08)',
+            shadowColor: '#000',
+          },
+        ]}
+        {...pan.panHandlers}
       >
-        <HavenaOrb size={76} />
-      </Touchable>
-      {tab('Kyte', '/kyte', is('/kyte'), (col) => (
-        <OutlineGlyph glyph="kyte" size={44} color={col} />
-      ))}
-      {tab('Ajustes', '/configuracoes', is('/configuracoes'), (col) => (
-        <OutlineGlyph glyph="ajustes" size={44} color={col} />
-      ))}
+        <Blur radius={40} tint={c.material.tint} />
+        <View
+          style={[
+            StyleSheet.absoluteFill,
+            { backgroundColor: dark ? 'rgba(28,28,30,0.62)' : 'rgba(250,250,252,0.66)' },
+          ]}
+        />
+        {item > 0 && (
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              styles.bubble,
+              {
+                width: item,
+                backgroundColor: dark ? 'rgba(255,255,255,0.16)' : 'rgba(0,0,0,0.07)',
+                transform: [{ translateX: x }, { scale: lens }],
+              },
+            ]}
+          />
+        )}
+        {TABS.map((t, i) => (
+          <Touchable
+            key={t.key}
+            accessibilityRole={t.href ? 'tab' : 'button'}
+            accessibilityLabel={t.label}
+            accessibilityState={{ selected: i === active }}
+            onPress={() => choose(i)}
+            scaleTo={0.88}
+            style={styles.tab}
+          >
+            {icon(i, i === highlighted ? ink : muted)}
+          </Touchable>
+        ))}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  bar: {
+  wrap: {
     position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: TAB_BAR_HEIGHT,
+    left: SIDE,
+    right: SIDE,
+    bottom: BOTTOM,
+    height: BAR_H,
+  },
+  bar: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 8,
-    paddingBottom: 8,
-    borderTopWidth: StyleSheet.hairlineWidth,
+    borderRadius: BAR_H / 2,
+    borderWidth: 1,
     overflow: 'hidden',
+    shadowOpacity: 0.35,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 14,
   },
-  tab: { flex: 1, height: '100%', alignItems: 'center', justifyContent: 'center', gap: 6 },
-  label: { fontSize: 20, lineHeight: 24 },
+  bubble: {
+    position: 'absolute',
+    left: 8,
+    top: 10,
+    bottom: 10,
+    borderRadius: (BAR_H - 20) / 2,
+  },
+  tab: { flex: 1, height: '100%', alignItems: 'center', justifyContent: 'center' },
 });

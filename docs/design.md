@@ -165,11 +165,16 @@ O app do Automotive tem dois formatos, escolhidos pela orientação da tela
   real do aparelho (≈0,55× num celular comum). Assim os mesmos componentes ficam do tamanho
   usual de apps de celular, sem uma segunda biblioteca de interface.
 
-No celular, a barra lateral vira **barra de abas**: Mapa · Spotify · Havena (orbe no centro) ·
-Kyte · Ajustes. Clientes, Produtos e Rotas abrem pela aba puxável do Mapa.
+No celular, a barra lateral vira **barra de abas flutuante** (referência: Instagram no iOS 26):
+pílula de vidro só com ícones — Mapa · Spotify · Havena (orbe no centro) · Kyte · Ajustes —,
+bolha clara atrás do ícone ativo que desliza; arrastar o dedo pela barra move a bolha e troca a
+tela ao soltar. Na Música não há barra própria do Spotify: lupa ao lado da foto do perfil,
+"Sua Biblioteca" no primeiro bloco do Início e botões de voltar em Buscar e Biblioteca. Clientes, Produtos e Rotas abrem pela aba puxável do Mapa.
 
-**Mapa no celular (referência: Apple Maps):** mapa aberto e uma aba puxável com três alturas
-(recolhida = só a busca; média; cheia). Explorando: busca, Atalhos (Clientes, Produtos, Rotas),
+**Mapa no celular (referência: Apple Maps):** mapa aberto e uma aba puxável com três alturas,
+proporcionais à tela: recolhida = pílula flutuante só com a busca; média = cartão flutuante
+(~60%); cheia = tela inteira, com a busca fixa no topo e a lista rolando por baixo. Margens e
+cantos acompanham a altura. Se o sistema interromper o gesto, a aba volta para uma altura válida. Explorando: busca, Atalhos (Clientes, Produtos, Rotas),
 Recentes, Rota de hoje. Com destino escolhido, a mesma aba mostra o cliente, chegada/tempo/km,
 Navegar, anterior/próximo (rota do dia), ações rápidas, pedido e detalhes. Arrasta-se pela alça
 e pelo cabeçalho; com a aba cheia, puxar a lista para baixo no topo recolhe. Botões dentro da

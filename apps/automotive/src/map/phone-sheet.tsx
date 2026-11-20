@@ -10,7 +10,6 @@ import {
 } from 'react';
 import {
   Animated,
-  type LayoutChangeEvent,
   PanResponder,
   type PanResponderCallbacks,
   Platform,
@@ -60,44 +59,69 @@ export function DragSheet({
   collapsed?: number;
 }) {
   const c = useColors();
-  const [area, setArea] = useState(0);
+  // Altura da tela do Mapa (a aba se adapta a qualquer celular).
+  const [screen, setScreen] = useState(0);
   const [detent, setDetent] = useState<Detent>(initial);
-  const heights = [collapsed, Math.round(area * 0.52), Math.max(area - 36, collapsed)];
-  const y = useRef(new Animated.Value(4000)).current;
-  const current = useRef(0);
+  // Alturas medidas a partir da borda de baixo da tela (incluindo a distância até a barra
+  // de abas enquanto a aba flutua).
+  const GAP = TAB_BAR_HEIGHT + 12;
+  const heights = [collapsed + GAP, Math.round(screen * 0.6), screen];
+  const heightsRef = useRef(heights);
+  heightsRef.current = heights;
+  // Altura visível da aba (animada). Margens, cantos e distância da borda acompanham:
+  // recolhida = pílula flutuante; média = cartão flutuante; cheia = tela inteira.
+  const h = useRef(new Animated.Value(collapsed + GAP)).current;
+  const current = useRef(collapsed + GAP);
   const scale = useFrameScale();
   const scaleRef = useRef(scale);
   scaleRef.current = scale;
   const dragged = useRef(false);
-  const heightsRef = useRef(heights);
-  heightsRef.current = heights;
-  const full = heights[2] ?? 0;
+  const scrollTop = useRef(0);
+  const detentRef = useRef(detent);
+  detentRef.current = detent;
 
-  // A aba tem sempre a altura cheia; o deslocamento vertical define quanto aparece.
-  const offsetFor = (d: Detent) => full - (heights[d] ?? collapsed);
   const snap = (d: Detent, velocity = 0) => {
     setDetent(d);
-    current.current = offsetFor(d);
-    Animated.spring(y, {
-      toValue: current.current,
+    const to = heightsRef.current[d] ?? collapsed;
+    current.current = to;
+    Animated.spring(h, {
+      toValue: to,
       velocity,
-      damping: 28,
-      stiffness: 260,
+      damping: 30,
+      stiffness: 280,
       useNativeDriver: false,
     }).start();
   };
+  const snapRef = useRef(snap);
+  snapRef.current = snap;
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: reposiciona quando a área é medida
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reposiciona quando a tela é medida
   useEffect(() => {
-    if (area > 0) {
-      current.current = offsetFor(detent);
-      y.setValue(current.current);
+    if (screen > 0) {
+      const to = heightsRef.current[detentRef.current] ?? collapsed;
+      current.current = to;
+      h.setValue(to);
     }
-  }, [area]);
+  }, [screen]);
 
-  const detentRef = useRef(detent);
-  detentRef.current = detent;
-  const scrollTop = useRef(0);
+  const start = useRef(0);
+  const finish = (dy: number, vyRaw: number) => {
+    const hs = heightsRef.current;
+    const shown = start.current - dy / scaleRef.current;
+    const vy = vyRaw / scaleRef.current;
+    const order = [0, 1, 2] as Detent[];
+    let target: Detent;
+    if (vy < -0.5) target = order.find((d) => (hs[d] ?? 0) > shown + 10) ?? 2;
+    else if (vy > 0.5) target = [...order].reverse().find((d) => (hs[d] ?? 0) < shown - 10) ?? 0;
+    else
+      target = order.reduce((x, y) =>
+        Math.abs((hs[y] ?? 0) - shown) < Math.abs((hs[x] ?? 0) - shown) ? y : x,
+      );
+    snapRef.current(target, -vy);
+    setTimeout(() => {
+      dragged.current = false;
+    }, 350);
+  };
   const vertical = (g: { dx: number; dy: number }) =>
     Math.abs(g.dy) > 8 && Math.abs(g.dy) > Math.abs(g.dx);
   const handlers: PanResponderCallbacks = {
@@ -105,44 +129,23 @@ export function DragSheet({
     onPanResponderTerminationRequest: () => false,
     onPanResponderGrant: () => {
       dragged.current = true;
-      y.stopAnimation((v) => {
+      h.stopAnimation((v) => {
+        start.current = v;
         current.current = v;
       });
     },
     onPanResponderMove: (_e, g) => {
-      const h = heightsRef.current;
-      const max = (h[2] ?? 0) - (h[0] ?? 0);
-      const next = current.current + g.dy / scaleRef.current;
+      const hs = heightsRef.current;
+      const min = hs[0] ?? 0;
+      const max = hs[2] ?? 0;
+      const next = start.current - g.dy / scaleRef.current;
       // Passando dos limites, resiste (efeito elástico).
-      const clamped = next < 0 ? next / 3 : next > max ? max + (next - max) / 3 : next;
-      y.setValue(clamped);
+      h.setValue(next < min ? min - (min - next) / 4 : next > max ? max + (next - max) / 6 : next);
     },
-    onPanResponderRelease: (_e, g) => {
-      const h = heightsRef.current;
-      const fullH = h[2] ?? 0;
-      const pos = current.current + g.dy / scaleRef.current;
-      const shown = fullH - pos;
-      const vy = g.vy / scaleRef.current;
-      const order = [0, 1, 2] as Detent[];
-      let target: Detent;
-      if (vy < -0.6) {
-        // Gesto rápido para cima: a próxima altura acima da posição atual.
-        target = order.find((d) => (h[d] ?? 0) > shown + 10) ?? 2;
-      } else if (vy > 0.6) {
-        // Para baixo: a próxima altura abaixo.
-        target = [...order].reverse().find((d) => (h[d] ?? 0) < shown - 10) ?? 0;
-      } else {
-        target = order.reduce((a, b) =>
-          Math.abs((h[b] ?? 0) - shown) < Math.abs((h[a] ?? 0) - shown) ? b : a,
-        );
-      }
-      current.current = pos;
-      snapRef.current(target, -vy);
-      // O toque que encerra o arrasto não deve abrir nada.
-      setTimeout(() => {
-        dragged.current = false;
-      }, 350);
-    },
+    onPanResponderRelease: (_e, g) => finish(g.dy, g.vy),
+    // Se o sistema interromper o gesto (ex.: rolagem do navegador), a aba volta para uma
+    // altura válida em vez de ficar parada fora do lugar.
+    onPanResponderTerminate: (_e, g) => finish(g.dy, g.vy),
   };
   // Alça e cabeçalho: sempre arrastam a aba (mesmo começando em cima da busca).
   const pan = useRef(
@@ -152,8 +155,8 @@ export function DragSheet({
       ...handlers,
     }),
   ).current;
-  // Conteúdo: arrasta a aba enquanto ela não está cheia; cheia, só quando a lista já está
-  // no topo e o gesto é para baixo (como no Apple Maps). Senão, a lista rola.
+  // Conteúdo: arrasta a aba enquanto ela não está cheia; cheia, só quando a lista já está no
+  // topo e o gesto é para baixo (como no Apple Maps). Senão, a lista rola.
   const contentPan = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponderCapture: (_e, g) =>
@@ -162,20 +165,52 @@ export function DragSheet({
       ...handlers,
     }),
   ).current;
-  const snapRef = useRef(snap);
-  snapRef.current = snap;
 
-  const onArea = (e: LayoutChangeEvent) => setArea(Math.round(e.nativeEvent.layout.height));
+  const H0 = heights[0] ?? collapsed;
+  const H1 = Math.max(heights[1] ?? 0, H0 + 1);
+  const H2 = Math.max(heights[2] ?? 0, H1 + 1);
+  const range = [H0, H1, H2];
+  const side = h.interpolate({ inputRange: range, outputRange: [28, 16, 0], extrapolate: 'clamp' });
+  const bottom = h.interpolate({
+    inputRange: range,
+    outputRange: [GAP, GAP, 0],
+    extrapolate: 'clamp',
+  });
+  const radius = h.interpolate({
+    inputRange: range,
+    outputRange: [56, 48, 0],
+    extrapolate: 'clamp',
+  });
+  const topRadius = h.interpolate({
+    inputRange: range,
+    outputRange: [56, 48, 28],
+    extrapolate: 'clamp',
+  });
+  // A altura conta a partir da borda de baixo da tela: desconta a distância quando flutua.
+  const height = Animated.subtract(h, bottom);
 
   return (
     <DraggedContext.Provider value={dragged}>
-      <View pointerEvents="box-none" style={styles.area} onLayout={onArea}>
-        {area > 0 && (
+      <View
+        pointerEvents="box-none"
+        style={styles.area}
+        onLayout={(e) => setScreen(Math.round(e.nativeEvent.layout.height))}
+      >
+        {screen > 0 && (
           <Animated.View
             style={[
               styles.sheet,
-              { height: full, borderColor: c.material.border, transform: [{ translateY: y }] },
-              // Na web, arrastar não pode selecionar o texto da aba.
+              {
+                left: side,
+                right: side,
+                bottom,
+                height,
+                borderTopLeftRadius: topRadius,
+                borderTopRightRadius: topRadius,
+                borderBottomLeftRadius: radius,
+                borderBottomRightRadius: radius,
+                borderColor: c.material.border,
+              },
               NO_SELECT,
             ]}
           >
@@ -185,10 +220,11 @@ export function DragSheet({
                 StyleSheet.absoluteFill,
                 {
                   backgroundColor:
-                    c.mode === 'dark' ? 'rgba(30,30,32,0.86)' : 'rgba(246,246,248,0.88)',
+                    c.mode === 'dark' ? 'rgba(30,30,32,0.9)' : 'rgba(246,246,248,0.92)',
                 },
               ]}
             />
+            {/* Cabeçalho fixo: a busca nunca rola junto com a lista. */}
             <View {...pan.panHandlers}>
               <Touchable
                 accessibilityRole="button"
@@ -202,7 +238,7 @@ export function DragSheet({
             </View>
             <ScrollView
               scrollEnabled={detent === 2}
-              showsVerticalScrollIndicator={false}
+              showsVerticalScrollIndicator={detent === 2}
               contentContainerStyle={styles.content}
               scrollEventThrottle={16}
               onScroll={(e) => {
@@ -233,7 +269,7 @@ export function ExploreSheet() {
   return (
     <DragSheet
       initial={0}
-      collapsed={146}
+      collapsed={130}
       header={
         <View style={styles.searchRow}>
           <Tap
@@ -594,10 +630,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     top: 0,
-    bottom: TAB_BAR_HEIGHT,
-    justifyContent: 'flex-end',
-    // O que passa da altura visível não aparece atrás da barra de abas.
-    overflow: 'hidden',
+    bottom: 0,
   },
   sheet: {
     position: 'absolute',
@@ -613,8 +646,8 @@ const styles = StyleSheet.create({
   },
   grabArea: { height: 36, alignItems: 'center', justifyContent: 'center' },
   grabber: { width: 72, height: 8, borderRadius: 4, opacity: 0.6 },
-  header: { paddingHorizontal: 28, paddingBottom: spacing[5] },
-  content: { paddingHorizontal: 28, paddingBottom: 120, gap: spacing[4] },
+  header: { paddingHorizontal: 24, paddingBottom: 14 },
+  content: { paddingHorizontal: 28, paddingBottom: TAB_BAR_HEIGHT + 48, gap: spacing[4] },
   searchRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
   search: {
     flex: 1,

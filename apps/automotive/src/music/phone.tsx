@@ -1,14 +1,12 @@
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
-import { LinearGradient } from 'expo-linear-gradient';
-import { usePathname, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { type ReactNode, useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, StyleSheet, TextInput, View } from 'react-native';
-import { TAB_BAR_HEIGHT } from '../layout/form-factor';
 import { BROWSE, type MockPlaylist, type MockShow } from '../mocks/data';
 import { spacing } from '../theme';
 import { Cover, shade } from '../ui/brand';
 import { Appear } from '../ui/motion';
-import { Icon, type IconName, Text, Touchable } from '../ui/primitives';
+import { Icon, Text, Touchable } from '../ui/primitives';
 import { AccountButton } from './accounts';
 import { type Feature, useHomeData, useLibraryData, useTrackSearch } from './library';
 import { useOpenPlaylist, usePlay, usePlayContext } from './use-play';
@@ -84,84 +82,33 @@ export function PhoneSpotifyLogin({ real, onConnect }: { real: boolean; onConnec
   );
 }
 
-// ─── Barra de abas do Spotify ───────────────────────────────────────────────────────────
-
-/** Abas do Spotify dentro da Música; "GoClient" volta para o app. */
-export function SpotifyTabs({ active }: { active: 'inicio' | 'buscar' | 'biblioteca' }) {
-  const router = useRouter();
-  const tab = (
-    key: string,
-    label: string,
-    icon: IconName,
-    iconOn: IconName,
-    onPress: () => void,
-  ) => {
-    const on = active === key;
-    return (
-      <Touchable
-        key={key}
-        accessibilityRole="tab"
-        accessibilityLabel={label}
-        accessibilityState={{ selected: on }}
-        onPress={onPress}
-        scaleTo={0.9}
-        style={styles.tab}
-      >
-        <Icon name={on ? iconOn : icon} size={48} color={on ? W : '#B3B3B3'} />
-        <Text variant="caption" color={on ? W : '#B3B3B3'} style={{ fontSize: 20, lineHeight: 24 }}>
-          {label}
-        </Text>
-      </Touchable>
-    );
-  };
-  return (
-    <View style={styles.tabs}>
-      {tab('inicio', 'Início', 'home-outline', 'home', () => router.replace('/musica'))}
-      {tab('buscar', 'Buscar', 'search-outline', 'search', () => router.replace('/musica/buscar'))}
-      {tab('biblioteca', 'Sua Biblioteca', 'library-outline', 'library', () =>
-        router.replace('/musica/biblioteca'),
-      )}
-      {tab('sair', 'GoClient', 'apps-outline', 'apps', () => router.replace('/mapa'))}
-    </View>
-  );
-}
-
-/** Barra de baixo dentro da Música no celular (no lugar da barra do app). */
-export function SpotifyBar() {
-  const pathname = usePathname();
-  const active = pathname.startsWith('/musica/buscar')
-    ? 'buscar'
-    : pathname.startsWith('/musica/biblioteca')
-      ? 'biblioteca'
-      : 'inicio';
-  return (
-    <View style={styles.bar}>
-      <LinearGradient
-        colors={['rgba(18,18,18,0)', 'rgba(18,18,18,0.92)', '#121212']}
-        locations={[0, 0.35, 1]}
-        style={StyleSheet.absoluteFill}
-      />
-      <SpotifyTabs active={active} />
-    </View>
-  );
-}
-
 // ─── Início ─────────────────────────────────────────────────────────────────────────────
 
 type Filter = 'Tudo' | 'Música' | 'Podcasts' | 'Audiolivros';
 
 export function PhoneMusicHome() {
+  const router = useRouter();
   const home = useHomeData();
   const open = useOpenPlaylist();
   const [filter, setFilter] = useState<Filter>('Tudo');
   const showMusic = filter === 'Tudo' || filter === 'Música';
   const showShows = filter === 'Tudo' || filter === 'Podcasts';
-  const tiles = home.playlists.slice(0, 8);
+  // O primeiro bloco ("Músicas Curtidas") vira a entrada da Biblioteca; as curtidas
+  // continuam dentro dela.
+  const tiles = [LIBRARY_TILE, ...home.playlists.filter((p) => !p.liked).slice(0, 7)];
 
   return (
     <ScrollView contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
       <View style={styles.chipsRow}>
         <AccountButton size={68} />
+        <Touchable
+          accessibilityRole="button"
+          accessibilityLabel="Buscar"
+          onPress={() => router.replace('/musica/buscar')}
+          style={styles.roundBtn}
+        >
+          <Icon name="search" size={38} color={W} />
+        </Touchable>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -179,11 +126,19 @@ export function PhoneMusicHome() {
             <Appear key={p.id} delay={i * 30} distance={10} style={{ width: '48.6%' }}>
               <Touchable
                 accessibilityRole="button"
-                onPress={() => open(p.id)}
+                onPress={() =>
+                  p === LIBRARY_TILE ? router.replace('/musica/biblioteca') : open(p.id)
+                }
                 scaleTo={0.97}
                 style={styles.tile}
               >
-                <Cover color={p.cover} image={p.image} size={96} radius={0} liked={p.liked} />
+                {p === LIBRARY_TILE ? (
+                  <View style={styles.libraryCover}>
+                    <Icon name="library" size={46} color={W} />
+                  </View>
+                ) : (
+                  <Cover color={p.cover} image={p.image} size={96} radius={0} liked={p.liked} />
+                )}
                 <Text variant="headline" color={W} numberOfLines={2} style={styles.tileText}>
                   {p.name}
                 </Text>
@@ -219,6 +174,16 @@ export function PhoneMusicHome() {
     </ScrollView>
   );
 }
+
+/** Bloco "Sua Biblioteca" na grade do Início. */
+const LIBRARY_TILE = {
+  id: 'biblioteca',
+  name: 'Sua Biblioteca',
+  detail: '',
+  kind: 'Playlist',
+  cover: '#3A3A3C',
+  tracks: [],
+} as MockPlaylist;
 
 /** Cartão largo no estilo "Shows perto de você": capa à esquerda e textos à direita. */
 function FeatureCard({ feature }: { feature: Feature }) {
@@ -329,6 +294,7 @@ const WATCH = [
 ];
 
 export function PhoneSearch() {
+  const router = useRouter();
   const play = usePlay();
   const [query, setQuery] = useState('');
   const search = useTrackSearch(query);
@@ -342,6 +308,7 @@ export function PhoneSearch() {
       keyboardShouldPersistTaps="handled"
     >
       <View style={styles.titleRow}>
+        <Back onPress={() => router.replace('/musica')} />
         <AccountButton size={68} />
         <Text variant="largeTitle" color={W} style={[styles.pageTitle, { flex: 1 }]}>
           Buscar
@@ -488,6 +455,7 @@ export function PhoneLibrary() {
   return (
     <View style={{ flex: 1 }}>
       <View style={[styles.titleRow, { paddingHorizontal: PAD, paddingTop: 28 }]}>
+        <Back onPress={() => router.replace('/musica')} />
         <AccountButton size={68} />
         <Text
           variant="largeTitle"
@@ -573,6 +541,19 @@ function LibRow({
 
 // ─── Peças ──────────────────────────────────────────────────────────────────────────────
 
+function Back({ onPress }: { onPress: () => void }) {
+  return (
+    <Touchable
+      accessibilityRole="button"
+      accessibilityLabel="Voltar ao Início do Spotify"
+      onPress={onPress}
+      style={styles.roundBtn}
+    >
+      <Icon name="chevron-back" size={44} color={W} />
+    </Touchable>
+  );
+}
+
 function Section({ title }: { title: string }) {
   return (
     <Text variant="largeTitle" color={W} style={styles.section}>
@@ -641,10 +622,22 @@ const styles = StyleSheet.create({
   loginIcon: { position: 'absolute', left: 48 },
   loginLabel: { fontSize: 32, lineHeight: 38 },
   loginText: { height: 88, alignItems: 'center', justifyContent: 'center' },
-  bar: { position: 'absolute', left: 0, right: 0, bottom: 0, height: TAB_BAR_HEIGHT },
-  tabs: { flexDirection: 'row', height: '100%', alignItems: 'center', paddingBottom: 8 },
-  tab: { flex: 1, height: '100%', alignItems: 'center', justifyContent: 'center', gap: 6 },
-  chipsRow: { flexDirection: 'row', alignItems: 'center', gap: 18 },
+  chipsRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  roundBtn: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: '#2A2A2A',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  libraryCover: {
+    width: 96,
+    height: 96,
+    backgroundColor: '#3A3A3C',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 16 },
   tile: {
     height: 96,
