@@ -4,6 +4,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import type { ReactNode } from 'react';
 import { fontAssets } from '../fonts';
+import { useSystemInsets } from '../layout/form-factor';
 import { AutomotiveFrame } from '../preview/automotive-frame';
 import { PrototypeProvider } from '../prototype/state';
 import { SpotifyLoginHost } from '../spotify/login';
@@ -42,6 +43,9 @@ function Frame({ children }: { children: ReactNode }) {
 
 function Routes() {
   const c = useColors();
+  // Telas soltas (boas-vindas, permissões, login, diagnóstico): descem da câmera/entalhe.
+  // O app principal e o player cuidam disso por conta própria (fundos até a borda).
+  const top = useSystemInsets().top;
   return (
     <Stack
       screenOptions={{
@@ -49,10 +53,17 @@ function Routes() {
         animation: 'fade',
         // Sem gesto de deslizar para voltar: evita toques acidentais no carro.
         gestureEnabled: false,
-        contentStyle: { backgroundColor: c.background },
+        contentStyle: { backgroundColor: c.background, paddingTop: top },
       }}
     >
-      <Stack.Screen name="player" options={{ animation: 'slide_from_bottom' }} />
+      <Stack.Screen name="(main)" options={{ contentStyle: { backgroundColor: c.background } }} />
+      <Stack.Screen
+        name="player"
+        options={{
+          animation: 'slide_from_bottom',
+          contentStyle: { backgroundColor: c.background },
+        }}
+      />
     </Stack>
   );
 }

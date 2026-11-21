@@ -2,7 +2,7 @@ import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Platform, Pressable, StyleSheet, View } from 'react-native';
-import { usePhone } from '../layout/form-factor';
+import { usePhone, useTabBarLift } from '../layout/form-factor';
 import { layout, nativeDriver, useColors } from '../theme';
 import { useBlurTarget } from '../ui/blur-target';
 import { HavenaCaption } from './caption';
@@ -36,6 +36,7 @@ export function HavenaPanel({ onClose }: { onClose: () => void }) {
   const closing = useRef(false);
   const [state, setState] = useState<OrbState>('listen');
   const phone = usePhone();
+  const lift = useTabBarLift();
 
   useEffect(() => {
     Animated.spring(enter, {
@@ -71,6 +72,7 @@ export function HavenaPanel({ onClose }: { onClose: () => void }) {
           pointerEvents="box-none"
           style={[
             styles.orbPhone,
+            { bottom: BOTTOM_PHONE + lift },
             {
               transform: [
                 {

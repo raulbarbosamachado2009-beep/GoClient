@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { Slot, usePathname } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
-import { TAB_BAR_HEIGHT, useBleed, usePhone } from '../../../layout/form-factor';
+import { useBleed, usePhone, useTabBarSpace } from '../../../layout/form-factor';
 import { SpotifyConnect } from '../../../music/connect';
 import { PhoneSpotifyLogin, SP_BG } from '../../../music/phone';
 import { usePrototype } from '../../../prototype/state';
@@ -22,6 +22,7 @@ export default function MusicLayout() {
   const sp = useSpotify();
   const bleed = useBleed();
   const phone = usePhone();
+  const tabSpace = useTabBarSpace();
 
   // Enquanto lê as contas salvas, não pisca a tela de login.
   if (sp.enabled && !sp.ready) return null;
@@ -41,7 +42,7 @@ export default function MusicLayout() {
         <ScreenTransition routeKey={pathname}>
           <Slot />
         </ScreenTransition>
-        <View pointerEvents="box-none" style={styles.phoneMini}>
+        <View pointerEvents="box-none" style={[styles.phoneMini, { bottom: tabSpace + 4 }]}>
           <MiniPlayer />
         </View>
       </View>
@@ -71,5 +72,5 @@ export default function MusicLayout() {
 
 const styles = StyleSheet.create({
   bleed: { position: 'absolute', top: 0, right: 0, bottom: 0 },
-  phoneMini: { position: 'absolute', left: 16, right: 16, bottom: TAB_BAR_HEIGHT + 4 },
+  phoneMini: { position: 'absolute', left: 16, right: 16 },
 });

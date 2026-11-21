@@ -2,6 +2,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { type ReactNode, useRef, useState } from 'react';
 import { Animated, type ImageSourcePropType, StyleSheet, View } from 'react-native';
+import { useSystemInsets } from '../layout/form-factor';
 import { COVERS, NOW_PLAYING } from '../mocks/data';
 import { usePrototype } from '../prototype/state';
 import { Cover, shade } from '../ui/brand';
@@ -22,6 +23,7 @@ export function PhonePlayer() {
   const router = useRouter();
   const { nowPlaying, upNext, playing, togglePlaying, next, previous } = usePrototype();
   const track = nowPlaying ?? NOW_PLAYING;
+  const system = useSystemInsets();
   const scrollY = useRef(new Animated.Value(0)).current;
   const [compact, setCompact] = useState(false);
   const tint = track.tint;
@@ -49,7 +51,11 @@ export function PhonePlayer() {
           listener: (e: { nativeEvent: { contentOffset: { y: number } } }) =>
             setCompact(e.nativeEvent.contentOffset.y > 950),
         })}
-        contentContainerStyle={{ paddingHorizontal: PAD, paddingBottom: 80 }}
+        contentContainerStyle={{
+          paddingHorizontal: PAD,
+          paddingTop: system.top,
+          paddingBottom: 80 + system.bottom,
+        }}
       >
         <View style={styles.topBar}>
           <IconButton
@@ -331,7 +337,15 @@ export function PhonePlayer() {
       {/* Cabeçalho compacto ao rolar */}
       <Animated.View
         pointerEvents={compact ? 'auto' : 'none'}
-        style={[styles.compact, { backgroundColor: tint, opacity: compactOpacity }]}
+        style={[
+          styles.compact,
+          {
+            backgroundColor: tint,
+            opacity: compactOpacity,
+            paddingTop: system.top,
+            height: 132 + system.top,
+          },
+        ]}
       >
         <View style={{ flex: 1 }}>
           <Text variant="headline" color={W} numberOfLines={1}>

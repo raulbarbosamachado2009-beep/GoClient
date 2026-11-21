@@ -2,7 +2,12 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { type ComponentRef, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { GOOGLE_MAPS_ENABLED } from '../../integrations/env';
-import { TAB_BAR_HEIGHT, usePhone } from '../../layout/form-factor';
+import {
+  TAB_BAR_HEIGHT,
+  usePhone,
+  useSystemInsets,
+  useTabBarSpace,
+} from '../../layout/form-factor';
 import {
   formatArrival,
   formatDuration,
@@ -37,6 +42,7 @@ import {
  */
 export default function MapScreen() {
   const phone = usePhone();
+  const tabSpace = useTabBarSpace();
   const { rota, id } = useLocalSearchParams<{ rota?: string; id?: string }>();
   const mode: MapMode = rota === 'dia' ? 'day' : rota === 'cliente' ? 'client' : 'explore';
   const [stop, setStop] = useState(0);
@@ -231,7 +237,11 @@ export default function MapScreen() {
           delay={80}
           duration={520}
           fade={false}
-          style={phone ? [PHONE.card, { height: client ? 620 : 500 }] : styles.cardSlot}
+          style={
+            phone
+              ? [PHONE.card, { height: client ? 620 : 500, bottom: tabSpace + layout.gutter }]
+              : styles.cardSlot
+          }
         >
           {client ? (
             <ClientCard
@@ -257,9 +267,14 @@ export default function MapScreen() {
 
 function SearchPill() {
   const phone = usePhone();
+  const system = useSystemInsets();
   const c = useColors();
   return (
-    <Appear delay={60} fade={false} style={phone ? PHONE.top : styles.topLeft}>
+    <Appear
+      delay={60}
+      fade={false}
+      style={phone ? [PHONE.top, { top: layout.gutter + system.top }] : styles.topLeft}
+    >
       <Material style={[styles.search, phone && { width: '100%' }]}>
         <Icon name="search" size={28} color={c.textSecondary} />
         <Text variant="body" tone="secondary">
@@ -272,9 +287,14 @@ function SearchPill() {
 
 function Guidance() {
   const phone = usePhone();
+  const system = useSystemInsets();
   const c = useColors();
   return (
-    <Appear delay={60} fade={false} style={phone ? PHONE.top : styles.topLeft}>
+    <Appear
+      delay={60}
+      fade={false}
+      style={phone ? [PHONE.top, { top: layout.gutter + system.top }] : styles.topLeft}
+    >
       <Material style={styles.guidance}>
         <Icon name="return-up-forward" size={64} color={c.text} />
         <View>
@@ -301,9 +321,14 @@ function LiveGuidance({
   onNavigate?: () => void;
 }) {
   const phone = usePhone();
+  const system = useSystemInsets();
   const c = useColors();
   return (
-    <Appear delay={60} fade={false} style={phone ? PHONE.top : styles.topLeft}>
+    <Appear
+      delay={60}
+      fade={false}
+      style={phone ? [PHONE.top, { top: layout.gutter + system.top }] : styles.topLeft}
+    >
       <Material style={[styles.guidance, { maxWidth: 820 }]}>
         <Icon name="navigate" size={56} color={c.accent} />
         <View style={{ flexShrink: 1 }}>
@@ -322,10 +347,16 @@ function LiveGuidance({
 
 function TripBar({ mode, route }: { mode: MapMode; route?: LiveRoute | null }) {
   const phone = usePhone();
+  const system = useSystemInsets();
   const router = useRouter();
   const time = route ? formatDuration(route.durationSeconds) : null;
   return (
-    <Appear delay={160} fade={false} distance={40} style={phone ? PHONE.trip : styles.bottomLeft}>
+    <Appear
+      delay={160}
+      fade={false}
+      distance={40}
+      style={phone ? [PHONE.trip, { top: 150 + system.top }] : styles.bottomLeft}
+    >
       <Material style={styles.trip}>
         <Button
           label="Encerrar"

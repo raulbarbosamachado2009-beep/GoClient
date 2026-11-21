@@ -1,7 +1,8 @@
 import { Slot, usePathname } from 'expo-router';
 import { type ComponentRef, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { TAB_BAR_HEIGHT, usePhone } from '../../layout/form-factor';
+import { usePhone, useSystemInsets, useTabBarSpace } from '../../layout/form-factor';
+import { SP_BG } from '../../music/phone';
 import { usePrototype } from '../../prototype/state';
 import { Sidebar } from '../../shell/sidebar';
 import { TabBar } from '../../shell/tab-bar';
@@ -29,6 +30,8 @@ export default function MainLayout() {
   const underBar = section === 'mapa';
   // No celular, o Spotify também vai até o rodapé, por trás da barra de abas flutuante.
   const fullHeight = underBar || section === 'musica';
+  const system = useSystemInsets();
+  const tabSpace = useTabBarSpace();
   return (
     <View style={[styles.root, { backgroundColor: c.background }]}>
       <BlurArea targetRef={screen} style={StyleSheet.absoluteFill}>
@@ -38,7 +41,11 @@ export default function MainLayout() {
           style={{
             flex: 1,
             marginLeft: phone || underBar ? 0 : layout.sidebarWidth,
-            marginBottom: phone && !fullHeight ? TAB_BAR_HEIGHT : 0,
+            marginBottom: phone && !fullHeight ? tabSpace : 0,
+            // Celular: o fundo vai até a borda de cima; o conteúdo desce da câmera/entalhe.
+            // (O Mapa vai inteiro até a borda e afasta só os próprios controles.)
+            paddingTop: phone && !underBar ? system.top : 0,
+            backgroundColor: phone && section === 'musica' ? SP_BG : undefined,
           }}
         >
           {/* Dentro das telas não há área definida: cada tela define a sua (ex.: o Mapa). */}

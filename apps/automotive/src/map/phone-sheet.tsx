@@ -18,7 +18,7 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import { TAB_BAR_HEIGHT } from '../layout/form-factor';
+import { TAB_BAR_HEIGHT, useSystemInsets, useTabBarSpace } from '../layout/form-factor';
 import { CLIENTS, type MockClient, TODAY_ROUTE } from '../mocks/data';
 import { useFrameScale } from '../preview/automotive-frame';
 import { OutlineGlyph } from '../shell/app-icons';
@@ -72,8 +72,10 @@ export function DragSheet({
   const [detent, setDetent] = useState<Detent>(initial);
   // Alturas medidas a partir da borda de baixo da tela (incluindo a distância até a barra
   // de abas enquanto a aba flutua).
-  const GAP = TAB_BAR_HEIGHT + 12;
-  const heights = [collapsed + GAP, Math.round(screen * 0.6), screen];
+  const GAP = useTabBarSpace() + 12;
+  // Cheia: para logo abaixo da câmera/entalhe (o fundo continua até a borda).
+  const safeTop = useSystemInsets().top;
+  const heights = [collapsed + GAP, Math.round(screen * 0.6), screen - safeTop];
   const heightsRef = useRef(heights);
   heightsRef.current = heights;
   // Altura visível da aba (animada). Margens, cantos e distância da borda acompanham:

@@ -22,6 +22,23 @@ export const TAB_BAR_HEIGHT = 132;
  */
 export const PHONE_SCROLL_END = TAB_BAR_HEIGHT + 96 + 72;
 
+/**
+ * Áreas do sistema que o app desenha por baixo (unidades da tela de referência):
+ * `top` = câmera/entalhe; `bottom` = área de gestos do Android (0 quando o celular usa a barra
+ * de 3 botões — aí o app termina acima dela). As telas afastam só os controles dessas
+ * áreas; fundos, mapa e capas vão até a borda.
+ */
+export type SystemInsets = { top: number; bottom: number };
+const SystemInsetsContext = createContext<SystemInsets>({ top: 0, bottom: 0 });
+export const SystemInsetsProvider = SystemInsetsContext.Provider;
+export const useSystemInsets = () => useContext(SystemInsetsContext);
+/** Distância da barra de abas flutuante até a borda de baixo, sem área de gestos. */
+export const TAB_BAR_BOTTOM = 16;
+/** Quanto a barra de abas sobe para não ficar em cima da área de gestos do Android. */
+export const useTabBarLift = () => Math.max(0, useSystemInsets().bottom - TAB_BAR_BOTTOM);
+/** Espaço da barra de abas flutuante a partir da borda de baixo (inclui a área de gestos). */
+export const useTabBarSpace = () => TAB_BAR_HEIGHT + useTabBarLift();
+
 const FormFactorContext = createContext<FormFactor>('car');
 export const FormFactorProvider = FormFactorContext.Provider;
 export const useFormFactor = () => useContext(FormFactorContext);

@@ -1,13 +1,19 @@
 import { automotive } from '@goclient/design-tokens';
-import { createContext, type ReactNode, useContext } from 'react';
+import { createContext, type ReactNode, useContext, useMemo } from 'react';
 import { Platform, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { FormFactorProvider, PHONE_WIDTH } from '../layout/form-factor';
+import { FormFactorProvider, PHONE_WIDTH, SystemInsetsProvider } from '../layout/form-factor';
 
 const { width: BASE_W, height: BASE_H } = automotive.viewport;
 
 /** Escala aplicada à moldura (1 = tamanho de referência). Gestos usam para compensar. */
 const FrameScaleContext = createContext(1);
+/**
+ * Altura mínima (dp) da área de baixo que indica a barra de 3 botões do Android (~48 dp);
+ * a de gestos fica entre 16 e 24 dp.
+ */
+const NAV_BUTTONS_MIN = 36;
+
 export const useFrameScale = () => useContext(FrameScaleContext);
 
 /**
@@ -29,11 +35,17 @@ export function AutomotiveFrame({
   const insets = useSafeAreaInsets();
   const web = Platform.OS === 'web';
 
-  // Área útil: sem entalhe nem barras do sistema (no navegador, a janela inteira).
+  // Tela inteira, de ponta a ponta (o Android desenha o app por baixo das barras do sistema).
+  // Só fica de fora o que o app não pode cobrir:
+  //  - barra de navegação de 3 botões (voltar/início/abas): o app termina acima dela;
+  //  - laterais com entalhe ou botões (celular deitado), onde ficaria a barra lateral.
+  // Com navegação por gestos o app vai até a borda de baixo; só os controles se afastam
+  // da área do gesto (ver SystemInsets).
+  const navButtons = !web && insets.bottom >= NAV_BUTTONS_MIN;
   const left = web ? 0 : insets.left;
   const right = web ? 0 : insets.right;
-  const top = web ? 0 : insets.top;
-  const bottom = web ? 0 : insets.bottom;
+  const top = 0;
+  const bottom = navButtons ? insets.bottom : 0;
   const availW = Math.max(1, window.width - left - right);
   const availH = Math.max(1, window.height - top - bottom);
 
@@ -45,6 +57,13 @@ export function AutomotiveFrame({
     : Math.min(availW / BASE_W, availH / BASE_H, 1);
   const width = availW / scale;
   const height = availH / scale;
+  const system = useMemo(
+    () => ({
+      top: web ? 0 : insets.top / scale,
+      bottom: web || navButtons ? 0 : insets.bottom / scale,
+    }),
+    [web, navButtons, insets.top, insets.bottom, scale],
+  );
 
   return (
     <View style={{ flex: 1, backgroundColor: web ? '#0B0B0C' : background, overflow: 'hidden' }}>
@@ -64,7 +83,9 @@ export function AutomotiveFrame({
         }}
       >
         <FormFactorProvider value={phone ? 'phone' : 'car'}>
-          <FrameScaleContext.Provider value={scale}>{children}</FrameScaleContext.Provider>
+          <SystemInsetsProvider value={system}>
+            <FrameScaleContext.Provider value={scale}>{children}</FrameScaleContext.Provider>
+          </SystemInsetsProvider>
         </FormFactorProvider>
       </View>
     </View>

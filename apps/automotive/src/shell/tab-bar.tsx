@@ -4,7 +4,7 @@ import { type ComponentRef, type ReactNode, useEffect, useRef, useState } from '
 import { Animated, PanResponder, StyleSheet, View } from 'react-native';
 import { HavenaOrb } from '../havena/orb';
 import { HavenaPanel } from '../havena/panel';
-import { TAB_BAR_HEIGHT } from '../layout/form-factor';
+import { TAB_BAR_BOTTOM, useTabBarLift } from '../layout/form-factor';
 import { useFrameScale } from '../preview/automotive-frame';
 import { usePrototype } from '../prototype/state';
 import { useColors } from '../theme';
@@ -18,7 +18,7 @@ export const MAP_ROUTES = ['/mapa', '/clientes', '/produtos', '/rotas', '/mais']
 /** Altura da pílula e margem até a borda de baixo (a soma cabe em TAB_BAR_HEIGHT). */
 const BAR_H = 112;
 const SIDE = 40;
-const BOTTOM = TAB_BAR_HEIGHT - BAR_H - 4;
+const BOTTOM = TAB_BAR_BOTTOM;
 
 interface TabDef {
   key: string;
@@ -45,6 +45,7 @@ export function TabBar() {
   const pathname = usePathname();
   const router = useRouter();
   const { setOverlay, nowPlaying, playing } = usePrototype();
+  const lift = useTabBarLift();
   const dark = c.mode === 'dark';
   const ink = dark ? '#F2F2F7' : '#1C1C1E';
   const muted = dark ? '#9A9AA0' : '#6C6C70';
@@ -191,7 +192,7 @@ export function TabBar() {
   };
 
   return (
-    <View pointerEvents="box-none" style={styles.wrap}>
+    <View pointerEvents="box-none" style={[styles.wrap, { bottom: BOTTOM + lift }]}>
       <View
         ref={bar}
         collapsable={false}
