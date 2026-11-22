@@ -1,22 +1,29 @@
 import { type ComponentRef, forwardRef, useImperativeHandle, useMemo, useRef } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { WebView } from 'react-native-webview';
-import { KYTE_HOME, type KyteMessage, kyteScript } from './bridge';
+import {
+  type HomeData,
+  KYTE_HOME,
+  type KyteMessage,
+  type KyteSectionKey,
+  kyteScript,
+} from './bridge';
 import { DESKTOP_USER_AGENT } from './config';
 
 export interface KyteWindowHandle {
   reload: () => void;
-  /** Abre uma tela do Kyte Web (rota real do sistema). */
-  go: (path: string) => void;
-  /** Preenche a busca da tela aberta no Kyte. */
-  search: (text: string) => void;
+  /** Abre uma seção (Início, Vender, Produtos, Clientes, Histórico) dentro do Kyte. */
+  select: (key: KyteSectionKey) => void;
+  /** Entrega os números do Início para a página. */
+  home: (data: HomeData) => void;
 }
 
 /**
  * Janela do Kyte Web dentro do GoClient (Android: WebView do sistema), com a ponte de
- * bridge.ts: o visual do app é aplicado na página e as mensagens dela (tela atual, login)
- * chegam em `onMessage`. Cookies e armazenamento ficam salvos no aparelho, então o login
- * continua valendo entre usos. A senha é digitada só na página do Kyte.
+ * bridge.ts: o visual e o menu do app são postos dentro da própria página, e as mensagens
+ * dela (tela atual, login, Início, botões de rota) chegam em `onMessage`. Cookies e
+ * armazenamento ficam salvos no aparelho, então o login continua valendo entre usos. A senha
+ * é digitada só na página do Kyte.
  */
 export const KyteWindow = forwardRef<
   KyteWindowHandle,
@@ -29,13 +36,13 @@ export const KyteWindow = forwardRef<
     ref,
     () => ({
       reload: () => web.current?.reload(),
-      go: (path) =>
+      select: (key) =>
         web.current?.injectJavaScript(
-          `window.__goclientGo && window.__goclientGo(${JSON.stringify(path)}); true;`,
+          `window.__goclientSelect && window.__goclientSelect(${JSON.stringify(key)}); true;`,
         ),
-      search: (text) =>
+      home: (data) =>
         web.current?.injectJavaScript(
-          `window.__goclientSearch && window.__goclientSearch(${JSON.stringify(text)}); true;`,
+          `window.__gcHomeData && window.__gcHomeData(${JSON.stringify(data)}); true;`,
         ),
     }),
     [],

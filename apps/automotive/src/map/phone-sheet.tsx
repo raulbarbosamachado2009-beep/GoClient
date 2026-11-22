@@ -21,11 +21,14 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { callPhone, openWhatsApp } from '../integrations/contact';
+import { kyteAgent, kyteAgentAvailable, kyteLogged } from '../kyte/agent';
 import { TAB_BAR_HEIGHT, useSystemInsets, useTabBarSpace } from '../layout/form-factor';
 import { CLIENTS, type MockClient, REGIONS, TODAY_ROUTE } from '../mocks/data';
 import { useFrameScale } from '../preview/automotive-frame';
 import { layout, spacing, useColors } from '../theme';
 import { Avatar, Icon, type IconName, Text, Touchable } from '../ui/primitives';
+import { useStops } from './stops';
 
 /**
  * Aba puxável do Mapa no celular (referência: Apple Maps). Três alturas: recolhida (só a
@@ -194,9 +197,19 @@ export function DragSheet({
   onDetentRef.current = onDetent;
   if (controller) controller.current = { snap: (d) => snapRef.current(d) };
 
+  // Ao aparecer (abrir o Mapa, escolher um cliente), a aba sobe da borda de baixo com a mola,
+  // em vez de surgir pronta. Depois, só se reposiciona quando a tela muda de tamanho.
+  const entered = useRef(false);
   // biome-ignore lint/correctness/useExhaustiveDependencies: reposiciona quando a tela é medida
   useEffect(() => {
-    if (screen > 0) setValue(heightsRef.current[detentRef.current] ?? collapsed);
+    if (screen <= 0 || width <= 0) return;
+    if (!entered.current) {
+      entered.current = true;
+      setValue(0);
+      requestAnimationFrame(() => snapRef.current(detentRef.current));
+      return;
+    }
+    setValue(heightsRef.current[detentRef.current] ?? collapsed);
   }, [screen, width]);
 
   // ── Gesto ────────────────────────────────────────────────────────────────────────────
@@ -475,9 +488,36 @@ export function ExploreSheet() {
   // atalhos de filtro e sugestões — sem sair do Mapa.
   const sheet = useRef<SheetController | null>(null);
   const input = useRef<ComponentRef<typeof TextInput>>(null);
-  const [searching, setSearching] = useState(false);
+  // Busca livre ou lista de clientes (atalho "Clientes"), as duas dentro da própria aba.
+  const [mode, setMode] = useState<'search' | 'clients' | null>(null);
+  const searching = mode !== null;
+  const setSearching = (on: boolean) => setMode(on ? 'search' : null);
   const [query, setQuery] = useState('');
   const [region, setRegion] = useState<string | null>(null);
+  const stops = useStops();
+  const kyte = useKyteNames(query, mode === 'clients');
+  const [notice, setNotice] = useState<string | null>(null);
+  const openClients = () => {
+    setMode('clients');
+    setNotice(null);
+    sheet.current?.snap(2);
+  };
+  // Cliente do Kyte: a janela invisível abre a ficha, lê o endereço e traça a rota.
+  const pickKyte = (name: string) => {
+    setNotice(`Buscando o endereço de ${name}…`);
+    kyteAgent
+      .openClient(name)
+      .then(({ client }) => {
+        if (!client?.address) {
+          setNotice(`${name} não tem endereço cadastrado no Kyte.`);
+          return;
+        }
+        setNotice(null);
+        Keyboard.dismiss();
+        stops.goNow({ name: client.name || name, address: client.address, phone: client.phone });
+      })
+      .catch((e: Error) => setNotice(e.message));
+  };
   const startSearch = () => {
     setSearching(true);
     sheet.current?.snap(2);
@@ -583,6 +623,12 @@ export function ExploreSheet() {
     >
       {searching ? (
         <SearchBody
+          clientsMode={mode === 'clients'}
+          kyteNames={mode === 'clients' ? kyte.names : null}
+          kyteLoading={kyte.loading}
+          notice={notice}
+          onPickKyte={pickKyte}
+          onMore={() => router.replace({ pathname: '/kyte', params: { secao: 'clientes' } })}
           query={query}
           region={region}
           onRegion={(r) => setRegion(region === r ? null : r)}
@@ -603,7 +649,7 @@ export function ExploreSheet() {
               sub="no Kyte"
               color="#0A84FF"
               icon={<Icon name="people" size={56} color="#FFFFFF" />}
-              onPress={() => router.replace({ pathname: '/kyte', params: { secao: 'clientes' } })}
+              onPress={openClients}
             />
             <Shortcut
               label="Produtos"
@@ -622,7 +668,7 @@ export function ExploreSheet() {
             />
           </View>
 
-          <Section title="Recentes" onPress={() => router.replace('/clientes')} />
+          <Section title="Recentes" onPress={openClients} />
           <View style={[styles.card, { backgroundColor: c.fill }]}>
             {recent.map((x, i) => (
               <View key={x.id}>
@@ -690,7 +736,42 @@ function normalize(t: string) {
 
 const FILTERS = REGIONS.filter((r) => r !== 'Todas');
 
+/**
+ * Clientes do Kyte para a lista da aba (app instalado, Kyte logado): a janela invisível
+ * busca na tela de Clientes do Kyte. Fora disso, `names` é nulo e a aba usa os de exemplo.
+ */
+export function useKyteNames(query: string, active: boolean) {
+  const [names, setNames] = useState<string[] | null>(null);
+  const [loading, setLoading] = useState(false);
+  useEffect(() => {
+    if (!active || !kyteAgentAvailable() || !kyteLogged()) {
+      setNames(null);
+      return;
+    }
+    let alive = true;
+    setLoading(true);
+    const t = setTimeout(() => {
+      kyteAgent
+        .listClients(query.trim())
+        .then((r) => alive && setNames(r.names))
+        .catch(() => alive && setNames(null))
+        .finally(() => alive && setLoading(false));
+    }, 450);
+    return () => {
+      alive = false;
+      clearTimeout(t);
+    };
+  }, [query, active]);
+  return { names, loading };
+}
+
 function SearchBody({
+  clientsMode = false,
+  kyteNames,
+  kyteLoading,
+  notice,
+  onPickKyte,
+  onMore,
   query,
   region,
   onRegion,
@@ -699,6 +780,13 @@ function SearchBody({
   onPick,
   onDayRoute,
 }: {
+  clientsMode?: boolean;
+  /** Nomes vindos do Kyte (app instalado e logado); `null` = clientes de exemplo. */
+  kyteNames: string[] | null;
+  kyteLoading: boolean;
+  notice: string | null;
+  onPickKyte: (name: string) => void;
+  onMore: () => void;
   query: string;
   region: string | null;
   onRegion: (r: string) => void;
@@ -708,7 +796,7 @@ function SearchBody({
   onDayRoute: () => void;
 }) {
   const c = useColors();
-  const filtering = query.trim() !== '' || region !== null;
+  const filtering = clientsMode || query.trim() !== '' || region !== null;
   const list = filtering ? results : recent;
   return (
     <>
@@ -731,8 +819,60 @@ function SearchBody({
         ))}
       </ScrollView>
 
-      <Section title={filtering ? 'Clientes' : 'Sugestões'} />
-      {list.length === 0 ? (
+      <View style={styles.sectionRow}>
+        <Section title={filtering ? 'Clientes' : 'Sugestões'} />
+        {clientsMode && (
+          <Tap accessibilityRole="link" onPress={onMore} style={styles.more}>
+            <Text variant="headline" tone="accent" style={TYPE.rowSub}>
+              Ver mais
+            </Text>
+            <Icon name="chevron-forward" size={28} color={c.accent} />
+          </Tap>
+        )}
+      </View>
+      {notice && (
+        <Text variant="callout" tone="secondary" style={TYPE.rowSub}>
+          {notice}
+        </Text>
+      )}
+      {kyteNames ? (
+        <View style={[styles.card, { backgroundColor: c.fill }]}>
+          {kyteNames.length === 0 ? (
+            <View style={styles.empty}>
+              <Text variant="callout" tone="secondary" style={TYPE.rowSub}>
+                {kyteLoading ? 'Carregando os clientes do Kyte…' : 'Nenhum cliente encontrado.'}
+              </Text>
+            </View>
+          ) : (
+            kyteNames.map((name, i) => (
+              <View key={name}>
+                {i > 0 && <View style={[styles.sep, { backgroundColor: c.separator }]} />}
+                <Tap
+                  accessibilityRole="button"
+                  onPress={() => onPickKyte(name)}
+                  scaleTo={0.98}
+                  style={styles.recent}
+                >
+                  <View style={[styles.pin, { backgroundColor: '#0A84FF' }]}>
+                    <Icon name="storefront" size={32} color="#FFFFFF" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text variant="headline" style={TYPE.rowTitle} numberOfLines={1}>
+                      {name}
+                    </Text>
+                    <Text variant="callout" tone="secondary" style={TYPE.rowSub}>
+                      Cliente do Kyte · toque para traçar a rota
+                    </Text>
+                  </View>
+                  <View style={ARROW}>
+                    <Icon name="arrow-up-outline" size={32} color={c.textTertiary} />
+                  </View>
+                </Tap>
+              </View>
+            ))
+          )}
+        </View>
+      ) : list.length === 0 ? (
         <View style={[styles.card, styles.empty, { backgroundColor: c.fill }]}>
           <Text variant="headline" style={TYPE.rowTitle}>
             Nenhum cliente encontrado
@@ -836,6 +976,7 @@ export function RouteSheet({
   onNavigate: () => void;
   onEnd: () => void;
 }) {
+  const router = useRouter();
   const c = useColors();
   const active = client.status === 'Ativo';
   return (
@@ -900,10 +1041,14 @@ export function RouteSheet({
       }
     >
       <View style={styles.quickRow}>
-        <Quick icon="call" label="Ligar" />
-        <Quick icon="logo-whatsapp" label="WhatsApp" />
+        <Quick icon="call" label="Ligar" onPress={() => callPhone(client.phone)} />
+        <Quick icon="logo-whatsapp" label="WhatsApp" onPress={() => openWhatsApp(client.phone)} />
         <Quick icon="document-text" label="Pedido" />
-        <Quick icon="storefront" label="Ficha" />
+        <Quick
+          icon="storefront"
+          label="Ficha"
+          onPress={() => router.replace({ pathname: '/kyte', params: { secao: 'clientes' } })}
+        />
       </View>
 
       <Section title="Pedido" />
@@ -1037,10 +1182,14 @@ function SquareButton({
   );
 }
 
-function Quick({ icon, label }: { icon: IconName; label: string }) {
+function Quick({ icon, label, onPress }: { icon: IconName; label: string; onPress?: () => void }) {
   const c = useColors();
   return (
-    <Tap accessibilityRole="button" style={[styles.quick, { backgroundColor: c.fill }]}>
+    <Tap
+      accessibilityRole="button"
+      onPress={onPress}
+      style={[styles.quick, { backgroundColor: c.fill }]}
+    >
       <Icon name={icon} size={34} color={c.accent} />
       <Text variant="caption" tone="accent">
         {label}
@@ -1128,6 +1277,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   chipStrip: { marginHorizontal: -24, flexGrow: 0 },
+  sectionRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
+  more: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingBottom: 6 },
   chips: { gap: spacing[3], paddingHorizontal: 24 },
   chip: {
     height: 68,

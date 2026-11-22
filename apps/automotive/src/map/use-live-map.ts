@@ -43,7 +43,9 @@ export function useCarPosition(enabled = MAPS_ENABLED) {
 }
 
 export const clientAddress = (c: MockClient) =>
-  `${c.address}, ${c.district.split(' · ').slice(1).join(' ') || c.district}, Brasil`;
+  c.district
+    ? `${c.address}, ${c.district.split(' · ').slice(1).join(' ') || c.district}, Brasil`
+    : `${c.address}, Brasil`;
 
 /** Coordenadas dos clientes (pelo endereço cadastrado). */
 export function useClientPlaces(clients: MockClient[], enabled = MAPS_ENABLED) {

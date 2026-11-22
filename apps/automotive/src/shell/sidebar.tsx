@@ -21,16 +21,14 @@ interface Item {
 
 const ITEMS: Item[] = [
   { href: '/mapa', match: '/mapa', label: 'Mapa', glyph: 'mapa' },
-  { href: '/clientes', match: '/clientes', label: 'Clientes', glyph: 'clientes' },
-  { href: '/produtos', match: '/produtos', label: 'Produtos', glyph: 'produtos' },
-  { href: '/rotas', match: '/rotas', label: 'Rotas', glyph: 'rotas' },
   { href: '/kyte', match: '/kyte', label: 'Kyte', glyph: 'kyte' },
   { href: '/musica', match: '/musica', label: 'Música' },
 ];
 
-const TILE_W = 112;
-const TILE_H = 84;
-const GAP = 8;
+// Barra 25% mais larga que a primeira versão (pedido do usuário): blocos e ícones maiores.
+const TILE_W = 140;
+const TILE_H = 104;
+const GAP = 12;
 const SLOT = TILE_H + GAP;
 
 /**
@@ -112,14 +110,14 @@ export function Sidebar() {
               onPress={() => router.replace(item.href)}
             >
               {item.glyph ? (
-                <OutlineGlyph glyph={item.glyph} size={46} color={color} />
+                <OutlineGlyph glyph={item.glyph} size={56} color={color} />
               ) : (
                 <MusicSwap
                   show={showPlaying}
                   logo={
                     <FontAwesome5
                       name="spotify"
-                      size={46}
+                      size={56}
                       color={active ? c.accent : dark ? '#C7C7CC' : '#3A3A3C'}
                     />
                   }
@@ -131,7 +129,7 @@ export function Sidebar() {
                         playing={playing}
                         width={TILE_W}
                         height={TILE_H}
-                        radius={24}
+                        radius={28}
                       />
                     )
                   }
@@ -141,7 +139,7 @@ export function Sidebar() {
           );
         })}
         <Tile top={ITEMS.length * SLOT} label="Falar com a Havena" onPress={openHavena}>
-          <HavenaOrb size={64} ambient />
+          <HavenaOrb size={80} ambient />
         </Tile>
       </View>
 
@@ -158,7 +156,7 @@ export function Sidebar() {
           selected={settingsActive}
           onPress={() => router.replace('/configuracoes')}
         >
-          <OutlineGlyph glyph="ajustes" size={46} color={settingsActive ? c.accent : ink} />
+          <OutlineGlyph glyph="ajustes" size={56} color={settingsActive ? c.accent : ink} />
         </Tile>
       </View>
     </View>

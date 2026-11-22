@@ -1,143 +1,72 @@
-import type { IconName } from '../ui/primitives';
-
 /**
- * Ponte entre o GoClient e o Kyte Web de verdade (o sistema do Kyte, com a conta GROW).
+ * Ponte entre o GoClient e o Kyte Web de verdade.
  *
- * O GoClient não recria telas do Kyte: ele abre o próprio Kyte Web e
- * - navega pelas rotas reais do sistema (lidas do código público do Kyte Web em 20/11/2026:
- *   /products, /customers, /orders, /sales, /finances, /analytics, /catalog, /config);
- * - troca a "casca" do Kyte pela do GoClient (título, subtítulo, busca e botões de seção ficam
- *   no app; o menu lateral do Kyte é escondido) e aplica o visual do app por CSS injetado;
- * - repassa a busca do app para o campo de busca da tela do Kyte que estiver aberta.
+ * O GoClient não cria nada por fora do Kyte: abre o próprio Kyte Web e edita a página por
+ * dentro (CSS e elementos injetados):
+ * - esconde o menu lateral do Kyte e põe, no topo da própria página, as pílulas do GoClient:
+ *   **Início · Vender · Produtos · Clientes · Histórico** (as únicas telas usadas);
+ * - **Início** é um resumo desenhado dentro da página, com os números do Histórico de vendas
+ *   (lidos pela janela invisível da Havena) e o botão "Registrar venda";
+ * - na ficha do cliente, acrescenta **Colocar na rota** e **Ir agora** (usam o endereço
+ *   cadastrado no próprio Kyte);
+ * - aplica o visual do app (fonte, cantos, tema escuro).
  *
- * O Kyte Web usa classes CSS geradas automaticamente (sem nomes estáveis). Por isso o menu e
- * a busca são encontrados pelo conteúdo (textos do menu, posição, placeholder), não por
- * seletores fixos. Se o Kyte mudar a página, o pior caso é o menu dele voltar a aparecer.
+ * As telas foram mapeadas pelos prints do Kyte Web logado (22/11/2026). O Kyte usa classes CSS
+ * geradas (sem nomes estáveis): o menu e os campos são achados pelo texto. Se o Kyte mudar a
+ * página, o pior caso é o menu dele voltar a aparecer ou um botão nosso sumir.
  */
 
 export const KYTE_ORIGIN = 'https://web.kyteapp.com';
-/** Entrada: o próprio Kyte Web decide (logado → painel; sem login → tela de login). */
+/** Entrada: o próprio Kyte Web decide (logado → Vendedor; sem login → tela de login). */
 export const KYTE_HOME = `${KYTE_ORIGIN}/`;
 
-export interface KyteSection {
-  key: string;
-  label: string;
-  subtitle: string;
-  icon: IconName;
-  /** Rota do Kyte Web; `null` = tela do próprio GoClient. */
-  path: string | null;
-  /** Tela do GoClient (quando `path` é nulo). */
-  app?: '/rotas';
-  /** A tela tem busca no Kyte (repassamos o texto da barra de busca). */
-  searchable?: boolean;
-  placeholder?: string;
-}
+/** Seções do Kyte no GoClient e o item do menu do Kyte que cada uma abre. */
+export const KYTE_SECTIONS = [
+  { key: 'inicio', label: 'Início', menu: null },
+  { key: 'vender', label: 'Vender', menu: 'Vendedor' },
+  { key: 'produtos', label: 'Produtos', menu: 'Produtos' },
+  { key: 'clientes', label: 'Clientes', menu: 'Clientes' },
+  { key: 'historico', label: 'Histórico', menu: 'Hist[oó]rico' },
+] as const;
 
-export const KYTE_SECTIONS: KyteSection[] = [
-  {
-    key: 'inicio',
-    label: 'Início',
-    subtitle: 'Resumo da sua loja no Kyte',
-    icon: 'home-outline',
-    path: '/',
-  },
-  {
-    key: 'clientes',
-    label: 'Clientes',
-    subtitle: 'Sua carteira de clientes no Kyte',
-    icon: 'people-outline',
-    path: '/customers',
-    searchable: true,
-    placeholder: 'Buscar cliente',
-  },
-  {
-    key: 'produtos',
-    label: 'Produtos',
-    subtitle: 'Catálogo, preços e estoque',
-    icon: 'pricetags-outline',
-    path: '/products',
-    searchable: true,
-    placeholder: 'Buscar produto ou código',
-  },
-  {
-    key: 'rotas',
-    label: 'Rotas',
-    subtitle: 'Visitas do dia (GoClient)',
-    icon: 'trail-sign-outline',
-    path: null,
-    app: '/rotas',
-  },
-  {
-    key: 'pedidos',
-    label: 'Pedidos',
-    subtitle: 'Pedidos da loja e do catálogo',
-    icon: 'receipt-outline',
-    path: '/orders',
-    searchable: true,
-    placeholder: 'Buscar pedido',
-  },
-  {
-    key: 'vendas',
-    label: 'Vendas',
-    subtitle: 'Vendas registradas no Kyte',
-    icon: 'cash-outline',
-    path: '/sales',
-    searchable: true,
-    placeholder: 'Buscar venda',
-  },
-  {
-    key: 'financas',
-    label: 'Finanças',
-    subtitle: 'Entradas, saídas e saldo',
-    icon: 'wallet-outline',
-    path: '/finances',
-  },
-  {
-    key: 'estatisticas',
-    label: 'Estatísticas',
-    subtitle: 'Desempenho da loja',
-    icon: 'stats-chart-outline',
-    path: '/analytics',
-  },
-  {
-    key: 'catalogo',
-    label: 'Catálogo',
-    subtitle: 'Seu catálogo online',
-    icon: 'storefront-outline',
-    path: '/catalog',
-  },
-  {
-    key: 'config',
-    label: 'Ajustes do Kyte',
-    subtitle: 'Loja, usuários e preferências',
-    icon: 'settings-outline',
-    path: '/config',
-  },
-];
-
-export function sectionByKey(key: string | undefined) {
-  return KYTE_SECTIONS.find((s) => s.key === key);
-}
-
-export function sectionByPath(path: string) {
-  const clean = path.replace(/\/+$/, '') || '/';
-  return (
-    KYTE_SECTIONS.find((s) => s.path && s.path !== '/' && clean.startsWith(s.path)) ??
-    (clean === '/' ? KYTE_SECTIONS[0] : undefined)
-  );
-}
+export type KyteSectionKey = (typeof KYTE_SECTIONS)[number]['key'];
 
 /** Mensagens que a página do Kyte manda para o app. */
 export type KyteMessage =
   | { type: 'route'; host: string; path: string; logged: boolean }
-  | { type: 'search'; ok: boolean }
-  | { type: 'nav'; hidden: boolean };
+  | { type: 'nav'; hidden: boolean }
+  /** Pílula Início aberta: o app busca os números e devolve com `__gcHomeData`. */
+  | { type: 'home' }
+  /** Botões da ficha do cliente. */
+  | {
+      type: 'client-route';
+      now: boolean;
+      client: { name: string; phone: string; address: string };
+    };
+
+export interface HomeData {
+  today: { count: number; total: string } | null;
+  yesterday: { count: number; total: string } | null;
+  week: { count: number; total: string } | null;
+  month: { count: number; total: string } | null;
+  error?: string;
+}
 
 /**
  * Script injetado na página do Kyte (Android/WebView). Roda a cada carregamento e acompanha a
- * navegação interna do Kyte (que troca de tela sem recarregar).
+ * navegação interna do Kyte (que troca de tela sem recarregar). Com `agent`, é a janela
+ * invisível da Havena: sem menu nosso, sem tema e com o menu do Kyte à mostra.
  */
-export function kyteScript({ dark, phone }: { dark: boolean; phone: boolean }): string {
+export function kyteScript({
+  dark,
+  phone,
+  agent = false,
+}: {
+  dark: boolean;
+  phone: boolean;
+  agent?: boolean;
+}): string {
+  const accent = '#0A84FF';
   const css = [
     // Fonte do sistema (a mesma família do app) e cantos arredondados nos controles.
     'html,body,input,button,select,textarea{font-family:-apple-system,"SF Pro Text","SF Pro Display",Roboto,"Helvetica Neue",Arial,sans-serif!important;-webkit-font-smoothing:antialiased}',
@@ -145,36 +74,63 @@ export function kyteScript({ dark, phone }: { dark: boolean; phone: boolean }): 
     '::-webkit-scrollbar{width:0!important;height:0!important}',
     // Chat de ajuda flutuante do Kyte (Intercom) fica escondido: o app tem a Havena.
     '#intercom-container,.intercom-lightweight-app,.intercom-launcher{display:none!important}',
-    // Tema escuro do app: inverte as cores da página e desinverte fotos e vídeos.
+    // Pílulas do GoClient no topo da própria página.
+    `#gc-bar{position:fixed;top:0;left:0;right:0;z-index:2147483000;display:flex;gap:12px;align-items:center;padding:14px 24px;background:${dark ? '#0b0b0c' : '#f2f2f7'};border-bottom:1px solid ${dark ? '#2c2c2e' : '#d8d8dc'}}`,
+    `#gc-bar button{all:unset;cursor:pointer;font:600 ${phone ? 26 : 20}px -apple-system,Roboto,sans-serif;padding:${phone ? '14px 26px' : '10px 22px'};border-radius:999px!important;color:${dark ? '#f2f2f7' : '#1c1c1e'};background:${dark ? '#1c1c1e' : '#fff'};transition:background .25s,color .25s,transform .2s}`,
+    '#gc-bar button:active{transform:scale(.96)}',
+    `#gc-bar button.on{background:${accent};color:#fff}`,
+    `body{padding-top:${phone ? 92 : 72}px!important}`,
+    // Início desenhado dentro da página.
+    `#gc-home{position:fixed;left:0;right:0;bottom:0;top:${phone ? 92 : 72}px;z-index:2147482000;overflow:auto;padding:32px;background:${dark ? '#0b0b0c' : '#f2f2f7'};color:${dark ? '#f2f2f7' : '#1c1c1e'};font-family:-apple-system,Roboto,sans-serif;animation:gcIn .35s cubic-bezier(.2,.8,.2,1)}`,
+    '@keyframes gcIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}',
+    '#gc-home h1{font-size:44px;margin:0 0 4px;font-weight:700;letter-spacing:-.5px}',
+    `#gc-home .sub{opacity:.6;font-size:${phone ? 24 : 18}px;margin-bottom:28px}`,
+    '#gc-home .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-bottom:24px}',
+    `#gc-home .card{background:${dark ? '#1c1c1e' : '#fff'};border-radius:22px;padding:22px}`,
+    `#gc-home .card .l{opacity:.6;font-size:${phone ? 24 : 18}px}`,
+    `#gc-home .card .v{font-size:${phone ? 40 : 32}px;font-weight:700;margin-top:6px}`,
+    `#gc-home .card .n{opacity:.6;font-size:${phone ? 22 : 16}px;margin-top:2px}`,
+    `#gc-home .sell{all:unset;cursor:pointer;display:block;text-align:center;background:${accent};color:#fff;font-weight:600;font-size:${phone ? 30 : 22}px;padding:${phone ? '26px' : '20px'};border-radius:999px!important}`,
+    '#gc-home .err{opacity:.7;margin-bottom:20px}',
+    // Botões de rota na ficha do cliente.
+    `#gc-route{position:fixed;right:28px;bottom:28px;z-index:2147482500;display:flex;gap:12px;padding:12px;border-radius:999px;background:${dark ? 'rgba(28,28,30,.96)' : 'rgba(255,255,255,.96)'};box-shadow:0 8px 30px rgba(0,0,0,.25);animation:gcIn .3s cubic-bezier(.2,.8,.2,1)}`,
+    `#gc-route button{all:unset;cursor:pointer;font:600 ${phone ? 26 : 19}px -apple-system,Roboto,sans-serif;padding:${phone ? '16px 28px' : '12px 22px'};border-radius:999px!important;color:#fff;background:${accent}}`,
+    `#gc-route button.alt{background:${dark ? '#2c2c2e' : '#e5e5ea'};color:${dark ? '#f2f2f7' : '#1c1c1e'}}`,
+    `#gc-route .msg{font:500 ${phone ? 22 : 16}px -apple-system,Roboto,sans-serif;align-self:center;padding:0 10px;opacity:.75;color:${dark ? '#f2f2f7' : '#1c1c1e'}}`,
+    // Tema escuro do app: inverte as cores da página e desinverte fotos e vídeos (nossos
+    // elementos já vêm escuros, então também são desinvertidos).
     ...(dark
       ? [
           'html{background:#fff!important;filter:invert(.92) hue-rotate(180deg)!important}',
-          'img,video,canvas,picture,iframe,[style*="background-image"]{filter:invert(1) hue-rotate(180deg)!important}',
+          'img,video,canvas,picture,iframe,[style*="background-image"],#gc-bar,#gc-home,#gc-route{filter:invert(1) hue-rotate(180deg)!important}',
         ]
       : []),
   ].join('\n');
+  const sections = KYTE_SECTIONS.map((s) => [s.key, s.label, s.menu]);
 
   // biome-ignore format: script injetado, mantido legível em uma função só
   return `(function(){
-  var CSS = ${JSON.stringify(css)};
+  var AGENT = ${agent ? 'true' : 'false'};
+  var CSS = ${JSON.stringify(agent ? '' : css)};
   var PHONE = ${phone ? 'true' : 'false'};
+  var SECTIONS = ${JSON.stringify(sections)};
   function post(m){ try { window.ReactNativeWebView.postMessage(JSON.stringify(m)); } catch(e){} }
   function logged(){ return location.hostname === 'web.kyteapp.com' && !/^\\/(login|external-login)/.test(location.pathname); }
   function style(){
-    if (!document.getElementById('goclient-style')) {
+    if (CSS && !document.getElementById('goclient-style')) {
       var s = document.createElement('style'); s.id = 'goclient-style'; s.textContent = CSS;
       (document.head || document.documentElement).appendChild(s);
     }
-    // No celular o Kyte Web (versão de computador) é desenhado largo e reduzido para caber.
+    // No celular o Kyte Web (versão de computador) é desenhado mais largo e reduzido para caber.
     if (PHONE && document.head && !document.getElementById('goclient-viewport')) {
       var old = document.querySelector('meta[name=viewport]'); if (old) old.remove();
       var m = document.createElement('meta'); m.id = 'goclient-viewport'; m.name = 'viewport';
-      m.content = 'width=1100'; document.head.appendChild(m);
+      m.content = 'width=860'; document.head.appendChild(m);
     }
   }
-  var LABELS = /^(In[ií]cio|Painel|Produtos|Clientes|Pedidos|Vendas|Finan[cç]as|Estat[ií]sticas|Cat[aá]logo|Configura[cç][oõ]es|Usu[aá]rios|Products|Customers|Orders|Sales|Analytics|Catalog|Settings)$/i;
+  var LABELS = /^(Vendedor|In[ií]cio|Painel|Produtos|Clientes|Pedidos|Kai|Cat[aá]logo Online|Vendas|Hist[oó]rico|Finan[cç]as|Estat[ií]sticas|Configura[cç][oõ]es|Usu[aá]rios)$/i;
   function hideNav(){
-    if (!logged() || document.querySelector('[data-goclient-nav]')) return;
+    if (AGENT || !logged() || document.querySelector('[data-goclient-nav]')) return;
     var hits = Array.prototype.filter.call(document.querySelectorAll('a,button,li,div,span,p'), function(e){
       if (e.children.length > 4) return false;
       var t = (e.innerText || '').trim(); if (!LABELS.test(t)) return false;
@@ -200,13 +156,117 @@ export function kyteScript({ dark, phone }: { dark: boolean; phone: boolean }): 
     anc.style.setProperty('display', 'none', 'important');
     post({ type: 'nav', hidden: true });
   }
+  function click(e){
+    ['pointerdown','mousedown','pointerup','mouseup'].forEach(function(t){ e.dispatchEvent(new MouseEvent(t, { bubbles: true, cancelable: true, view: window })); });
+    e.click();
+  }
+  /** Abre uma tela do Kyte clicando no item do menu dele (escondido). */
+  function openMenu(label){
+    var re = new RegExp('^' + label + '$', 'i');
+    var nav = document.querySelector('[data-goclient-nav]') || document.body;
+    var hit = Array.prototype.find.call(nav.querySelectorAll('a,button,li,div,span'), function(e){
+      return e.children.length <= 3 && re.test((e.innerText || e.textContent || '').trim());
+    });
+    if (hit) { click(hit.closest('a,button,li') || hit); return true; }
+    return false;
+  }
+  var homeOpen = false;
+  function current(){
+    if (homeOpen) return 'inicio';
+    var h = (document.querySelector('h1,h2') || {}).innerText || '';
+    if (/^Vendedor/i.test(h)) return 'vender';
+    if (/^Produto|Cadastrar produto/i.test(h)) return 'produtos';
+    if (/^Hist[oó]rico/i.test(h)) return 'historico';
+    if (/^Clientes|Cadastro de clientes/i.test(h) || document.querySelector('#gc-route')) return 'clientes';
+    return '';
+  }
+  function select(key){
+    var sec = SECTIONS.find(function(s){ return s[0] === key; }); if (!sec) return;
+    if (key === 'inicio') { showHome(); }
+    else { hideHome(); openMenu(sec[2]); }
+    setTimeout(paintBar, 120);
+  }
+  window.__goclientSelect = select;
+  function paintBar(){
+    var bar = document.getElementById('gc-bar'); if (!bar) return;
+    var cur = current();
+    Array.prototype.forEach.call(bar.children, function(b){ b.className = b.getAttribute('data-k') === cur ? 'on' : ''; });
+  }
+  function ensureBar(){
+    if (AGENT || !logged()) { var old = document.getElementById('gc-bar'); if (old) old.remove(); return; }
+    if (!document.body || document.getElementById('gc-bar')) { paintBar(); return; }
+    var bar = document.createElement('div'); bar.id = 'gc-bar';
+    SECTIONS.forEach(function(s){
+      var b = document.createElement('button'); b.textContent = s[1]; b.setAttribute('data-k', s[0]);
+      b.addEventListener('click', function(ev){ ev.preventDefault(); ev.stopPropagation(); select(s[0]); });
+      bar.appendChild(b);
+    });
+    document.body.appendChild(bar);
+    paintBar();
+  }
+  // Início: desenhado aqui; os números chegam do app (janela invisível lê o Histórico).
+  function showHome(){
+    homeOpen = true;
+    var h = document.getElementById('gc-home');
+    if (!h) { h = document.createElement('div'); h.id = 'gc-home'; document.body.appendChild(h); }
+    h.innerHTML = '<h1>Início</h1><div class="sub">Resumo das vendas no Kyte</div><div class="sub">Carregando os números…</div>' + sellBtn();
+    bindSell(h);
+    post({ type: 'home' });
+  }
+  function hideHome(){ homeOpen = false; var h = document.getElementById('gc-home'); if (h) h.remove(); }
+  function sellBtn(){ return '<button class="sell">Registrar venda</button>'; }
+  function bindSell(h){ var b = h.querySelector('.sell'); if (b) b.addEventListener('click', function(){ select('vender'); }); }
+  window.__gcHomeData = function(d){
+    var h = document.getElementById('gc-home'); if (!h) return;
+    var card = function(l, v){ return '<div class="card"><div class="l">' + l + '</div><div class="v">' + (v ? v.total : '—') + '</div><div class="n">' + (v ? v.count + (v.count === 1 ? ' venda' : ' vendas') : '') + '</div></div>'; };
+    h.innerHTML = '<h1>Início</h1><div class="sub">Resumo das vendas no Kyte</div>' +
+      (d.error ? '<div class="err">' + d.error + '</div>' : '') +
+      '<div class="grid">' + card('Hoje', d.today) + card('Ontem', d.yesterday) + card('Esta semana', d.week) + card('Este mês', d.month) + '</div>' + sellBtn();
+    bindSell(h);
+  };
+  // Ficha do cliente: Colocar na rota / Ir agora (com o endereço cadastrado no Kyte).
+  function field(re){
+    return Array.prototype.find.call(document.querySelectorAll('input,textarea'), function(i){
+      if (!i.offsetParent) return false;
+      var t = (i.placeholder || '') + ' ' + (i.getAttribute('aria-label') || '');
+      var box = i.parentElement;
+      for (var k = 0; box && k < 3; k++, box = box.parentElement) { var lab = box.querySelector('label,legend'); if (lab) { t += ' ' + lab.innerText; break; } }
+      return re.test(t);
+    });
+  }
+  function readClient(){
+    var v = function(re){ var f = field(re); return f ? f.value.trim() : ''; };
+    var title = ((document.querySelector('h1,h2') || {}).innerText || '').trim();
+    return {
+      name: v(/^\\s*nome/i) || title,
+      phone: v(/celular/i) || v(/telefone/i),
+      address: [v(/endere[cç]o/i), v(/complemento/i)].filter(Boolean).join(', '),
+    };
+  }
+  function ensureRoute(){
+    var isClient = !AGENT && logged() && !homeOpen && field(/endere[cç]o/i) && field(/^\\s*nome/i) && !/Cadastrar produto/i.test(((document.querySelector('h1,h2') || {}).innerText || ''));
+    var box = document.getElementById('gc-route');
+    if (!isClient) { if (box) box.remove(); return; }
+    if (box) return;
+    box = document.createElement('div'); box.id = 'gc-route';
+    box.innerHTML = '<span class="msg"></span><button class="alt" data-now="0">Colocar na rota</button><button data-now="1">Ir agora</button>';
+    Array.prototype.forEach.call(box.querySelectorAll('button'), function(b){
+      b.addEventListener('click', function(){
+        var c = readClient(), msg = box.querySelector('.msg');
+        if (!c.address) { msg.textContent = 'Cadastre o endereço deste cliente primeiro.'; return; }
+        msg.textContent = b.getAttribute('data-now') === '1' ? 'Abrindo a rota…' : 'Colocado na rota ✓';
+        post({ type: 'client-route', now: b.getAttribute('data-now') === '1', client: c });
+      });
+    });
+    document.body.appendChild(box);
+  }
   var last = '';
   function report(){
     var key = location.host + location.pathname;
     if (key === last) return; last = key;
     post({ type: 'route', host: location.hostname, path: location.pathname, logged: logged() });
   }
-  function tidy(){ style(); report(); hideNav(); }
+  function tidy(){ style(); report(); hideNav(); ensureBar(); ensureRoute(); paintBar(); }
   if (!window.__goclient) {
     window.__goclient = true;
     ['pushState', 'replaceState'].forEach(function(fn){
@@ -219,26 +279,6 @@ export function kyteScript({ dark, phone }: { dark: boolean; phone: boolean }): 
       if (pending) return;
       pending = setTimeout(function(){ pending = 0; tidy(); }, 300);
     }).observe(document.documentElement, { childList: true, subtree: true });
-    // Navegação pedida pelo app (botões de seção): troca de tela dentro do próprio Kyte.
-    window.__goclientGo = function(path){
-      if (location.hostname !== 'web.kyteapp.com') { location.href = 'https://web.kyteapp.com' + path; return; }
-      history.pushState({}, '', path);
-      dispatchEvent(new PopStateEvent('popstate', { state: {} }));
-      setTimeout(function(){ if (location.pathname !== path) location.href = path; }, 500);
-    };
-    // Busca pedida pelo app: preenche o campo de busca da tela aberta no Kyte.
-    window.__goclientSearch = function(q){
-      var inputs = Array.prototype.filter.call(document.querySelectorAll('input'), function(i){
-        return i.offsetParent !== null && (i.type === 'search' || /(busc|pesquis|procur|search|filtr)/i.test((i.placeholder || '') + ' ' + (i.getAttribute('aria-label') || '')));
-      });
-      var i = inputs[0];
-      if (!i) { post({ type: 'search', ok: false }); return; }
-      var set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
-      set.call(i, q);
-      i.dispatchEvent(new Event('input', { bubbles: true }));
-      i.dispatchEvent(new Event('change', { bubbles: true }));
-      post({ type: 'search', ok: true });
-    };
   }
   tidy();
 })(); true;`;

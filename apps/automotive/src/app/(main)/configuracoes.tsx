@@ -2,7 +2,9 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { MAPS_ENABLED } from '../../integrations/env';
+import { kyteAgent, reloadKyteAgent } from '../../kyte/agent';
 import { usePhone } from '../../layout/form-factor';
+import { usePrototype } from '../../prototype/state';
 import { useSpotify } from '../../spotify/provider';
 import { spacing, type ThemePreference, useColors, useTheme } from '../../theme';
 import { useEdgeFade } from '../../ui/edge-fade';
@@ -30,6 +32,7 @@ export default function SettingsScreen() {
   const [voiceReplies, setVoiceReplies] = useState(true);
   const [offline, setOffline] = useState(true);
   const sp = useSpotify();
+  const { kyteOpen, setKyteOpen } = usePrototype();
   const phone = usePhone();
   const spotifyValue = !sp.enabled
     ? 'Demonstração (sem Client ID)'
@@ -125,10 +128,26 @@ export default function SettingsScreen() {
         <Row
           leading={<AppIcon icon="storefront" color="#AC8E68" size={68} />}
           title="Kyte"
-          value="Importar planilhas"
+          value={kyteOpen ? 'Conectado' : 'Desconectado'}
           chevron
-          onPress={() => {}}
+          onPress={() => router.replace('/kyte')}
         />
+        {kyteOpen && (
+          <Row
+            title="Sair do Kyte"
+            titleColor={c.danger}
+            onPress={() => {
+              // Sai da conta do Kyte (as janelas do app usam o mesmo login).
+              kyteAgent
+                .logout()
+                .catch(() => {})
+                .finally(() => {
+                  reloadKyteAgent();
+                  setKyteOpen(false);
+                });
+            }}
+          />
+        )}
       </Group>
     </View>,
 

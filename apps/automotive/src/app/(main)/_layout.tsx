@@ -1,7 +1,9 @@
 import { Slot, usePathname } from 'expo-router';
 import { type ComponentRef, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
+import { KyteAgentHost } from '../../kyte/agent';
 import { usePhone, useSystemInsets, useTabBarSpace } from '../../layout/form-factor';
+import { StopsProvider } from '../../map/stops';
 import { SP_BG } from '../../music/phone';
 import { usePrototype } from '../../prototype/state';
 import { Sidebar } from '../../shell/sidebar';
@@ -33,36 +35,42 @@ export default function MainLayout() {
   const system = useSystemInsets();
   const tabSpace = useTabBarSpace();
   return (
-    <View style={[styles.root, { backgroundColor: c.background }]}>
-      <BlurArea targetRef={screen} style={StyleSheet.absoluteFill}>
-        {/* No Mapa o conteúdo passa por baixo da barra lateral (que é translúcida). */}
-        <BlurArea
-          targetRef={content}
-          style={{
-            flex: 1,
-            marginLeft: phone || underBar ? 0 : layout.sidebarWidth,
-            marginBottom: phone && !fullHeight ? tabSpace : 0,
-            // Celular: o fundo vai até a borda de cima; o conteúdo desce da câmera/entalhe.
-            // (O Mapa vai inteiro até a borda e afasta só os próprios controles.)
-            paddingTop: phone && !underBar ? system.top : 0,
-            backgroundColor: phone && section === 'musica' ? SP_BG : undefined,
-          }}
-        >
-          {/* Dentro das telas não há área definida: cada tela define a sua (ex.: o Mapa). */}
-          <BlurTargetProvider value={null}>
-            <ScreenTransition routeKey={section} fade={section !== 'mapa'}>
-              <Slot />
-            </ScreenTransition>
+    <StopsProvider>
+      <View style={[styles.root, { backgroundColor: c.background }]}>
+        {/* Janela invisível do Kyte, usada pela Havena e pelo Início (só no app Android). */}
+        <KyteAgentHost />
+        <BlurArea targetRef={screen} style={StyleSheet.absoluteFill}>
+          {/* No Mapa o conteúdo passa por baixo da barra lateral (que é translúcida). */}
+          <BlurArea
+            targetRef={content}
+            style={{
+              flex: 1,
+              marginLeft: phone || underBar ? 0 : layout.sidebarWidth,
+              marginBottom: phone && !fullHeight ? tabSpace : 0,
+              // Celular: o fundo vai até a borda de cima; o conteúdo desce da câmera/entalhe.
+              // (O Mapa vai inteiro até a borda e afasta só os próprios controles.)
+              paddingTop: phone && !underBar ? system.top : 0,
+              backgroundColor: phone && section === 'musica' ? SP_BG : undefined,
+            }}
+          >
+            {/* Dentro das telas não há área definida: cada tela define a sua (ex.: o Mapa). */}
+            <BlurTargetProvider value={null}>
+              <ScreenTransition routeKey={section}>
+                <Slot />
+              </ScreenTransition>
+            </BlurTargetProvider>
+          </BlurArea>
+          <BlurTargetProvider value={content}>
+            {phone ? <TabBar /> : <Sidebar />}
           </BlurTargetProvider>
         </BlurArea>
-        <BlurTargetProvider value={content}>{phone ? <TabBar /> : <Sidebar />}</BlurTargetProvider>
-      </BlurArea>
-      {overlay && (
-        <BlurTargetProvider value={screen}>
-          <View style={StyleSheet.absoluteFill}>{overlay}</View>
-        </BlurTargetProvider>
-      )}
-    </View>
+        {overlay && (
+          <BlurTargetProvider value={screen}>
+            <View style={StyleSheet.absoluteFill}>{overlay}</View>
+          </BlurTargetProvider>
+        )}
+      </View>
+    </StopsProvider>
   );
 }
 

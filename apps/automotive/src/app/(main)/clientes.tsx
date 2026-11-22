@@ -1,5 +1,6 @@
 import { useRouter } from 'expo-router';
 import { ScrollView, StyleSheet, View } from 'react-native';
+import { callPhone, openWhatsApp } from '../../integrations/contact';
 import { NO_FLEX, usePhone } from '../../layout/form-factor';
 import { CLIENTS, type MockClient } from '../../mocks/data';
 import { usePrototype } from '../../prototype/state';
@@ -99,9 +100,12 @@ function ClientDetailsContent({ client }: { client: MockClient }) {
       </View>
 
       <View style={[styles.actions, phone && { flexWrap: 'wrap' }]}>
-        <QuickAction icon="call" label="Ligar" />
-        <QuickAction icon="logo-whatsapp" label="WhatsApp" />
-        <QuickAction icon="mail" label="E-mail" />
+        <QuickAction icon="call" label="Ligar" onPress={() => callPhone(client.phone)} />
+        <QuickAction
+          icon="logo-whatsapp"
+          label="WhatsApp"
+          onPress={() => openWhatsApp(client.phone)}
+        />
         <Touchable
           accessibilityRole="button"
           onPress={go}
@@ -139,10 +143,22 @@ function ClientDetailsContent({ client }: { client: MockClient }) {
   );
 }
 
-function QuickAction({ icon, label }: { icon: IconName; label: string }) {
+function QuickAction({
+  icon,
+  label,
+  onPress,
+}: {
+  icon: IconName;
+  label: string;
+  onPress?: () => void;
+}) {
   const c = useColors();
   return (
-    <Touchable accessibilityRole="button" style={[styles.quick, { backgroundColor: c.fill }]}>
+    <Touchable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={[styles.quick, { backgroundColor: c.fill }]}
+    >
       <Icon name={icon} size={34} color={c.accent} />
       <Text variant="subhead" tone="accent">
         {label}

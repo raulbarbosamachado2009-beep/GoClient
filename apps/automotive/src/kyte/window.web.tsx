@@ -2,14 +2,22 @@ import { createElement, forwardRef, useEffect, useImperativeHandle, useState } f
 import { StyleSheet, View } from 'react-native';
 import { useColors } from '../theme';
 import { Icon, Text } from '../ui/primitives';
-import { KYTE_ORIGIN, type KyteMessage } from './bridge';
+import { type HomeData, KYTE_ORIGIN, type KyteMessage, type KyteSectionKey } from './bridge';
 import { KYTE_WEB_URL } from './config';
 
 export interface KyteWindowHandle {
   reload: () => void;
-  go: (path: string) => void;
-  search: (text: string) => void;
+  select: (key: KyteSectionKey) => void;
+  home: (data: HomeData) => void;
 }
+
+const PATHS: Record<KyteSectionKey, string> = {
+  inicio: '/',
+  vender: '/',
+  produtos: '/products',
+  clientes: '/customers',
+  historico: '/sales',
+};
 
 /** Verdadeiro no Preview publicado (marcado pelo empacotador em scripts/single-file-preview.mjs). */
 const IN_PREVIEW = Boolean((globalThis as { __GOCLIENT_PREVIEW__?: boolean }).__GOCLIENT_PREVIEW__);
@@ -31,11 +39,11 @@ export const KyteWindow = forwardRef<
     () => ({
       reload: () => setKey((k) => k + 1),
       // Num iframe de outro site o app não lê nem altera a página: só troca o endereço.
-      go: (p) => {
-        setPath(p);
-        setKey((k) => k + 1);
+      select: (k) => {
+        setPath(PATHS[k]);
+        setKey((n) => n + 1);
       },
-      search: () => {},
+      home: () => {},
     }),
     [],
   );

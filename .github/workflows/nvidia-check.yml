@@ -1,0 +1,19 @@
+name: NVIDIA check
+
+# Testa a chave da NVIDIA e os modelos da Havena (rodar à mão ou num ramo debug/nvidia-*).
+on:
+  workflow_dispatch:
+  push:
+    branches: ["debug/nvidia-**"]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node .github/scripts/nvidia-check.mjs
+        env:
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}

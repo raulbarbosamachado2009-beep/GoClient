@@ -8,6 +8,7 @@ import {
   useSystemInsets,
   useTabBarSpace,
 } from '../../layout/form-factor';
+import { ClientPicker } from '../../map/client-picker';
 import { LiveMap, type MapPin } from '../../map/live-map';
 import { type Guidance as TurnGuidance, useTurnByTurn } from '../../map/navigation';
 import { PannableMap } from '../../map/pannable-map';
@@ -20,9 +21,10 @@ import {
   type LatLng,
   type LiveRoute,
 } from '../../map/routing';
+import { useStops } from '../../map/stops';
 import { useCarPosition, useClientPlaces, useLiveRoute } from '../../map/use-live-map';
 import { CLIENT_FOCUS, DAY_FOCUS, type MapMode, USER } from '../../map/world';
-import { CLIENTS, type MockClient, TODAY_ROUTE } from '../../mocks/data';
+import { CLIENTS, type MockClient } from '../../mocks/data';
 import { layout, spacing, useColors } from '../../theme';
 import { BlurArea, BlurTargetProvider } from '../../ui/blur-target';
 import { Appear } from '../../ui/motion';
@@ -49,8 +51,12 @@ export default function MapScreen() {
   const [stop, setStop] = useState(0);
   const target = mode === 'explore' ? USER : mode === 'day' ? DAY_FOCUS : CLIENT_FOCUS;
 
-  const plannedDay = TODAY_ROUTE.map((cid) => CLIENTS.find((c) => c.id === cid) as MockClient);
-  const picked = CLIENTS.find((c) => c.id === id) ?? null;
+  // Rota do dia: os clientes planejados + os postos na rota pelo Kyte ou pela Havena.
+  const stops = useStops();
+  const plannedDay = stops.dayIds
+    .map((cid) => stops.find(cid))
+    .filter((x): x is MockClient => x !== null);
+  const picked = stops.find(id);
 
   // Mapa real (compilação com a chave do OpenRouteService): GPS, endereços e rota.
   const live = MAPS_ENABLED;
@@ -65,7 +71,7 @@ export default function MapScreen() {
     setArrivedAt(null);
     setStop(0);
   }, [mode, id]);
-  const places = useClientPlaces(live ? CLIENTS : [], live);
+  const places = useClientPlaces(live ? [...CLIENTS, ...stops.extra] : [], live);
   const targets = mode === 'day' ? plannedDay : mode === 'client' && picked ? [picked] : [];
   const located = targets.filter((t) => places[t.id]);
   const { route, error: routeError } = useLiveRoute(
@@ -267,9 +273,12 @@ export default function MapScreen() {
         ) : (
           <Guidance />
         )}
-        {mode !== 'explore' && <TripBar mode={mode} route={live ? shownRoute : undefined} />}
+        {mode !== 'explore' && (
+          <TripBar key={`trip:${mode}`} mode={mode} route={live ? shownRoute : undefined} />
+        )}
 
         <Appear
+          key={`${mode}:${client?.id ?? ''}`}
           axis="x"
           distance={520}
           delay={80}
@@ -598,6 +607,14 @@ function ClientCard({
 /** Cartão inicial: nenhum cliente selecionado ainda. */
 function WelcomeCard() {
   const router = useRouter();
+  // "Escolher cliente" abre a lista dentro do próprio cartão (sem trocar de tela).
+  const [picking, setPicking] = useState(false);
+  if (picking)
+    return (
+      <Material style={[styles.welcome, { justifyContent: 'flex-start' }]}>
+        <ClientPicker onClose={() => setPicking(false)} />
+      </Material>
+    );
   // Ocupa a altura toda do espaço do cartão, com botões grandes para tocar dirigindo.
   return (
     <Material style={styles.welcome}>
@@ -616,7 +633,7 @@ function WelcomeCard() {
           icon="storefront"
           size="xl"
           style={styles.welcomeButton}
-          onPress={() => router.replace('/clientes')}
+          onPress={() => setPicking(true)}
         />
         <Button
           label="Montar rota do dia"
