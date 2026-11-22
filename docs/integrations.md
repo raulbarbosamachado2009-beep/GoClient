@@ -53,6 +53,39 @@ Código: `apps/automotive/src/kyte/bridge.ts` (rotas e script injetado) e `src/a
 - **Web/Preview:** o navegador não deixa o app mexer na página de outro site; ali os botões só
   trocam o endereço da janela, sem o visual adaptado.
 
+### No GoClient (atualizado em 22/11/2026)
+
+- A aba Kyte mostra **só a página do Kyte Web**. Por dentro dela o app esconde o menu do Kyte e
+  põe as pílulas **Início · Vender · Produtos · Clientes · Histórico** (`kyte/bridge.ts`).
+- **Início** não existe no Kyte Web: é desenhado dentro da página com os números do
+  Histórico de vendas (Hoje, Ontem, Esta semana, Este mês) e o botão "Registrar venda".
+- **Ficha do cliente:** botões **Colocar na rota** e **Ir agora**, com o endereço cadastrado
+  no próprio Kyte (campo "Endereço" + "Complemento").
+- **Janela invisível** (`kyte/agent.tsx`, `agent-page.ts`): uma segunda janela do Kyte, fora
+  da tela, usada pela Havena e pelo Início — busca cliente, lê endereço/telefone, lê o resumo
+  de vendas, cadastra cliente/produto. Mesmo login (cookies do aparelho).
+- **Limitações:** sem API, tudo é feito na página, achando os elementos pelo texto (as telas
+  foram mapeadas por prints; não houve acesso a uma conta para testar ao vivo — testado num
+  Kyte simulado). Se o Kyte mudar a página, uma ação pode falhar até ajustarmos. O
+  cadastro de cliente/produto procura um botão "Salvar/Concluir"; se não houver, volta a tela
+  (o Kyte pode salvar sozinho) — **a confirmar no aparelho**. Só no app Android.
+
+## Havena (IA)
+
+- **Com internet:** modelo da NVIDIA (plano gratuito, ~40 pedidos/min; termos: uso de
+  desenvolvimento). Escolhido por teste real com a chave: `nvidia/nemotron-3.5-super-vl-120b-a12b`
+  (7/7 conversas certas, ~2 s); reserva `mistralai/mistral-large-4-1t-a52b` (certo, mas lento).
+  Workflow "NVIDIA check" repete o teste.
+- **Ferramentas** (`havena/tools.ts`): música (controle, buscar e tocar/pôr na fila), buscar
+  cliente no Kyte, pôr na rota / ir agora, rota do dia, WhatsApp (abre com a mensagem pronta;
+  o envio é um toque da pessoa), cadastrar cliente/produto no Kyte, resumo de vendas, abrir
+  telas. **Rota, WhatsApp e cadastros sempre pedem confirmação** ("sim"/"não" ou botões).
+- **Voz:** reconhecimento do próprio Android (`expo-speech-recognition`, serviço do Google) e
+  fala do aparelho (`expo-speech`). Sem custo.
+- **Sem internet / sem chave:** comandos fixos (`havena/offline.ts`): passar, voltar, pausar,
+  continuar música; rota do dia; abrir telas.
+- **Próxima fase:** modelo local (llama.cpp) em multimídias com 6 GB ou mais de RAM.
+
 ## Spotify
 
 **O que foi encontrado:**
