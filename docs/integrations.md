@@ -53,22 +53,31 @@ Código: `apps/automotive/src/kyte/bridge.ts` (rotas e script injetado) e `src/a
 - **Web/Preview:** o navegador não deixa o app mexer na página de outro site; ali os botões só
   trocam o endereço da janela, sem o visual adaptado.
 
-### No GoClient (atualizado em 22/11/2026)
+### No GoClient (atualizado em 22/11/2026, segunda versão)
 
-- A aba Kyte mostra **só a página do Kyte Web**. Por dentro dela o app esconde o menu do Kyte e
-  põe as pílulas **Início · Vender · Produtos · Clientes · Histórico** (`kyte/bridge.ts`).
-- **Início** não existe no Kyte Web: é desenhado dentro da página com os números do
-  Histórico de vendas (Hoje, Ontem, Esta semana, Este mês) e o botão "Registrar venda".
-- **Ficha do cliente:** botões **Colocar na rota** e **Ir agora**, com o endereço cadastrado
-  no próprio Kyte (campo "Endereço" + "Complemento").
-- **Janela invisível** (`kyte/agent.tsx`, `agent-page.ts`): uma segunda janela do Kyte, fora
-  da tela, usada pela Havena e pelo Início — busca cliente, lê endereço/telefone, lê o resumo
-  de vendas, cadastra cliente/produto. Mesmo login (cookies do aparelho).
-- **Limitações:** sem API, tudo é feito na página, achando os elementos pelo texto (as telas
-  foram mapeadas por prints; não houve acesso a uma conta para testar ao vivo — testado num
-  Kyte simulado). Se o Kyte mudar a página, uma ação pode falhar até ajustarmos. O
-  cadastro de cliente/produto procura um botão "Salvar/Concluir"; se não houver, volta a tela
-  (o Kyte pode salvar sozinho) — **a confirmar no aparelho**. Só no app Android.
+- **Telas próprias** no visual do Kyte (prints do usuário), celular e multimídia: Início,
+  Produtos (Itens/Estoque), Clientes (filtros de saldo, WhatsApp, totais de débito/crédito,
+  ficha com rota), Histórico (por dia, busca, vendedores, últimos 30 dias), venda aberta
+  (Itens/Detalhes/Cliente, cancelar) e recibo (PDF, e-mail, imprimir, compartilhar). Código em
+  `apps/automotive/src/kyte/screens/`.
+- **Página real do Kyte** só para entrar na conta e para **Vender** (registrar venda), em modo
+  mínimo (menu do Kyte escondido; `kyteScript({ minimal: true })`).
+- **Dados:** a janela invisível (`kyte/agent.tsx`) guarda as respostas JSON que a própria
+  página do Kyte recebe do servidor e lê o banco local do navegador (IndexedDB); depois
+  reconhece produtos, clientes e vendas pelos nomes dos campos (`kyte/data-page.ts`, aceita
+  vários nomes em inglês/português e documentos do Firestore). A lista fica num arquivo do
+  aparelho e é atualizada a cada 5 min de uso. Os totais do Início vêm, quando possível, do
+  próprio Histórico do Kyte (texto da tela).
+- **Diagnóstico** (Ajustes → Diagnóstico do Kyte): mostra só caminhos, nomes de campos e
+  quantidades, para ajustar o reconhecimento se o Kyte usar nomes diferentes.
+- **Cancelar venda:** com confirmação, a janela invisível abre a venda no Histórico do Kyte e
+  usa o botão "Cancelar venda" dele.
+- **Cadastros:** pelos botões "+" a Havena abre (regra: cadastro manual só pela Havena, com
+  confirmação).
+- **Limitações:** sem API pública e sem acesso a uma conta para testar ao vivo, os nomes dos
+  campos do Kyte são presumidos; se o reconhecimento não achar algo, a tela diz isso e aponta
+  o Diagnóstico. Listas muito longas dependem do Kyte entregá-las à página (a janela rola a
+  lista para trazer as páginas seguintes). Só no app Android; no Preview, dados de exemplo.
 
 ## Havena (IA)
 

@@ -9,6 +9,7 @@ import { useFrameScale } from '../preview/automotive-frame';
 import { usePrototype } from '../prototype/state';
 import { useColors } from '../theme';
 import { LIVE_BLUR } from '../ui/blur-target';
+import { KyteLogo } from '../ui/brand';
 import { Blur, Touchable } from '../ui/primitives';
 import { OutlineGlyph } from './app-icons';
 import { NowPlayingTile } from './now-playing-tile';
@@ -186,7 +187,7 @@ export function TabBar() {
       case 'havena':
         return <HavenaOrb size={72} ambient />;
       case 'kyte':
-        return <OutlineGlyph glyph="kyte" size={46} color={col} />;
+        return <KyteLogo size={50} />;
       default:
         return <OutlineGlyph glyph="ajustes" size={46} color={col} />;
     }

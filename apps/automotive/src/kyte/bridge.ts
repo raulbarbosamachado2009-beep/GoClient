@@ -61,10 +61,16 @@ export function kyteScript({
   dark,
   phone,
   agent = false,
+  minimal = false,
 }: {
   dark: boolean;
   phone: boolean;
   agent?: boolean;
+  /**
+   * Página real só para Vender e para o login: sem as pílulas, o Início e os botões de rota
+   * (as telas do GoClient fazem isso); só esconde o menu do Kyte e aplica a fonte.
+   */
+  minimal?: boolean;
 }): string {
   const accent = '#0A84FF';
   const css = [
@@ -111,7 +117,8 @@ export function kyteScript({
   // biome-ignore format: script injetado, mantido legível em uma função só
   return `(function(){
   var AGENT = ${agent ? 'true' : 'false'};
-  var CSS = ${JSON.stringify(agent ? '' : css)};
+  var MINIMAL = ${minimal ? 'true' : 'false'};
+  var CSS = ${JSON.stringify(agent ? '' : minimal ? minimalCss(dark) : css)};
   var PHONE = ${phone ? 'true' : 'false'};
   var SECTIONS = ${JSON.stringify(sections)};
   function post(m){ try { window.ReactNativeWebView.postMessage(JSON.stringify(m)); } catch(e){} }
@@ -193,7 +200,7 @@ export function kyteScript({
     Array.prototype.forEach.call(bar.children, function(b){ b.className = b.getAttribute('data-k') === cur ? 'on' : ''; });
   }
   function ensureBar(){
-    if (AGENT || !logged()) { var old = document.getElementById('gc-bar'); if (old) old.remove(); return; }
+    if (AGENT || MINIMAL || !logged()) { var old = document.getElementById('gc-bar'); if (old) old.remove(); return; }
     if (!document.body || document.getElementById('gc-bar')) { paintBar(); return; }
     var bar = document.createElement('div'); bar.id = 'gc-bar';
     SECTIONS.forEach(function(s){
@@ -244,7 +251,7 @@ export function kyteScript({
     };
   }
   function ensureRoute(){
-    var isClient = !AGENT && logged() && !homeOpen && field(/endere[cç]o/i) && field(/^\\s*nome/i) && !/Cadastrar produto/i.test(((document.querySelector('h1,h2') || {}).innerText || ''));
+    var isClient = !AGENT && !MINIMAL && logged() && !homeOpen && field(/endere[cç]o/i) && field(/^\\s*nome/i) && !/Cadastrar produto/i.test(((document.querySelector('h1,h2') || {}).innerText || ''));
     var box = document.getElementById('gc-route');
     if (!isClient) { if (box) box.remove(); return; }
     if (box) return;
@@ -282,4 +289,14 @@ export function kyteScript({
   }
   tidy();
 })(); true;`;
+}
+
+/** CSS da página real no modo `minimal`: fonte do sistema, sem barras de rolagem e sem chat. */
+function minimalCss(dark: boolean): string {
+  return [
+    'html,body,input,button,select,textarea{font-family:-apple-system,"SF Pro Text",Roboto,"Helvetica Neue",Arial,sans-serif!important;-webkit-font-smoothing:antialiased}',
+    '::-webkit-scrollbar{width:0!important;height:0!important}',
+    '#intercom-container,.intercom-lightweight-app,.intercom-launcher{display:none!important}',
+    ...(dark ? [] : []),
+  ].join('\n');
 }

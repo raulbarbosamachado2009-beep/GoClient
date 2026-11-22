@@ -3,6 +3,7 @@ import type { useRouter } from 'expo-router';
 import { openWhatsApp } from '../integrations/contact';
 import { MAPS_ENABLED } from '../integrations/env';
 import { kyteAgent, kyteAgentAvailable, kyteLogged } from '../kyte/agent';
+import { cachedCustomers, customerAddress, restoreKyteCache } from '../kyte/store';
 import { type LatLng, searchPlaces } from '../map/routing';
 import type { useStops } from '../map/stops';
 import { getLastPosition } from '../map/use-live-map';
@@ -197,6 +198,28 @@ export async function runTool(
     }
     case 'cliente_buscar': {
       const nome = str(args.nome);
+      await restoreKyteCache();
+      const known = cachedCustomers();
+      if (known?.length) {
+        // Lista já lida do Kyte: busca na hora, tolerando nomes mal ouvidos.
+        const q = norm(nome);
+        const hits = known.filter((c) => norm(c.name).includes(q));
+        const pickOne = (c: (typeof known)[number]) => ({
+          result: { name: c.name, phone: c.phone, address: customerAddress(c) },
+        });
+        const exact = hits.filter((c) => norm(c.name) === q);
+        if (exact.length === 1 && exact[0]) return pickOne(exact[0]);
+        if (hits.length === 1 && hits[0]) return pickOne(hits[0]);
+        if (hits.length > 1) return { result: { varios: hits.slice(0, 8).map((c) => c.name) } };
+        const near = closest(
+          nome,
+          known.map((c) => c.name),
+        );
+        if (near.length) return { result: { nenhum_exato: nome, parecidos: near } };
+        return {
+          result: `Nenhum cliente com "${nome}" no Kyte. Pode ser um lugar: tente lugar_buscar.`,
+        };
+      }
       if (kyteOn()) {
         const r = await kyteAgent.findClient(nome);
         if (r.client) return { result: r.client };

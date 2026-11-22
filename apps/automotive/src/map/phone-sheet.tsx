@@ -23,6 +23,7 @@ import {
 } from 'react-native';
 import { callPhone, openWhatsApp } from '../integrations/contact';
 import { kyteAgent, kyteAgentAvailable, kyteLogged } from '../kyte/agent';
+import { customerAddress, findCustomer, useKyteList } from '../kyte/store';
 import { TAB_BAR_HEIGHT, useSystemInsets, useTabBarSpace } from '../layout/form-factor';
 import { CLIENTS, type MockClient, REGIONS, TODAY_ROUTE } from '../mocks/data';
 import { useFrameScale } from '../preview/automotive-frame';
@@ -504,6 +505,14 @@ export function ExploreSheet() {
   };
   // Cliente do Kyte: a janela invisível abre a ficha, lê o endereço e traça a rota.
   const pickKyte = (name: string) => {
+    const known = findCustomer(name);
+    if (known) {
+      const address = customerAddress(known);
+      if (!address) return setNotice(`${name} não tem endereço cadastrado no Kyte.`);
+      Keyboard.dismiss();
+      stops.goNow({ name: known.name, address, phone: known.phone });
+      return;
+    }
     setNotice(`Buscando o endereço de ${name}…`);
     kyteAgent
       .openClient(name)
@@ -741,13 +750,28 @@ const FILTERS = REGIONS.filter((r) => r !== 'Todas');
  * busca na tela de Clientes do Kyte. Fora disso, `names` é nulo e a aba usa os de exemplo.
  */
 export function useKyteNames(query: string, active: boolean) {
+  // Lista de clientes já lida do Kyte (kyte/store.ts): busca na hora, sem abrir telas.
+  const all = useKyteList('customer', active && kyteAgentAvailable() && kyteLogged());
   const [names, setNames] = useState<string[] | null>(null);
   const [loading, setLoading] = useState(false);
+  const list = all.list;
   useEffect(() => {
     if (!active || !kyteAgentAvailable() || !kyteLogged()) {
       setNames(null);
       return;
     }
+    if (list) {
+      const q = query.trim().toLowerCase();
+      setNames(
+        list
+          .map((c) => c.name)
+          .filter((n) => !q || n.toLowerCase().includes(q))
+          .slice(0, 60),
+      );
+      setLoading(false);
+      return;
+    }
+    // Ainda sem a lista: procura direto na tela de clientes do Kyte.
     let alive = true;
     setLoading(true);
     const t = setTimeout(() => {
@@ -761,7 +785,7 @@ export function useKyteNames(query: string, active: boolean) {
       alive = false;
       clearTimeout(t);
     };
-  }, [query, active]);
+  }, [query, active, list]);
   return { names, loading };
 }
 

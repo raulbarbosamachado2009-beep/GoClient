@@ -27,10 +27,10 @@ export interface KyteWindowHandle {
  */
 export const KyteWindow = forwardRef<
   KyteWindowHandle,
-  { dark: boolean; phone: boolean; onMessage?: (m: KyteMessage) => void }
->(function KyteWindow({ dark, phone, onMessage }, ref) {
+  { dark: boolean; phone: boolean; minimal?: boolean; onMessage?: (m: KyteMessage) => void }
+>(function KyteWindow({ dark, phone, minimal = false, onMessage }, ref) {
   const web = useRef<ComponentRef<typeof WebView>>(null);
-  const script = useMemo(() => kyteScript({ dark, phone }), [dark, phone]);
+  const script = useMemo(() => kyteScript({ dark, phone, minimal }), [dark, phone, minimal]);
 
   useImperativeHandle(
     ref,

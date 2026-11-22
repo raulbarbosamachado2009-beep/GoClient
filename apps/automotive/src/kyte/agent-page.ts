@@ -192,6 +192,51 @@ export const JOBS = {
     if (save) { A.click(save); await A.sleep(1200); }
     else { history.back(); await A.sleep(1200); }
     return { saved: true, viaButton: !!save };`,
+  /**
+   * Lista de produtos, clientes ou vendas (ver data-page.ts). Abre a tela no Kyte para ela
+   * buscar os dados e rola a lista até o fim para trazer as páginas seguintes.
+   */
+  readData: (kind: 'product' | 'customer' | 'sale') => `
+    var label = ${JSON.stringify({ product: 'Produtos', customer: 'Clientes', sale: 'Hist[oó]rico' })}[${JSON.stringify(kind)}];
+    try { await A.menu(label); } catch (e) {}
+    var list = [], start = Date.now();
+    while (Date.now() - start < 9000) { list = await A.read(${JSON.stringify(kind)}); if (list.length) break; await A.sleep(700); }
+    // Listas longas chegam aos poucos: rola até parar de crescer.
+    for (var round = 0, last = -1; round < 18 && list.length !== last && Date.now() - start < 40000; round++) {
+      last = list.length;
+      Array.prototype.forEach.call(document.querySelectorAll('div,main,section,ul'), function(e){
+        if (e.scrollHeight > e.clientHeight + 60 && e.clientHeight > 200) e.scrollTop = e.scrollHeight;
+      });
+      window.scrollTo(0, document.body.scrollHeight);
+      await A.sleep(900);
+      list = await A.read(${JSON.stringify(kind)});
+    }
+    return { list: list };`,
+  /** Nome e textos da loja (para o recibo). */
+  readStore: () => `return await A.store();`,
+  /** Estrutura dos dados do Kyte (só nomes de campos e quantidades). */
+  diagnose: () => `
+    for (var label of ['Produtos', 'Clientes', 'Hist[oó]rico']) { try { await A.menu(label); await A.sleep(2500); } catch (e) {} }
+    return await A.diagnose();`,
+  /**
+   * Cancela uma venda pelo número (#14159): Histórico → busca → abre → "Cancelar venda" →
+   * confirma. Só roda depois do "sim" da pessoa.
+   */
+  cancelSale: (number: string) => `
+    await A.menu('Hist[oó]rico');
+    var box = await A.waitFor(function(){ return A.field(/item|cliente|c[oó]digo|busc|procur/i); }, 9000, 'a busca do histórico');
+    A.set(box, ${JSON.stringify(number)});
+    await A.sleep(1500);
+    var tag = A.leaves(new RegExp('#\\s*' + ${JSON.stringify(number)} + '\\b'))[0];
+    if (!tag) throw new Error('Não achei a venda #' + ${JSON.stringify(number)} + ' no Kyte.');
+    A.click(tag.closest('tr,li,[role=row],a,button') || tag);
+    var btn = await A.waitFor(function(){ return A.button(/cancelar venda/i); }, 9000, 'o botão Cancelar venda');
+    A.click(btn);
+    await A.sleep(700);
+    var ok = await A.waitFor(function(){ return A.button(/^(sim|confirmar|cancelar venda|ok|continuar)$/i); }, 6000, 'a confirmação do cancelamento');
+    A.click(ok);
+    await A.sleep(1500);
+    return { canceled: /cancelad/i.test(document.body.innerText) };`,
   /** Sai da conta do Kyte (limpa o login guardado nesta janela). */
   logout: () => `
     var sair = A.leaves(/^Sair$/i)[0];

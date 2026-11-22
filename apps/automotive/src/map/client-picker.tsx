@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Platform, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { kyteAgent } from '../kyte/agent';
+import { customerAddress, findCustomer } from '../kyte/store';
 import { CLIENTS, REGIONS } from '../mocks/data';
 import { spacing, useColors } from '../theme';
 import { Appear } from '../ui/motion';
@@ -32,6 +33,13 @@ export function ClientPicker({ onClose }: { onClose: () => void }) {
       (!q || norm(`${x.tradeName} ${x.name} ${x.address} ${x.district}`).includes(q)),
   );
   const pickKyte = (name: string) => {
+    const known = findCustomer(name);
+    if (known) {
+      const address = customerAddress(known);
+      if (!address) return setNotice(`${name} não tem endereço cadastrado no Kyte.`);
+      stops.goNow({ name: known.name, address, phone: known.phone });
+      return;
+    }
     setNotice(`Buscando o endereço de ${name}…`);
     kyteAgent
       .openClient(name)

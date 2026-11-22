@@ -3,10 +3,12 @@ import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { MAPS_ENABLED } from '../../integrations/env';
 import { kyteAgent, noteKyteLogged, reloadKyteAgent } from '../../kyte/agent';
+import { clearKyteData } from '../../kyte/store';
 import { usePhone } from '../../layout/form-factor';
 import { usePrototype } from '../../prototype/state';
 import { useSpotify } from '../../spotify/provider';
 import { spacing, type ThemePreference, useColors, useTheme } from '../../theme';
+import { KyteLogo } from '../../ui/brand';
 import { useEdgeFade } from '../../ui/edge-fade';
 import { Appear } from '../../ui/motion';
 import {
@@ -126,12 +128,19 @@ export default function SettingsScreen() {
           />
         )}
         <Row
-          leading={<AppIcon icon="storefront" color="#AC8E68" size={68} />}
+          leading={<KyteLogo size={68} />}
           title="Kyte"
           value={kyteOpen ? 'Conectado' : 'Desconectado'}
           chevron
           onPress={() => router.replace('/kyte')}
         />
+        {kyteOpen && (
+          <Row
+            title="Diagnóstico do Kyte"
+            chevron
+            onPress={() => router.replace('/kyte?secao=diagnostico')}
+          />
+        )}
         {kyteOpen && (
           <Row
             title="Sair do Kyte"
@@ -143,6 +152,7 @@ export default function SettingsScreen() {
                 .catch(() => {})
                 .finally(() => {
                   noteKyteLogged(false);
+                  clearKyteData();
                   reloadKyteAgent();
                   setKyteOpen(false);
                 });

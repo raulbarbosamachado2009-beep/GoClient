@@ -7,6 +7,7 @@ import { HavenaPanel } from '../havena/panel';
 import { usePrototype } from '../prototype/state';
 import { layout, nativeDriver, spacing, useColors } from '../theme';
 import { LIVE_BLUR } from '../ui/blur-target';
+import { KyteLogo } from '../ui/brand';
 import { useSpring } from '../ui/motion';
 import { Blur, Text, Touchable } from '../ui/primitives';
 import { type AppGlyph, OutlineGlyph } from './app-icons';
@@ -110,7 +111,9 @@ export function Sidebar() {
               selected={active}
               onPress={() => router.replace(item.href)}
             >
-              {item.glyph ? (
+              {item.glyph === 'kyte' ? (
+                <KyteLogo size={70} />
+              ) : item.glyph ? (
                 <OutlineGlyph glyph={item.glyph} size={66} color={color} />
               ) : (
                 <MusicSwap

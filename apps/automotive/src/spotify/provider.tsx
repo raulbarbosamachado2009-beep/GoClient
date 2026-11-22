@@ -409,7 +409,7 @@ export function useSpotifyLive(): boolean {
  * Spotify (ou o módulo não existe nesta compilação). Lança erro se a conexão falhar.
  */
 async function wakeSpotify(): Promise<boolean> {
-  if (!SpotifyRemote || !SpotifyRemote.isInstalled()) return false;
+  if (!SpotifyRemote?.isInstalled()) return false;
   if (SpotifyRemote.isConnected()) return true;
   // Na primeira vez o Spotify pode mostrar a tela "Permitir o GoClient?"; depois, não.
   await SpotifyRemote.connect(SPOTIFY_CLIENT_ID, REDIRECT_URI, true);

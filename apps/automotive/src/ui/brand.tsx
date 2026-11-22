@@ -15,6 +15,17 @@ export function LogoMark({ size = 96 }: { size?: number }) {
   );
 }
 
+/** Logo do Kyte (imagem enviada pelo usuário), para o menu e os Ajustes. */
+export function KyteLogo({ size = 64 }: { size?: number }) {
+  return (
+    <Image
+      source={require('../../assets/kyte-logo.png')}
+      accessibilityLabel="Kyte"
+      style={{ width: size, height: size, borderRadius: size * 0.24 }}
+    />
+  );
+}
+
 /**
  * Capa de playlist/álbum fictício. Estilo editorial: cor de fundo com degradê sutil,
  * um padrão geométrico (varia pela cor) e, em tamanhos grandes, o título em tipografia

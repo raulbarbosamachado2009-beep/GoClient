@@ -5,6 +5,7 @@ import { WebView } from 'react-native-webview';
 import { AGENT_HELPERS, JOBS } from './agent-page';
 import { KYTE_HOME, kyteScript } from './bridge';
 import { DESKTOP_USER_AGENT } from './config';
+import { CAPTURE_SCRIPT, DATA_HELPERS } from './data-page';
 
 /**
  * Janela **invisível** do Kyte, só da Havena: ela abre telas, busca clientes e lê endereços
@@ -95,6 +96,7 @@ function run<T>(body: string, timeout = 25000): Promise<T> {
       }, timeout);
       pending.set(id, { resolve: resolve as (v: unknown) => void, reject, timer });
       send?.(`${AGENT_HELPERS}
+${DATA_HELPERS}
 window.__gcA.job(${id}, async function(){ var A = window.__gcA; ${body} }); true;`);
     });
   };
@@ -102,6 +104,19 @@ window.__gcA.job(${id}, async function(){ var A = window.__gcA; ${body} }); true
   queue = next.catch(() => {});
   next.finally(sleepLater).catch(() => {});
   return next;
+}
+
+export interface KyteDiagnosis {
+  page: string;
+  endpoints: {
+    path: string;
+    hits: number;
+    top?: string[];
+    lists: { size: number; kind: string | null; keys: string[] }[];
+  }[];
+  idb: { db: string; store: string; size: number; kind: string | null; keys: string[] }[];
+  localStorage: string[];
+  counts: Record<string, number>;
 }
 
 /** Ações da Havena no Kyte (cada uma devolve dados simples ou lança um erro claro). */
@@ -122,6 +137,13 @@ export const kyteAgent = {
   createProduct: (p: { name: string; price: string }) =>
     run<{ saved: boolean }>(JOBS.createProduct(p), 30000),
   logout: () => run<{ ok: boolean }>(JOBS.logout()),
+  /** Listas do Kyte já no formato do GoClient (ver data-page.ts). */
+  readData: <K extends 'product' | 'customer' | 'sale'>(kind: K) =>
+    run<{ list: unknown[] }>(JOBS.readData(kind), 50000),
+  readStore: () =>
+    run<{ name: string; header: string; footer: string; logo: string } | null>(JOBS.readStore()),
+  diagnose: () => run<KyteDiagnosis>(JOBS.diagnose(), 40000),
+  cancelSale: (number: string) => run<{ canceled: boolean }>(JOBS.cancelSale(number), 40000),
 };
 
 /** Monta o lugar da janela invisível (uma vez, no layout principal do app). */
@@ -163,6 +185,8 @@ function AgentWindow() {
         sharedCookiesEnabled
         thirdPartyCookiesEnabled
         setSupportMultipleWindows={false}
+        // Guarda as respostas do servidor do Kyte para ler os dados (ver data-page.ts).
+        injectedJavaScriptBeforeContentLoaded={CAPTURE_SCRIPT}
         injectedJavaScript={script}
         onLoadEnd={() => {
           ready = true;

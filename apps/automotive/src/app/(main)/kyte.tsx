@@ -1,80 +1,184 @@
 import { useLocalSearchParams } from 'expo-router';
-import { useEffect, useRef } from 'react';
-import { View } from 'react-native';
-import { kyteAgent, noteKyteLogged, reloadKyteAgent } from '../../kyte/agent';
-import { KYTE_SECTIONS, type KyteMessage, type KyteSectionKey } from '../../kyte/bridge';
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Platform, StyleSheet, View } from 'react-native';
+import { HavenaPanel } from '../../havena/panel';
+import { kyteLogged, noteKyteLogged, reloadKyteAgent } from '../../kyte/agent';
+import type { KyteMessage } from '../../kyte/bridge';
 import { KyteConnect } from '../../kyte/connect';
+import { ClientDetail, ClientsScreen } from '../../kyte/screens/clients';
+import { DiagnosticScreen } from '../../kyte/screens/diagnostic';
+import { HistoryScreen } from '../../kyte/screens/history';
+import { HomeScreen } from '../../kyte/screens/home';
+import {
+  type Detail,
+  type KyteNav,
+  KyteNavContext,
+  SECTIONS,
+  type Section,
+  useKyteNav as useContextNav,
+} from '../../kyte/screens/nav';
+import { ProductsScreen } from '../../kyte/screens/products';
+import { Receipt, SaleDetail } from '../../kyte/screens/sale';
+import { Header, type IconName, KIcon, KY, Text, useKySize } from '../../kyte/ui';
 import { KyteWindow, type KyteWindowHandle } from '../../kyte/window';
 import { usePhone } from '../../layout/form-factor';
-import { useStops } from '../../map/stops';
 import { usePrototype } from '../../prototype/state';
-import { useColors } from '../../theme';
 import { Appear } from '../../ui/motion';
+import { Touchable } from '../../ui/primitives';
 
 /**
- * Kyte: a página do próprio Kyte Web, ocupando a área toda, sem nada do GoClient por fora.
- * O menu (Início · Vender · Produtos · Clientes · Histórico), o Início e os botões de rota da
- * ficha do cliente são postos dentro da página (ver kyte/bridge.ts).
- * `?secao=clientes` abre direto numa seção (usado pelo Mapa: "Ver mais", "Ficha").
+ * Kyte no GoClient: telas próprias (Início, Produtos, Clientes, Histórico, venda e recibo)
+ * com os dados lidos do Kyte por trás (kyte/store.ts). A página real do Kyte aparece só para
+ * entrar na conta e para Vender (registrar venda), como combinado.
+ * `?secao=clientes` (ou outra) abre direto numa seção; `?secao=diagnostico` abre o diagnóstico.
  */
 export default function KyteScreen() {
-  const c = useColors();
   const phone = usePhone();
-  const stops = useStops();
   const { secao } = useLocalSearchParams<{ secao?: string }>();
-  const { kyteOpen, setKyteOpen } = usePrototype();
+  const { kyteOpen, setKyteOpen, setOverlay } = usePrototype();
+  const [section, setSection] = useState<Section>('inicio');
+  const [stack, setStack] = useState<Detail[]>([]);
+  const [menuOpen, setMenuOpen] = useState(false);
+  // Android: sabe se há login no Kyte (lembrado); se não houver, mostra a página de login.
+  const [logged, setLogged] = useState(() => Platform.OS === 'web' || kyteLogged());
   const win = useRef<KyteWindowHandle>(null);
-  const logged = useRef(false);
-  const wanted = useRef<KyteSectionKey | undefined>(undefined);
 
-  // Atalho vindo de fora (ex.: Mapa → Ver mais) abre a seção pedida.
   useEffect(() => {
-    const key = KYTE_SECTIONS.find((s) => s.key === secao)?.key;
-    if (!key) return;
-    wanted.current = key;
+    if (!secao) return;
     setKyteOpen(true);
-    if (logged.current) win.current?.select(key);
+    if (secao === 'diagnostico') setStack([{ type: 'diagnostico' }]);
+    else if (SECTIONS.some((x) => x.key === secao)) {
+      setSection(secao as Section);
+      setStack([]);
+    }
   }, [secao, setKyteOpen]);
+
+  const havena = useCallback(
+    () => setOverlay(<HavenaPanel onClose={() => setOverlay(null)} />),
+    [setOverlay],
+  );
+
+  const nav = useMemo<KyteNav>(
+    () => ({
+      section,
+      go: (s) => {
+        setSection(s);
+        setStack([]);
+        setMenuOpen(false);
+      },
+      open: (d) => setStack((st) => [...st, d]),
+      back: () => setStack((st) => st.slice(0, -1)),
+      menu: () => setMenuOpen((m) => !m),
+      havena,
+    }),
+    [section, havena],
+  );
 
   if (!kyteOpen) return <KyteConnect onOpen={() => setKyteOpen(true)} />;
 
   const onMessage = (m: KyteMessage) => {
-    if (m.type === 'route') {
-      const was = logged.current;
-      logged.current = m.logged;
-      noteKyteLogged(m.logged);
-      // Acabou de entrar: a janela invisível da Havena passa a usar o mesmo login.
-      if (!was && m.logged) reloadKyteAgent();
-      if (m.logged && wanted.current) {
-        const k = wanted.current;
-        wanted.current = undefined;
-        setTimeout(() => win.current?.select(k), 600);
-      }
-    } else if (m.type === 'home') {
-      kyteAgent
-        .salesSummary()
-        .then((d) => win.current?.home(d))
-        .catch((e: Error) =>
-          win.current?.home({
-            today: null,
-            yesterday: null,
-            week: null,
-            month: null,
-            error: e.message,
-          }),
-        );
-    } else if (m.type === 'client-route') {
-      const s = { name: m.client.name, address: m.client.address, phone: m.client.phone };
-      if (m.now) stops.goNow(s);
-      else stops.add(s);
-    }
+    if (m.type !== 'route') return;
+    noteKyteLogged(m.logged);
+    if (m.logged && !logged) {
+      // Acabou de entrar: a janela invisível passa a usar o mesmo login.
+      reloadKyteAgent();
+      setLogged(true);
+    } else if (!m.logged && logged && Platform.OS !== 'web') setLogged(false);
   };
 
-  return (
-    <Appear distance={8} style={{ flex: 1, backgroundColor: c.background }}>
-      <View style={{ flex: 1 }}>
-        <KyteWindow ref={win} dark={c.mode === 'dark'} phone={phone} onMessage={onMessage} />
+  // Página real: login (sem conta) ou Vender.
+  const web = !logged || section === 'vender';
+  const top = stack[stack.length - 1];
+  const key = web ? 'web' : top ? `${top.type}:${'id' in top ? top.id : ''}` : section;
+
+  let body: ReactNode;
+  if (web)
+    body = (
+      <View style={{ flex: 1, backgroundColor: KY.card }}>
+        {logged && <Header title="Vender" onMenu={nav.menu} />}
+        <View style={{ flex: 1 }}>
+          <KyteWindow ref={win} dark={false} phone={phone} minimal onMessage={onMessage} />
+        </View>
       </View>
-    </Appear>
+    );
+  else if (top?.type === 'client') body = <ClientDetail id={top.id} />;
+  else if (top?.type === 'sale') body = <SaleDetail id={top.id} />;
+  else if (top?.type === 'receipt') body = <Receipt id={top.id} />;
+  else if (top?.type === 'diagnostico') body = <DiagnosticScreen />;
+  else if (section === 'produtos') body = <ProductsScreen />;
+  else if (section === 'clientes') body = <ClientsScreen />;
+  else if (section === 'historico') body = <HistoryScreen />;
+  else body = <HomeScreen />;
+
+  return (
+    <KyteNavContext.Provider value={nav}>
+      <View style={{ flex: 1, backgroundColor: KY.bg }}>
+        <Appear key={key} distance={10} style={{ flex: 1 }}>
+          {body}
+        </Appear>
+        {menuOpen && logged && <SectionMenu onClose={() => setMenuOpen(false)} />}
+      </View>
+    </KyteNavContext.Provider>
+  );
+}
+
+/** Menu ☰: as seções do Kyte no GoClient. */
+function SectionMenu({ onClose }: { onClose: () => void }) {
+  const s = useKySize();
+  const nav = useContextNav();
+  return (
+    <View style={StyleSheet.absoluteFill}>
+      <Touchable
+        scaleTo={1}
+        onPress={onClose}
+        style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,.35)' }]}
+      >
+        <View />
+      </Touchable>
+      <Appear
+        distance={12}
+        style={{
+          position: 'absolute',
+          top: 96,
+          left: s.pad,
+          width: s.phone ? 420 : 440,
+          backgroundColor: KY.card,
+          borderRadius: 22,
+          paddingVertical: 10,
+          shadowColor: '#000',
+          shadowOpacity: 0.25,
+          shadowRadius: 24,
+          elevation: 12,
+        }}
+      >
+        {SECTIONS.map((x) => {
+          const on = nav.section === x.key;
+          return (
+            <Touchable
+              key={x.key}
+              onPress={() => nav.go(x.key)}
+              scaleTo={0.98}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 20,
+                paddingHorizontal: 26,
+                height: s.phone ? 86 : 80,
+                backgroundColor: on ? '#E6FAF4' : 'transparent',
+              }}
+            >
+              <KIcon name={x.icon as IconName} size={s.icon} color={on ? KY.greenInk : KY.ink} />
+              <Text
+                size={s.row}
+                weight={on ? 'semibold' : 'regular'}
+                color={on ? KY.greenInk : KY.ink}
+              >
+                {x.label}
+              </Text>
+            </Touchable>
+          );
+        })}
+      </Appear>
+    </View>
   );
 }

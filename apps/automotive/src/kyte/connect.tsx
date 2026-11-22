@@ -1,6 +1,7 @@
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useBleed, usePhone, useSystemInsets, useTabBarSpace } from '../layout/form-factor';
 import { FONT, spacing, useColors } from '../theme';
+import { KyteLogo } from '../ui/brand';
 import { Appear } from '../ui/motion';
 import { Icon, type IconName, Text, Touchable } from '../ui/primitives';
 
@@ -59,14 +60,7 @@ export function KyteConnect({ onOpen }: { onOpen: () => void }) {
               !phone && { flex: 1 },
             ]}
           >
-            <View
-              style={[
-                styles.tile,
-                { width: t.tile, height: t.tile, borderRadius: t.tile * 0.2237 },
-              ]}
-            >
-              <Icon name="storefront" size={t.tile * 0.52} color="#FFFFFF" />
-            </View>
+            <KyteLogo size={t.tile} />
             <Text variant="largeTitle" style={[t.title, { textAlign: phone ? 'center' : 'left' }]}>
               Kyte no GoClient
             </Text>

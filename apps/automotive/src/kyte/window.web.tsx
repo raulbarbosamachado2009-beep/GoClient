@@ -30,7 +30,7 @@ const IN_PREVIEW = Boolean((globalThis as { __GOCLIENT_PREVIEW__?: boolean }).__
  */
 export const KyteWindow = forwardRef<
   KyteWindowHandle,
-  { dark: boolean; phone: boolean; onMessage?: (m: KyteMessage) => void }
+  { dark: boolean; phone: boolean; minimal?: boolean; onMessage?: (m: KyteMessage) => void }
 >(function KyteWindow({ onMessage }, ref) {
   const [key, setKey] = useState(0);
   const [path, setPath] = useState('/');
