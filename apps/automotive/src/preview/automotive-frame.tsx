@@ -69,18 +69,34 @@ export function AutomotiveFrame({
     <View style={{ flex: 1, backgroundColor: web ? '#0B0B0C' : background, overflow: 'hidden' }}>
       <View
         testID="automotive-frame"
-        style={{
-          position: 'absolute',
-          width,
-          height,
-          // A escala do React Native é feita em torno do centro: posiciona para que o centro
-          // da área de desenho caia no centro da área útil.
-          left: left + (availW - width) / 2,
-          top: top + (availH - height) / 2,
-          backgroundColor: background,
-          transform: [{ scale }],
-          overflow: 'hidden',
-        }}
+        style={
+          web
+            ? // Navegador: `zoom` em vez de `transform: scale`. Com a escala por transformação,
+              // o Safari redesenha a tela inteira a cada quadro de qualquer animação (a aba do
+              // Mapa caía para ~16 fps); com zoom, o conteúdo é desenhado já no tamanho final.
+              ({
+                position: 'absolute',
+                width,
+                height,
+                left: 0,
+                top: 0,
+                zoom: scale,
+                backgroundColor: background,
+                overflow: 'hidden',
+              } as object)
+            : {
+                position: 'absolute',
+                width,
+                height,
+                // A escala do React Native é feita em torno do centro: posiciona para que o
+                // centro da área de desenho caia no centro da área útil.
+                left: left + (availW - width) / 2,
+                top: top + (availH - height) / 2,
+                backgroundColor: background,
+                transform: [{ scale }],
+                overflow: 'hidden',
+              }
+        }
       >
         <FormFactorProvider value={phone ? 'phone' : 'car'}>
           <SystemInsetsProvider value={system}>

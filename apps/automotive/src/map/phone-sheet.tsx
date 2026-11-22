@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
 import {
   type ComponentProps,
+  type ComponentRef,
   createContext,
   type ReactNode,
   useContext,
@@ -21,7 +22,6 @@ import {
 import { TAB_BAR_HEIGHT, useSystemInsets, useTabBarSpace } from '../layout/form-factor';
 import { CLIENTS, type MockClient, TODAY_ROUTE } from '../mocks/data';
 import { useFrameScale } from '../preview/automotive-frame';
-import { OutlineGlyph } from '../shell/app-icons';
 import { layout, spacing, useColors } from '../theme';
 import { Avatar, Icon, type IconName, Text, Touchable } from '../ui/primitives';
 
@@ -47,8 +47,11 @@ function Tap({ onPress, ...rest }: ComponentProps<typeof Touchable>) {
 
 const NO_SELECT = (Platform.OS === 'web' ? { userSelect: 'none' } : null) as object;
 /** No navegador, põe a aba numa camada própria da GPU (o deslocamento não repinta o mapa). */
-/** Android/iOS: a mola e o arrasto rodam no driver nativo (fora do JavaScript). */
-const NATIVE = Platform.OS !== 'web';
+const WEB = Platform.OS === 'web';
+/** Mola da aba (quase crítica, resposta de ~0,45 s, como a do Apple Maps). */
+const SPRING = { stiffness: 190, damping: 26 };
+/** Navegador: a lista não "estica" além do fim (a rolagem elástica descolava o conteúdo). */
+const OVERSCROLL = { overscrollBehavior: 'contain' } as object;
 /** Margem do conteúdo até a borda da tela (fixa: o conteúdo nunca muda de largura). */
 const CONTENT_INSET = 20;
 const WILL_MOVE = (Platform.OS === 'web' ? { willChange: 'transform' } : null) as object;
@@ -78,10 +81,6 @@ export function DragSheet({
   const heights = [collapsed + GAP, Math.round(screen * 0.6), screen - safeTop];
   const heightsRef = useRef(heights);
   heightsRef.current = heights;
-  // Altura visível da aba (animada). Margens, cantos e distância da borda acompanham:
-  // recolhida = pílula flutuante; média = cartão flutuante; cheia = tela inteira.
-  const h = useRef(new Animated.Value(collapsed + GAP)).current;
-  const current = useRef(collapsed + GAP);
   const scale = useFrameScale();
   const scaleRef = useRef(scale);
   scaleRef.current = scale;
@@ -89,38 +88,112 @@ export function DragSheet({
   const scrollTop = useRef(0);
   const detentRef = useRef<Detent>(initial);
 
+  // Geometria da aba para uma altura `v`: recolhida = pílula flutuante; média = cartão
+  // flutuante; cheia = tela inteira. Só transformações (deslocar e esticar na horizontal),
+  // que a placa de vídeo faz sem recalcular nem redesenhar nada.
+  const H0 = heights[0] ?? collapsed;
+  const H1 = Math.max(heights[1] ?? 0, H0 + 1);
+  const H2 = Math.max(heights[2] ?? 0, H1 + 1);
+  const geo = useRef({ H0, H1, H2, GAP, screen, width });
+  geo.current = { H0, H1, H2, GAP, screen, width };
+
+  // ── Movimento ────────────────────────────────────────────────────────────────────────
+  // Android/iOS: Animated com driver nativo. Navegador: o dedo e a mola escrevem as
+  // transformações direto nos elementos, sem passar pelo React Native (no Safari, o caminho
+  // do Animated custava metade dos quadros).
+  const h = useRef(new Animated.Value(collapsed + GAP)).current;
+  const clipRef = useRef<ComponentRef<typeof View>>(null);
+  const bgRef = useRef<ComponentRef<typeof View>>(null);
+  const bodyRef = useRef<ComponentRef<typeof View>>(null);
+  const web = useRef({ value: collapsed + GAP, frame: 0 }).current;
+
+  const paint = (v: number) => {
+    web.value = v;
+    const { H0: a, H1: m, H2: z, GAP: gapMax, screen: sc, width: w } = geo.current;
+    const ww = Math.max(w, 1);
+    const k1 = Math.min(Math.max((v - a) / (m - a), 0), 1);
+    const k2 = Math.min(Math.max((v - m) / (z - m), 0), 1);
+    const sx = v <= m ? (ww - 56 + 24 * k1) / ww : (ww - 32 + 32 * k2) / ww;
+    const gap = v <= m ? gapMax : gapMax * (1 - k2);
+    const top = sc - v + gap;
+    const clip = clipRef.current as unknown as HTMLElement | null;
+    const bg = bgRef.current as unknown as HTMLElement | null;
+    const body = bodyRef.current as unknown as HTMLElement | null;
+    if (clip) clip.style.transform = `translate3d(0,${-gap}px,0) scaleX(${sx})`;
+    if (bg) bg.style.transform = `translate3d(0,${top}px,0)`;
+    if (body) body.style.transform = `translate3d(0,${top}px,0) scaleX(${1 / sx})`;
+  };
+
+  /** Valor atual (interrompe a mola em andamento). */
+  const stop = (cb: (v: number) => void) => {
+    if (WEB) {
+      cancelAnimationFrame(web.frame);
+      cb(web.value);
+    } else h.stopAnimation(cb);
+  };
+  const setValue = (v: number) => (WEB ? paint(v) : h.setValue(v));
+
   const snap = (d: Detent, velocity = 0) => {
     // A troca de estado (que redesenha o conteúdo) fica para o fim do movimento: no meio
     // da animação ela custaria quadros.
     detentRef.current = d;
     const to = heightsRef.current[d] ?? collapsed;
-    current.current = to;
+    const done = () => setDetent(detentRef.current);
     // Mola quase crítica, com a "resposta" (~0,45 s) da aba do Apple Maps: desliza contínua,
     // herda a velocidade do dedo e assenta sem quicar.
+    if (WEB) {
+      cancelAnimationFrame(web.frame);
+      let x = web.value;
+      let vel = velocity * 1000; // unidades por segundo
+      let last = performance.now();
+      const step = (now: number) => {
+        let dt = Math.min((now - last) / 1000, 1 / 20);
+        last = now;
+        while (dt > 0) {
+          const h1 = Math.min(dt, 1 / 240);
+          vel += (-SPRING.stiffness * (x - to) - SPRING.damping * vel) * h1;
+          x += vel * h1;
+          dt -= h1;
+        }
+        if (Math.abs(x - to) < 0.3 && Math.abs(vel) < 2) {
+          paint(to);
+          done();
+          return;
+        }
+        paint(x);
+        web.frame = requestAnimationFrame(step);
+      };
+      web.frame = requestAnimationFrame(step);
+      return;
+    }
     Animated.spring(h, {
       toValue: to,
       velocity,
-      stiffness: 190,
-      damping: 26,
+      ...SPRING,
       mass: 1,
       restDisplacementThreshold: 0.5,
       restSpeedThreshold: 0.5,
-      useNativeDriver: NATIVE,
-    }).start(() => setDetent(detentRef.current));
+      useNativeDriver: true,
+    }).start(done);
   };
   const snapRef = useRef(snap);
   snapRef.current = snap;
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: reposiciona quando a tela é medida
   useEffect(() => {
-    if (screen > 0) {
-      const to = heightsRef.current[detentRef.current] ?? collapsed;
-      current.current = to;
-      h.setValue(to);
-    }
-  }, [screen]);
+    if (screen > 0) setValue(heightsRef.current[detentRef.current] ?? collapsed);
+  }, [screen, width]);
 
+  // ── Gesto ────────────────────────────────────────────────────────────────────────────
   const start = useRef(0);
+  const follow = (dy: number) => {
+    const hs = heightsRef.current;
+    const min = hs[0] ?? 0;
+    const max = hs[2] ?? 0;
+    const next = start.current - dy / scaleRef.current;
+    // Passando dos limites, resiste (efeito elástico).
+    setValue(next < min ? min - (min - next) / 4 : next > max ? max + (next - max) / 6 : next);
+  };
   const finish = (dy: number, vyRaw: number) => {
     const hs = heightsRef.current;
     const shown = start.current - dy / scaleRef.current;
@@ -138,29 +211,22 @@ export function DragSheet({
       dragged.current = false;
     }, 350);
   };
+  const grab = () => {
+    dragged.current = true;
+    stop((v) => {
+      start.current = v;
+    });
+  };
   const vertical = (g: { dx: number; dy: number }) =>
     Math.abs(g.dy) > 8 && Math.abs(g.dy) > Math.abs(g.dx);
   const handlers: PanResponderCallbacks = {
     onStartShouldSetPanResponder: () => false,
     onPanResponderTerminationRequest: () => false,
-    onPanResponderGrant: () => {
-      dragged.current = true;
-      h.stopAnimation((v) => {
-        start.current = v;
-        current.current = v;
-      });
-    },
-    onPanResponderMove: (_e, g) => {
-      const hs = heightsRef.current;
-      const min = hs[0] ?? 0;
-      const max = hs[2] ?? 0;
-      const next = start.current - g.dy / scaleRef.current;
-      // Passando dos limites, resiste (efeito elástico).
-      h.setValue(next < min ? min - (min - next) / 4 : next > max ? max + (next - max) / 6 : next);
-    },
+    onPanResponderGrant: grab,
+    onPanResponderMove: (_e, g) => follow(g.dy),
     onPanResponderRelease: (_e, g) => finish(g.dy, g.vy),
-    // Se o sistema interromper o gesto (ex.: rolagem do navegador), a aba volta para uma
-    // altura válida em vez de ficar parada fora do lugar.
+    // Se o sistema interromper o gesto, a aba volta para uma altura válida em vez de ficar
+    // parada fora do lugar.
     onPanResponderTerminate: (_e, g) => finish(g.dy, g.vy),
   };
   // Alça e cabeçalho: sempre arrastam a aba (mesmo começando em cima da busca).
@@ -182,16 +248,105 @@ export function DragSheet({
     }),
   ).current;
 
-  const H0 = heights[0] ?? collapsed;
-  const H1 = Math.max(heights[1] ?? 0, H0 + 1);
-  const H2 = Math.max(heights[2] ?? 0, H1 + 1);
-  // Desempenho: durante o gesto só mudam transformações (deslocar e esticar na horizontal),
-  // que a placa de vídeo faz sem recalcular nem redesenhar nada — e no Android rodam fora
-  // do JavaScript (driver nativo). Tamanho, cantos e conteúdo da aba ficam fixos.
-  //  - clip: recorte de cantos arredondados embaixo; sobe `gap` (flutuando sobre a barra de
-  //    abas) e encolhe na horizontal `s` (margens laterais da pílula/cartão).
-  //  - fundo e conteúdo: sobem com a aba; o conteúdo desfaz o encolhimento horizontal.
+  // Navegador: toque direto nos elementos (sem o sistema de gestos do React Native). O
+  // `preventDefault` no arrasto também impede a rolagem elástica do Safari, que descolava a
+  // lista do cabeçalho.
+  const headerRef = useRef<ComponentRef<typeof View>>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: liga uma vez por elemento
+  useEffect(() => {
+    if (!WEB) return;
+    const body = bodyRef.current as unknown as HTMLElement | null;
+    if (!body) return;
+    const head = headerRef.current as unknown as HTMLElement | null;
+    let y0 = 0;
+    let x0 = 0;
+    let mode: 'idle' | 'maybe' | 'drag' | 'native' = 'idle';
+    let inHeader = false;
+    let samples: { y: number; t: number }[] = [];
+    const begin = (x: number, y: number, target: EventTarget | null) => {
+      x0 = x;
+      y0 = y;
+      mode = 'maybe';
+      inHeader = !!head && target instanceof Node && head.contains(target);
+      samples = [{ y, t: performance.now() }];
+    };
+    const move = (x: number, y: number, prevent: () => void) => {
+      if (mode === 'idle' || mode === 'native') return;
+      const dx = x - x0;
+      const dy = y - y0;
+      if (mode === 'maybe') {
+        if (!vertical({ dx, dy })) {
+          if (Math.abs(dx) > 8) mode = 'native';
+          return;
+        }
+        const canDrag = inHeader || detentRef.current !== 2 || (dy > 0 && scrollTop.current <= 0);
+        if (!canDrag) {
+          mode = 'native';
+          return;
+        }
+        mode = 'drag';
+        grab();
+        y0 = y; // começa sem salto
+      }
+      prevent();
+      const t = performance.now();
+      samples.push({ y, t });
+      while (samples.length > 2 && t - (samples[0]?.t ?? t) > 100) samples.shift();
+      follow(y - y0);
+    };
+    const end = (y: number) => {
+      if (mode === 'drag') {
+        const first = samples[0];
+        const t = performance.now();
+        const vy = first && t - first.t > 0 ? (y - first.y) / (t - first.t) : 0;
+        finish(y - y0, vy);
+      }
+      mode = 'idle';
+    };
+    const lastY = { v: 0 };
+    const ts = (e: TouchEvent) => {
+      const p = e.touches[0];
+      if (p && e.touches.length === 1) begin(p.clientX, p.clientY, e.target);
+    };
+    const tm = (e: TouchEvent) => {
+      const p = e.touches[0];
+      if (!p) return;
+      lastY.v = p.clientY;
+      move(p.clientX, p.clientY, () => e.preventDefault());
+    };
+    const te = () => end(lastY.v);
+    const md = (e: MouseEvent) => {
+      if (e.button !== 0) return;
+      begin(e.clientX, e.clientY, e.target);
+      const mm = (ev: MouseEvent) => {
+        lastY.v = ev.clientY;
+        move(ev.clientX, ev.clientY, () => ev.preventDefault());
+      };
+      const mu = () => {
+        window.removeEventListener('mousemove', mm);
+        window.removeEventListener('mouseup', mu);
+        end(lastY.v);
+      };
+      lastY.v = e.clientY;
+      window.addEventListener('mousemove', mm);
+      window.addEventListener('mouseup', mu);
+    };
+    body.addEventListener('touchstart', ts, { passive: true });
+    body.addEventListener('touchmove', tm, { passive: false });
+    body.addEventListener('touchend', te);
+    body.addEventListener('touchcancel', te);
+    body.addEventListener('mousedown', md);
+    return () => {
+      body.removeEventListener('touchstart', ts);
+      body.removeEventListener('touchmove', tm);
+      body.removeEventListener('touchend', te);
+      body.removeEventListener('touchcancel', te);
+      body.removeEventListener('mousedown', md);
+    };
+  }, [screen > 0 && width > 0]);
+
   const anim = useMemo(() => {
+    if (WEB) return null;
     const range = [H0, H1, H2];
     const w = Math.max(width, 1);
     const s = h.interpolate({
@@ -207,9 +362,9 @@ export function DragSheet({
     // Topo da aba (a partir do topo do recorte, que já subiu `gap`).
     const top = Animated.add(Animated.subtract(screen, h), gap);
     return {
-      clip: [{ translateY: Animated.multiply(gap, -1) }, { scaleX: s }],
-      bg: [{ translateY: top }],
-      body: [{ translateY: top }, { scaleX: Animated.divide(1, s) }],
+      clip: { transform: [{ translateY: Animated.multiply(gap, -1) }, { scaleX: s }] },
+      bg: { transform: [{ translateY: top }] },
+      body: { transform: [{ translateY: top }, { scaleX: Animated.divide(1, s) }] },
     };
   }, [h, H0, H1, H2, GAP, screen, width]);
 
@@ -225,36 +380,39 @@ export function DragSheet({
       >
         {screen > 0 && width > 0 && (
           <Animated.View
+            ref={clipRef}
             pointerEvents="box-none"
-            style={[styles.clip, { height: screen, transform: anim.clip }, WILL_MOVE, NO_SELECT]}
+            style={[styles.clip, { height: screen }, anim?.clip, WILL_MOVE, NO_SELECT]}
           >
             <Animated.View
+              ref={bgRef}
               pointerEvents="none"
               style={[
                 styles.sheetBg,
                 {
                   height: screen,
                   borderColor: c.material.border,
-                  backgroundColor: c.mode === 'dark' ? '#1E1E20' : '#F6F6F8',
-                  transform: anim.bg,
+                  backgroundColor: c.mode === 'dark' ? '#1C1C1E' : '#F2F2F7',
                 },
+                anim?.bg,
                 WILL_MOVE,
               ]}
             />
             <Animated.View
+              ref={bodyRef}
               style={[
                 styles.body,
                 {
                   left: CONTENT_INSET,
                   width: width - CONTENT_INSET * 2,
                   height: screen,
-                  transform: anim.body,
                 },
+                anim?.body,
                 WILL_MOVE,
               ]}
             >
               {/* Cabeçalho fixo: a busca nunca rola junto com a lista. */}
-              <View {...pan.panHandlers}>
+              <View ref={headerRef} {...(WEB ? null : pan.panHandlers)}>
                 <Touchable
                   accessibilityRole="button"
                   accessibilityLabel={detent === 2 ? 'Recolher aba' : 'Expandir aba'}
@@ -268,7 +426,7 @@ export function DragSheet({
                 <View style={styles.header}>{header}</View>
               </View>
               <ScrollView
-                style={{ flex: 1 }}
+                style={[{ flex: 1 }, WEB && OVERSCROLL]}
                 scrollEnabled={detent === 2}
                 showsVerticalScrollIndicator={detent === 2}
                 contentContainerStyle={styles.content}
@@ -276,7 +434,7 @@ export function DragSheet({
                 onScroll={(e) => {
                   scrollTop.current = e.nativeEvent.contentOffset.y;
                 }}
-                {...contentPan.panHandlers}
+                {...(WEB ? null : contentPan.panHandlers)}
               >
                 {children}
               </ScrollView>
@@ -302,7 +460,7 @@ export function ExploreSheet() {
   return (
     <DragSheet
       initial={0}
-      collapsed={130}
+      collapsed={146}
       header={
         <View style={styles.searchRow}>
           <Tap
@@ -311,18 +469,23 @@ export function ExploreSheet() {
             onPress={() => router.replace('/clientes')}
             style={[styles.search, { backgroundColor: c.fill }]}
           >
-            <Icon name="search" size={30} color={c.textSecondary} />
-            <Text variant="body" tone="secondary" style={{ flex: 1 }} numberOfLines={1}>
+            <Icon name="search" size={36} color={c.textSecondary} />
+            <Text
+              variant="body"
+              tone="secondary"
+              style={[TYPE.body, { flex: 1 }]}
+              numberOfLines={1}
+            >
               Buscar cliente ou endereço
             </Text>
-            <Icon name="mic" size={30} color={c.textSecondary} />
+            <Icon name="mic" size={36} color={c.textSecondary} />
           </Tap>
           <Tap
             accessibilityRole="button"
             accessibilityLabel="Ajustes da conta"
             onPress={() => router.replace('/configuracoes')}
           >
-            <Avatar name="Raul Barbosa" size={76} colors={['#8E9BD6', '#6A76B8']} />
+            <Avatar name="Raul Barbosa" size={84} colors={['#8E9BD6', '#6A76B8']} />
           </Tap>
         </View>
       }
@@ -333,14 +496,14 @@ export function ExploreSheet() {
           label="Clientes"
           sub="no Kyte"
           color="#0A84FF"
-          icon={<OutlineGlyph glyph="clientes" size={46} color="#FFFFFF" />}
+          icon={<Icon name="people" size={56} color="#FFFFFF" />}
           onPress={() => router.replace({ pathname: '/kyte', params: { secao: 'clientes' } })}
         />
         <Shortcut
           label="Produtos"
           sub="no Kyte"
           color="#FF9F0A"
-          icon={<OutlineGlyph glyph="produtos" size={46} color="#FFFFFF" />}
+          icon={<Icon name="pricetag" size={52} color="#FFFFFF" />}
           onPress={() => router.replace({ pathname: '/kyte', params: { secao: 'produtos' } })}
         />
         <Shortcut
@@ -348,7 +511,7 @@ export function ExploreSheet() {
           sub="Montar"
           subTone="accent"
           color="#30D158"
-          icon={<OutlineGlyph glyph="rotas" size={46} color="#FFFFFF" />}
+          icon={<Icon name="trail-sign" size={52} color="#FFFFFF" />}
           onPress={() => router.replace('/rotas')}
         />
       </View>
@@ -365,17 +528,17 @@ export function ExploreSheet() {
               style={styles.recent}
             >
               <View style={[styles.pin, { backgroundColor: '#FF375F' }]}>
-                <Icon name="location" size={30} color="#FFFFFF" />
+                <Icon name="location-sharp" size={34} color="#FFFFFF" />
               </View>
               <View style={{ flex: 1 }}>
-                <Text variant="headline" numberOfLines={1}>
+                <Text variant="headline" style={TYPE.rowTitle} numberOfLines={1}>
                   {x.tradeName}
                 </Text>
-                <Text variant="callout" tone="secondary" numberOfLines={1}>
+                <Text variant="callout" tone="secondary" style={TYPE.rowSub} numberOfLines={1}>
                   {x.address} · {x.district.split(' · ').slice(1).join(' · ')}
                 </Text>
               </View>
-              <Icon name="ellipsis-horizontal" size={36} color={c.text} />
+              <Icon name="ellipsis-horizontal" size={40} color={c.textSecondary} />
             </Tap>
           </View>
         ))}
@@ -389,11 +552,13 @@ export function ExploreSheet() {
         style={[styles.guide, { backgroundColor: c.fill }]}
       >
         <View style={[styles.guideArt, { backgroundColor: '#0A84FF' }]}>
-          <OutlineGlyph glyph="rotas" size={64} color="#FFFFFF" />
+          <Icon name="map" size={72} color="#FFFFFF" />
         </View>
-        <Text variant="title2">Visitas de hoje</Text>
-        <Text variant="callout" tone="secondary">
-          {TODAY_ROUTE.length} clientes · toque para traçar
+        <Text variant="headline" style={TYPE.rowTitle}>
+          Visitas de hoje
+        </Text>
+        <Text variant="callout" tone="secondary" style={TYPE.rowSub}>
+          {TODAY_ROUTE.length} clientes
         </Text>
       </Tap>
 
@@ -531,10 +696,10 @@ function Section({ title, onPress }: { title: string; onPress?: () => void }) {
   const c = useColors();
   return (
     <Tap accessibilityRole="header" onPress={onPress} disabled={!onPress} style={styles.section}>
-      <Text variant="title2" style={{ fontSize: 36, lineHeight: 44 }}>
+      <Text variant="title2" style={TYPE.section}>
         {title}
       </Text>
-      {onPress && <Icon name="chevron-forward" size={32} color={c.textSecondary} />}
+      {onPress && <Icon name="chevron-forward" size={30} color={c.textTertiary} />}
     </Tap>
   );
 }
@@ -557,12 +722,13 @@ function Shortcut({
   return (
     <Tap accessibilityRole="button" onPress={onPress} scaleTo={0.94} style={styles.shortcut}>
       <View style={[styles.circle, { backgroundColor: color }]}>{icon}</View>
-      <Text variant="headline" numberOfLines={1}>
+      <Text variant="headline" style={TYPE.label} numberOfLines={1}>
         {label}
       </Text>
       <Text
         variant="callout"
         tone={subTone === 'accent' ? 'accent' : 'secondary'}
+        style={TYPE.caption}
         numberOfLines={1}
       >
         {sub}
@@ -588,8 +754,8 @@ function WideAction({
       scaleTo={0.98}
       style={[styles.wide, { backgroundColor: c.mode === 'dark' ? '#13243A' : '#E3EEFC' }]}
     >
-      <Icon name={icon} size={36} color={c.accent} />
-      <Text variant="headline" tone="accent" style={{ flex: 1, textAlign: 'center' }}>
+      <Icon name={icon} size={38} color={c.accent} />
+      <Text variant="headline" tone="accent" style={[TYPE.body, { flex: 1, textAlign: 'center' }]}>
         {label}
       </Text>
       <View style={{ width: 44 }} />
@@ -657,6 +823,20 @@ function Detail({ label, value, tone }: { label: string; value: string; tone?: '
   );
 }
 
+/**
+ * Tamanhos de texto da aba nas medidas do iOS (corpo 17 pt, legenda 15 pt, título de seção
+ * 20 pt...). A tela de referência do celular tem 720 de largura (≈0,55× no aparelho), então
+ * cada ponto do iOS vale ~1,83 unidade aqui.
+ */
+const TYPE = StyleSheet.create({
+  body: { fontSize: 31, lineHeight: 38 },
+  section: { fontSize: 38, lineHeight: 46 },
+  rowTitle: { fontSize: 31, lineHeight: 38 },
+  rowSub: { fontSize: 27, lineHeight: 34 },
+  label: { fontSize: 25, lineHeight: 31 },
+  caption: { fontSize: 22, lineHeight: 28 },
+});
+
 const styles = StyleSheet.create({
   area: {
     position: 'absolute',
@@ -686,29 +866,29 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   body: { position: 'absolute', top: 0 },
-  grabArea: { height: 36, alignItems: 'center', justifyContent: 'center' },
-  grabber: { width: 72, height: 8, borderRadius: 4, opacity: 0.6 },
-  header: { paddingHorizontal: 24, paddingBottom: 14 },
-  content: { paddingHorizontal: 28, paddingBottom: TAB_BAR_HEIGHT + 48, gap: spacing[4] },
+  grabArea: { height: 40, alignItems: 'center', justifyContent: 'center' },
+  grabber: { width: 66, height: 10, borderRadius: 5, opacity: 0.5 },
+  header: { paddingHorizontal: 24, paddingBottom: 18 },
+  content: { paddingHorizontal: 24, paddingBottom: TAB_BAR_HEIGHT + 48, gap: spacing[4] },
   searchRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
   search: {
     flex: 1,
-    height: 80,
-    borderRadius: 40,
+    height: 84,
+    borderRadius: 42,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[3],
-    paddingHorizontal: spacing[6],
+    paddingHorizontal: spacing[5],
   },
   section: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[2],
-    marginTop: spacing[5],
+    marginTop: spacing[6],
     alignSelf: 'flex-start',
   },
-  shortcuts: { flexDirection: 'row', gap: spacing[6] },
-  shortcut: { alignItems: 'center', gap: 2, width: 140 },
+  shortcuts: { flexDirection: 'row', gap: spacing[4] },
+  shortcut: { alignItems: 'center', gap: 2, width: 150 },
   circle: {
     width: 112,
     height: 112,
@@ -717,8 +897,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: spacing[2],
   },
-  card: { borderRadius: 28, overflow: 'hidden' },
-  sep: { height: StyleSheet.hairlineWidth, marginLeft: 108 },
+  card: { borderRadius: 30, overflow: 'hidden' },
+  sep: { height: StyleSheet.hairlineWidth, marginLeft: 104 },
   recent: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -726,8 +906,8 @@ const styles = StyleSheet.create({
     paddingVertical: spacing[4],
     paddingHorizontal: spacing[5],
   },
-  pin: { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center' },
-  guide: { width: 280, borderRadius: 28, padding: spacing[4], gap: 2 },
+  pin: { width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center' },
+  guide: { width: 300, borderRadius: 30, padding: spacing[4], gap: 2 },
   guideArt: {
     height: 140,
     borderRadius: 18,
