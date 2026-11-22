@@ -1,24 +1,25 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { type ComponentRef, useRef, useState } from 'react';
+import { type ComponentRef, useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { GOOGLE_MAPS_ENABLED } from '../../integrations/env';
+import { MAPS_ENABLED } from '../../integrations/env';
 import {
   TAB_BAR_HEIGHT,
   usePhone,
   useSystemInsets,
   useTabBarSpace,
 } from '../../layout/form-factor';
+import { LiveMap, type MapPin } from '../../map/live-map';
+import { type Guidance as TurnGuidance, useTurnByTurn } from '../../map/navigation';
+import { PannableMap } from '../../map/pannable-map';
+import { ExploreSheet, RouteSheet, type TripInfo } from '../../map/phone-sheet';
 import {
   formatArrival,
   formatDuration,
   formatKm,
+  formatStepDistance,
   type LatLng,
   type LiveRoute,
-  openInGoogleMaps,
-} from '../../map/google';
-import { GoogleMap, type MapPin } from '../../map/google-map';
-import { PannableMap } from '../../map/pannable-map';
-import { ExploreSheet, RouteSheet, type TripInfo } from '../../map/phone-sheet';
+} from '../../map/routing';
 import { useCarPosition, useClientPlaces, useLiveRoute } from '../../map/use-live-map';
 import { CLIENT_FOCUS, DAY_FOCUS, type MapMode, USER } from '../../map/world';
 import { CLIENTS, type MockClient, TODAY_ROUTE } from '../../mocks/data';
@@ -51,10 +52,19 @@ export default function MapScreen() {
   const plannedDay = TODAY_ROUTE.map((cid) => CLIENTS.find((c) => c.id === cid) as MockClient);
   const picked = CLIENTS.find((c) => c.id === id) ?? null;
 
-  // Mapa real (compilação com chave do Google): GPS, endereços dos clientes e rota.
-  const live = GOOGLE_MAPS_ENABLED;
+  // Mapa real (compilação com a chave do OpenRouteService): GPS, endereços e rota.
+  const live = MAPS_ENABLED;
   const c = useColors();
-  const { position } = useCarPosition(live);
+  const { position, heading } = useCarPosition(live);
+  // Navegação dentro do GoClient (voz e câmera seguindo o carro).
+  const [navigating, setNavigating] = useState(false);
+  const [arrivedAt, setArrivedAt] = useState<string | null>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: troca de destino encerra a navegação
+  useEffect(() => {
+    setNavigating(false);
+    setArrivedAt(null);
+    setStop(0);
+  }, [mode, id]);
   const places = useClientPlaces(live ? CLIENTS : [], live);
   const targets = mode === 'day' ? plannedDay : mode === 'client' && picked ? [picked] : [];
   const located = targets.filter((t) => places[t.id]);
@@ -63,7 +73,7 @@ export default function MapScreen() {
     located.map((t) => places[t.id] as LatLng),
     mode === 'day',
   );
-  // Na rota do dia, segue a ordem otimizada pelo Google (o último cliente continua o último).
+  // Na rota do dia, segue a melhor ordem calculada (o último cliente continua o último).
   const routeClients =
     live && mode === 'day' && route && located.length > 1
       ? [
@@ -93,27 +103,65 @@ export default function MapScreen() {
             label: mode === 'day' ? String(i + 1) : undefined,
             kind: 'stop',
           }));
+  // Navegação: uma rota do carro até as paradas que faltam, na ordem já escolhida. Recalcula
+  // só quando o carro sai do caminho ou quando chega numa parada.
+  const from = mode === 'day' ? wrap(stop, routeClients.length) : 0;
+  const remaining =
+    mode === 'day'
+      ? routeClients
+          .slice(from)
+          .map((x) => places[x.id])
+          .filter((p): p is LatLng => !!p)
+      : client && places[client.id]
+        ? [places[client.id] as LatLng]
+        : [];
+  const nav = useLiveRoute(navigating ? position : null, navigating ? remaining : [], false, true);
+  const onArrive = useCallback(
+    (k: number) => {
+      const reached = mode === 'day' ? routeClients[from + k] : client;
+      setArrivedAt(reached?.tradeName ?? null);
+      if (mode === 'day' && from + k + 1 < routeClients.length) setStop(from + k + 1);
+      else setNavigating(false);
+    },
+    [mode, routeClients, from, client],
+  );
+  const guidance = useTurnByTurn({ route: nav.route, position, active: navigating, onArrive });
   const navigate = () => {
-    const from = mode === 'day' ? wrap(stop, routeClients.length) : 0;
-    const coords = routeClients
-      .slice(from)
-      .map((x) => places[x.id])
-      .filter((p): p is LatLng => !!p);
-    openInGoogleMaps(
-      mode === 'day' ? coords : client && places[client.id] ? [places[client.id] as LatLng] : [],
-    );
+    setArrivedAt(null);
+    setNavigating(true);
   };
+  const shownRoute = navigating ? (nav.route ?? route) : route;
+  const liveStatus = !position
+    ? 'Aguardando o GPS…'
+    : (navigating ? nav.error : routeError)
+      ? ((navigating ? nav.error : routeError) as string)
+      : arrivedAt
+        ? `Você chegou: ${arrivedAt}`
+        : navigating
+          ? nav.rerouting
+            ? 'Você saiu do caminho. Recalculando…'
+            : 'Calculando o caminho…'
+          : !route
+            ? located.length < targets.length
+              ? 'Localizando o endereço…'
+              : 'Calculando o caminho…'
+            : 'Pronto para navegar, com voz';
 
   const mapArea = useRef<ComponentRef<typeof View>>(null);
   const router = useRouter();
   // Dados da viagem: da rota real (Google) ou os de exemplo do protótipo.
-  const liveTime = live && route ? formatDuration(route.durationSeconds) : null;
+  const left = guidance
+    ? { s: guidance.remainingSeconds, m: guidance.remainingMeters }
+    : shownRoute
+      ? { s: shownRoute.durationSeconds, m: shownRoute.distanceMeters }
+      : null;
+  const liveTime = live && left ? formatDuration(left.s) : null;
   const trip: TripInfo =
-    live && route && liveTime
+    live && left && liveTime
       ? {
-          arrival: formatArrival(route.durationSeconds),
+          arrival: formatArrival(left.s),
           duration: liveTime,
-          km: formatKm(route.distanceMeters),
+          km: formatKm(left.m),
         }
       : mode === 'day'
         ? { arrival: '11:58', duration: { value: '1:12', unit: 'hrs' }, km: '24,6' }
@@ -129,11 +177,13 @@ export default function MapScreen() {
       <View style={{ flex: 1 }}>
         <BlurArea targetRef={mapArea} style={StyleSheet.absoluteFill}>
           {live ? (
-            <GoogleMap
+            <LiveMap
               dark={c.mode === 'dark'}
               user={position}
-              path={route?.path ?? []}
+              heading={heading}
+              path={shownRoute?.path ?? []}
               pins={pins}
+              follow={navigating}
             />
           ) : (
             <PannableMap mode={mode} focus={{ x: target.x, y: target.y + 220 }} />
@@ -143,16 +193,10 @@ export default function MapScreen() {
           {mode !== 'explore' &&
             (live ? (
               <LiveGuidance
-                to={client?.name ?? ''}
-                status={
-                  !position
-                    ? 'Aguardando o GPS…'
-                    : routeError
-                      ? routeError
-                      : !route
-                        ? 'Calculando o caminho…'
-                        : 'Navegação com voz pelo Google Maps'
-                }
+                to={client?.tradeName ?? ''}
+                status={liveStatus}
+                guidance={guidance}
+                onStop={navigating ? () => setNavigating(false) : undefined}
               />
             ) : (
               <Guidance />
@@ -189,11 +233,13 @@ export default function MapScreen() {
       {/* O foco é deslocado para a direita para que o conteúdo fique centrado na área livre à esquerda do cartão. */}
       <BlurArea targetRef={mapArea} style={StyleSheet.absoluteFill}>
         {live ? (
-          <GoogleMap
+          <LiveMap
             dark={c.mode === 'dark'}
             user={position}
-            path={route?.path ?? []}
+            heading={heading}
+            path={shownRoute?.path ?? []}
             pins={pins}
+            follow={navigating}
           />
         ) : (
           <PannableMap
@@ -212,24 +258,16 @@ export default function MapScreen() {
           <SearchPill />
         ) : live ? (
           <LiveGuidance
-            to={client?.name ?? ''}
-            status={
-              !position
-                ? 'Aguardando o GPS…'
-                : routeError
-                  ? routeError
-                  : !route
-                    ? located.length < targets.length
-                      ? 'Localizando o endereço…'
-                      : 'Calculando o caminho…'
-                    : 'Navegação com voz pelo Google Maps'
-            }
-            onNavigate={located.length > 0 ? navigate : undefined}
+            to={client?.tradeName ?? ''}
+            status={liveStatus}
+            guidance={guidance}
+            onNavigate={!navigating && located.length > 0 ? navigate : undefined}
+            onStop={navigating ? () => setNavigating(false) : undefined}
           />
         ) : (
           <Guidance />
         )}
-        {mode !== 'explore' && <TripBar mode={mode} route={live ? route : undefined} />}
+        {mode !== 'explore' && <TripBar mode={mode} route={live ? shownRoute : undefined} />}
 
         <Appear
           axis="x"
@@ -310,19 +348,27 @@ function Guidance() {
   );
 }
 
-/** Mapa real: destino atual e o botão que abre o Google Maps já navegando, com voz. */
+/**
+ * Mapa real. Navegando: a próxima manobra (seta, distância e rua), falada em voz alta.
+ * Antes: o destino e o estado (GPS, endereço, caminho) com o botão Navegar.
+ */
 function LiveGuidance({
   to,
   status,
+  guidance,
   onNavigate,
+  onStop,
 }: {
   to: string;
   status: string;
+  guidance: TurnGuidance | null;
   onNavigate?: () => void;
+  onStop?: () => void;
 }) {
   const phone = usePhone();
   const system = useSystemInsets();
   const c = useColors();
+  const next = guidance?.next;
   return (
     <Appear
       delay={60}
@@ -330,19 +376,63 @@ function LiveGuidance({
       style={phone ? [PHONE.top, { top: layout.gutter + system.top }] : styles.topLeft}
     >
       <Material style={[styles.guidance, { maxWidth: 820 }]}>
-        <Icon name="navigate" size={56} color={c.accent} />
-        <View style={{ flexShrink: 1 }}>
-          <Text variant="title2" numberOfLines={1}>
-            {to}
-          </Text>
-          <Text variant="headline" tone="secondary" numberOfLines={2}>
-            {status}
-          </Text>
-        </View>
+        {next ? (
+          <>
+            <Icon name={maneuverIcon(next.type)} size={64} color={c.text} />
+            <View style={{ flexShrink: 1, flex: phone ? 1 : undefined }}>
+              <Text variant="largeTitle" style={{ fontSize: 48, lineHeight: 54 }}>
+                {formatStepDistance(guidance.toNext)}
+              </Text>
+              <Text variant="headline" tone="secondary" numberOfLines={2}>
+                {next.name || next.instruction}
+              </Text>
+            </View>
+          </>
+        ) : (
+          <>
+            <Icon name="navigate" size={56} color={c.accent} />
+            <View style={{ flexShrink: 1, flex: phone ? 1 : undefined }}>
+              <Text variant="title2" numberOfLines={1}>
+                {to}
+              </Text>
+              <Text variant="headline" tone="secondary" numberOfLines={2}>
+                {status}
+              </Text>
+            </View>
+          </>
+        )}
         {onNavigate && <Button label="Navegar" icon="navigate" size="md" onPress={onNavigate} />}
+        {onStop && <Button label="Parar" variant="destructive" size="md" onPress={onStop} />}
       </Material>
     </Appear>
   );
+}
+
+/** Seta da manobra (tipos do OpenRouteService, ver map/routing.ts). */
+function maneuverIcon(type: number): IconName {
+  switch (type) {
+    case 0:
+    case 2:
+      return 'arrow-back';
+    case 1:
+    case 3:
+      return 'arrow-forward';
+    case 4:
+    case 12:
+      return 'return-up-back';
+    case 5:
+    case 13:
+      return 'return-up-forward';
+    case 7:
+    case 8:
+      return 'sync';
+    case 9:
+      return 'arrow-undo';
+    case 10:
+      return 'flag';
+    default:
+      return 'arrow-up';
+  }
 }
 
 function TripBar({ mode, route }: { mode: MapMode; route?: LiveRoute | null }) {

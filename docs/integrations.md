@@ -121,37 +121,43 @@ aprovação. Implementado em `packages/core/src/whatsapp.ts` (normalização de 
 
 ## Mapas e rotas
 
-### Implementado (Automotive, Android) — Google Maps Platform
+### Implementado (Automotive, Android) — OpenStreetMap, sem custo
 
-Sem `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` na compilação, o app usa o mapa de demonstração (o SDK do
-Google fecha o app se abrir sem chave). Código em `apps/automotive/src/map/`.
+Sem `EXPO_PUBLIC_ORS_API_KEY` na compilação, o app usa o mapa de demonstração. Código em
+`apps/automotive/src/map/`. O Google Maps foi descartado: a conta exigia pré-pagamento.
 
-- **Mapa:** Maps SDK for Android via `react-native-maps` (uso móvel sem cobrança), tema noturno,
-  posição do carro pelo GPS (`expo-location`), trânsito durante a rota.
-- **Endereços → coordenadas:** Places API (New) · Text Search, com cache durante o uso.
-- **Rotas:** Routes API `computeRoutes` com trânsito; rota do dia com
-  `optimizeWaypointOrder` (o Google reordena as paradas do meio; o último cliente continua o
-  último). Recalcula ao mudar as paradas ou a cada ~2 km rodados, para não gastar a cota.
-- **Navegação com voz:** botão **Navegar** abre o app do Google Maps já navegando (com as
-  paradas restantes). Sem custo. O Navigation SDK (curva a curva dentro do GoClient) não foi
-  incluído: cobra por destino acima de 1.000/mês e exige integração nativa própria.
+- **Desenho do mapa:** OpenFreeMap (estilo escuro/claro), dados do OpenStreetMap, desenhado
+  pelo MapLibre GL JS numa WebView (`map-html.ts`, `live-map.tsx`). Gratuito, sem chave e sem
+  limite de uso. A biblioteca vem do unpkg (jsDelivr de reserva): sem internet, não há mapa.
+- **Rotas, endereços e ordem das paradas:** OpenRouteService (`routing.ts`), plano gratuito
+  Standard, em `api.heigit.org` (o antigo `api.openrouteservice.org` foi desligado em
+  set/2026). Cotas por dia (vistas na verificação real): rotas 2.000, endereços 3.000,
+  ordem das paradas 500.
+- **Preferência de caminho:** rota **mais curta**, evitando vias expressas — corta por
+  dentro dos bairros (objetivo: chegar às barbearias da periferia). Na verificação real
+  (Campinas, 3 pontos): "recomendada" 18,5 km/27 min pelas avenidas; "mais curta" 17,6 km/
+  34 min por ruas de bairro. Trocar em `ROUTE_PREFERENCE`.
+- **Rota do dia:** uma rota só para todas as paradas, na melhor ordem (VROOM); o último
+  cliente continua o último.
+- **Navegação com voz dentro do GoClient** (`navigation.ts`): próxima manobra, distância,
+  voz em português (expo-speech) aos ~400 m, ~150 m e na hora da manobra; câmera segue o
+  carro. Ao chegar numa parada, passa para a próxima. **Recalcula só quando o carro sai do
+  caminho** (mais de 60 m da linha em duas leituras do GPS). O app do Google Maps não é
+  usado: ele refaria o caminho pelas avenidas.
 
-**Limitações:** a multimídia precisa ter os **serviços do Google Play** (sem eles o mapa não
-carrega); o desfoque dos cartões por cima do mapa real pode virar só translucidez em alguns
-Android (o mapa do Google é desenhado numa superfície que o desfoque não captura) — a confirmar
-no aparelho.
+**Limitações:** sem trânsito em tempo real (a estimativa de tempo vem do tipo de rua); ruas
+de periferia podem faltar ou estar com a mão errada no OpenStreetMap (dá para corrigir em
+openstreetmap.org); serviços gratuitos podem mudar as regras; a voz usa o sintetizador do
+aparelho (precisa de português instalado).
 
-**Configuração (uma vez):**
-
-1. console.cloud.google.com → novo projeto → ativar faturamento (cobre a cota gratuita).
-2. Ativar: **Maps SDK for Android**, **Routes API**, **Places API (New)**.
-3. Credenciais → Criar chave de API → Restrições: app Android `com.goclient.automotive` com
-   SHA-1 `5E:8F:16:06:2E:A3:CD:2C:4A:0D:54:78:76:BA:A6:F3:8C:AB:F6:25`; APIs: as três acima.
-4. GitHub → Secrets → `GOOGLE_MAPS_API_KEY` = a chave. Rodar de novo o workflow "Android APK".
-5. Recomendado: cotas diárias por API no console, para não haver cobrança surpresa.
+**Configuração (uma vez):** account.heigit.org → conta gratuita → chave Standard →
+GitHub → Secrets → `ORS_API_KEY`. O workflow "ORS check" testa a chave com pedidos reais.
 
 ## Fontes
 
+- OpenRouteService — planos: https://openrouteservice.org/plans/
+- OpenRouteService — novo endereço da API: https://ask.openrouteservice.org/t/deprecating-api-openrouteservice-org-in-favour-of-api-heigit-org/7912
+- OpenFreeMap: https://openfreemap.org
 - Central de Ajuda Kyte — exportação de relatórios: https://docs.kyteapp.com/en/articles/7861123-export-your-business-reports
 - Central de Ajuda Kyte — produtos em massa: https://docs.kyteapp.com/en/articles/7861135-register-products-in-bulk-on-kyte-web
 - Central de Ajuda Kyte — clientes em massa: https://docs.kyteapp.com/en/articles/7915387-how-to-register-your-customers-in-bulk

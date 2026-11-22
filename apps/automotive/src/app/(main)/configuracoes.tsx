@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { GOOGLE_MAPS_ENABLED } from '../../integrations/env';
+import { MAPS_ENABLED } from '../../integrations/env';
 import { usePhone } from '../../layout/form-factor';
 import { useSpotify } from '../../spotify/provider';
 import { spacing, type ThemePreference, useColors, useTheme } from '../../theme';
@@ -99,12 +99,12 @@ export default function SettingsScreen() {
         <Row
           leading={<AppIcon icon="map" color="#30D158" size={68} />}
           title="Mapa"
-          value={GOOGLE_MAPS_ENABLED ? 'Google Maps' : 'Demonstração (sem chave)'}
+          value={MAPS_ENABLED ? 'OpenStreetMap' : 'Demonstração (sem chave)'}
         />
         <Row
           leading={<AppIcon icon="navigate" color="#30D158" size={68} />}
           title="Navegação com voz"
-          value="Google Maps"
+          value={MAPS_ENABLED ? 'No GoClient, por dentro dos bairros' : 'Demonstração'}
         />
         <Row
           leading={<AppIcon icon="musical-notes" color="#1ED760" glyph="#000" size={68} />}

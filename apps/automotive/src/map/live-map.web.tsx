@@ -1,4 +1,4 @@
-import type { LatLng } from './google';
+import type { LatLng } from './routing';
 
 export interface MapPin {
   id: string;
@@ -8,11 +8,13 @@ export interface MapPin {
 }
 
 /** No Preview (web) o mapa real não é usado: a tela mostra o mapa de demonstração. */
-export function GoogleMap(_props: {
+export function LiveMap(_props: {
   dark: boolean;
   user: LatLng | null;
+  heading?: number | null;
   path: LatLng[];
   pins: MapPin[];
+  follow?: boolean;
 }) {
   return null;
 }
