@@ -4,22 +4,14 @@ import { Image, type ImageSourcePropType, Text as RNText, View } from 'react-nat
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { FONT } from '../theme';
 
-/** Marca do GoClient: percurso que termina num ponto, sobre o azul do sistema. */
+/** Marca do GoClient: o "G" com seta, sobre o verde-limão (mesma arte do ícone do app). */
 export function LogoMark({ size = 96 }: { size?: number }) {
   return (
-    <Svg width={size} height={size} viewBox="0 0 96 96">
-      <Rect x="0" y="0" width="96" height="96" rx="22" fill="#0A84FF" />
-      <Path
-        d="M26 66 C26 46 46 50 48 36 C50 24 62 24 70 30"
-        stroke="#FFFFFF"
-        strokeWidth="8"
-        strokeLinecap="round"
-        fill="none"
-      />
-      <Circle cx="26" cy="66" r="7" fill="#FFFFFF" />
-      <Circle cx="70" cy="30" r="10" fill="#FFFFFF" />
-      <Circle cx="70" cy="30" r="4" fill="#0A84FF" />
-    </Svg>
+    <Image
+      source={require('../../assets/logo.png')}
+      accessibilityLabel="GoClient"
+      style={{ width: size, height: size, borderRadius: size * 0.23 }}
+    />
   );
 }
 

@@ -18,8 +18,99 @@ export interface MapState {
 
 const VERSION = '5.24.1';
 
+/**
+ * Estilo do mapa (JavaScript da página). Escuro: paleta do Apple Maps à noite (terra
+ * azul-ardósia, água azul-marinho, ruas claras, nomes de rua em caixa alta) e lugares como
+ * bolinhas coloridas por tipo, com o nome ao lado na mesma cor. Sem prédios 3D (pesam).
+ */
+const NIGHT_STYLE = `
+  var POI_COLORS = { food: '#FF9F0A', shop: '#FFD60A', car: '#0A84FF', health: '#FF453A',
+    leisure: '#30D158', school: '#BF5AF2', other: '#98989D' };
+  var POI_GROUP = ['match', ['get', 'class'],
+    ['restaurant', 'fast_food', 'cafe', 'bar', 'beer', 'ice_cream', 'bakery', 'food'], 'food',
+    ['shop', 'grocery', 'convenience', 'clothing_store', 'shoes', 'hairdresser', 'jewelry', 'florist', 'furniture', 'hardware', 'alcohol_shop', 'mobile_phone'], 'shop',
+    ['fuel', 'car', 'parking', 'bicycle'], 'car',
+    ['hospital', 'pharmacy', 'doctors', 'dentist', 'veterinary'], 'health',
+    ['park', 'sport', 'stadium', 'pitch', 'garden', 'playground', 'swimming', 'golf'], 'leisure',
+    ['school', 'college', 'university', 'library', 'kindergarten'], 'school',
+    'other'];
+  function dot(color) {
+    var n = 34, cv = document.createElement('canvas'); cv.width = cv.height = n;
+    var g = cv.getContext('2d');
+    g.beginPath(); g.arc(n / 2, n / 2, 14, 0, Math.PI * 2); g.fillStyle = '#ffffff'; g.fill();
+    g.beginPath(); g.arc(n / 2, n / 2, 11.5, 0, Math.PI * 2); g.fillStyle = color; g.fill();
+    g.beginPath(); g.arc(n / 2, n / 2, 3.5, 0, Math.PI * 2); g.fillStyle = 'rgba(255,255,255,.9)'; g.fill();
+    return g.getImageData(0, 0, n, n);
+  }
+  function styleFor(st, dark) {
+    var N = {
+      land: '#36445E', blocks: '#3A4865', building: '#2A3650', park: '#2E4A55', water: '#1D3564',
+      river: '#29497F', minor: '#55658A', mid: '#6A7A9C', major: '#7D8CAC', motorway: '#94A1BE',
+      casing: '#2C3850', path: '#46557A', rail: '#4B5873', label: '#D3DBEA', halo: '#2C3952',
+      place: '#E6EBF4'
+    };
+    st.layers = st.layers.filter(function (l) {
+      return l.id !== 'building-3d' && l.id !== 'natural_earth';
+    });
+    st.layers.forEach(function (l) {
+      var id = l.id, p = l.paint = l.paint || {}, y = l.layout = l.layout || {};
+      // Lugares: bolinha colorida + nome ao lado, na cor do tipo.
+      if (/^poi_r/.test(id)) {
+        y['icon-image'] = ['concat', 'gc-', POI_GROUP];
+        y['icon-size'] = 1; y['text-anchor'] = 'left'; y['text-offset'] = [1.15, 0];
+        y['text-justify'] = 'left'; y['text-font'] = ['Noto Sans Bold']; y['text-size'] = 13;
+        var colors = ['match', POI_GROUP];
+        Object.keys(POI_COLORS).forEach(function (k) { colors.push(k, POI_COLORS[k]); });
+        colors.push('#98989D');
+        p['text-color'] = colors;
+        p['text-halo-color'] = dark ? N.halo : '#ffffff'; p['text-halo-width'] = 1.4; p['text-halo-blur'] = 0;
+        return;
+      }
+      if (!dark) return;
+      if (id === 'poi_transit') {
+        y['text-font'] = ['Noto Sans Regular']; y['text-size'] = 12;
+        p['text-color'] = '#8FB4FF'; p['text-halo-color'] = N.halo; p['text-halo-width'] = 1.2;
+        return;
+      }
+      if (id === 'background') p['background-color'] = N.land;
+      else if (/^landuse_residential/.test(id)) { p['fill-color'] = N.blocks; p['fill-opacity'] = 1; }
+      else if (/^landuse|landcover_sand/.test(id)) { p['fill-color'] = N.blocks; p['fill-opacity'] = 0.6; }
+      else if (/^park$|landcover_(wood|grass|wetland)/.test(id)) { p['fill-color'] = N.park; p['fill-opacity'] = 0.9; }
+      else if (id === 'park_outline') p['line-color'] = N.park;
+      else if (id === 'water') p['fill-color'] = N.water;
+      else if (/^waterway/.test(id) && l.type === 'line') p['line-color'] = N.river;
+      else if (id === 'building') { p['fill-color'] = N.building; p['fill-outline-color'] = '#253048'; }
+      else if (/^aeroway/.test(id)) { if (l.type === 'fill') p['fill-color'] = N.blocks; else p['line-color'] = N.mid; }
+      else if (l.type === 'line' && /casing/.test(id)) p['line-color'] = N.casing;
+      else if (l.type === 'line' && /rail/.test(id)) p['line-color'] = N.rail;
+      else if (l.type === 'line' && /path_pedestrian/.test(id)) p['line-color'] = N.path;
+      else if (l.type === 'line' && /motorway/.test(id)) p['line-color'] = N.motorway;
+      else if (l.type === 'line' && /trunk_primary/.test(id)) p['line-color'] = N.major;
+      else if (l.type === 'line' && /secondary_tertiary/.test(id)) p['line-color'] = N.mid;
+      else if (l.type === 'line' && /minor|street|service|link/.test(id)) p['line-color'] = N.minor;
+      else if (id === 'road_area_pattern') y.visibility = 'none';
+      else if (/^boundary/.test(id)) p['line-color'] = '#5A6888';
+      else if (l.type === 'symbol' && /^highway-name/.test(id)) {
+        // Nomes de rua como no Apple Maps: caixa alta, espaçados, claros.
+        y['text-transform'] = 'uppercase'; y['text-letter-spacing'] = 0.12;
+        y['text-font'] = ['Noto Sans Bold'];
+        y['text-size'] = ['interpolate', ['linear'], ['zoom'], 13, 10, 16, 12, 18, 14];
+        p['text-color'] = N.label; p['text-halo-color'] = N.halo; p['text-halo-width'] = 1.2; p['text-halo-blur'] = 0;
+      } else if (l.type === 'symbol' && /^(label_|airport|water_name|waterway_line_label)/.test(id)) {
+        p['text-color'] = /water/.test(id) ? '#8FB0EE' : N.place;
+        p['text-halo-color'] = N.halo; p['text-halo-width'] = 1.3;
+      } else if (l.type === 'symbol' && /shield|one_way/.test(id)) {
+        if (/one_way/.test(id)) p['icon-opacity'] = 0.5;
+      }
+    });
+    return st;
+  }
+`;
+
 export function mapHtml(dark: boolean): string {
-  const style = `https://tiles.openfreemap.org/styles/${dark ? 'dark' : 'liberty'}`;
+  // Base: estilo "liberty" do OpenFreeMap (tem lugares, prédios e nomes de rua); no escuro,
+  // recolorido no tom do Apple Maps à noite (ver NIGHT_STYLE).
+  const style = 'https://tiles.openfreemap.org/styles/liberty';
   return `<!DOCTYPE html>
 <html><head>
 <meta charset="utf-8" />
@@ -37,16 +128,17 @@ export function mapHtml(dark: boolean): string {
         color: #fff; font: 600 14px -apple-system, Roboto, sans-serif; display: flex;
         align-items: center; justify-content: center; box-sizing: border-box; }
   .maplibregl-ctrl-attrib { font-size: 10px; }
+  ${dark ? '.maplibregl-ctrl-attrib, .maplibregl-ctrl-attrib.maplibregl-compact { background: rgba(46,59,85,.9) !important; color: #c9d3e6; } .maplibregl-ctrl-attrib a { color: #c9d3e6 !important; } .maplibregl-ctrl-attrib-button { filter: invert(1); }' : ''}
   #ctl { position: absolute; z-index: 5; display: none; flex-direction: column; gap: 10px; }
-  #ctl .grp { display: flex; flex-direction: column; border-radius: 14px; overflow: hidden;
-        background: ${dark ? 'rgba(30,30,32,.94)' : 'rgba(250,250,252,.96)'};
+  #ctl .grp { display: flex; flex-direction: column; border-radius: 26px; overflow: hidden;
+        background: ${dark ? 'rgba(46,59,85,.95)' : 'rgba(250,250,252,.96)'};
         border: 1px solid ${dark ? 'rgba(255,255,255,.12)' : 'rgba(0,0,0,.08)'};
         box-shadow: 0 2px 10px rgba(0,0,0,.25); }
-  #ctl button { width: 48px; height: 48px; border: 0; background: transparent; padding: 0;
+  #ctl button { width: 52px; height: 50px; border: 0; background: transparent; padding: 0;
         color: ${dark ? '#F2F2F7' : '#1C1C1E'}; font: 400 28px/48px -apple-system, Roboto, sans-serif;
         display: flex; align-items: center; justify-content: center; -webkit-tap-highlight-color: transparent; }
   #ctl button:active { background: ${dark ? 'rgba(255,255,255,.1)' : 'rgba(0,0,0,.06)'}; }
-  #ctl .sep { height: 1px; background: ${dark ? 'rgba(255,255,255,.12)' : 'rgba(0,0,0,.08)'}; }
+  #ctl .sep { height: 1px; margin: 0 10px; background: ${dark ? 'rgba(255,255,255,.12)' : 'rgba(0,0,0,.08)'}; }
   #ctl svg { width: 24px; height: 24px; }
   #ctl .on svg { fill: #0A84FF; }
 </style>
@@ -54,9 +146,8 @@ export function mapHtml(dark: boolean): string {
 <div id="ctl">
   <div class="grp">
     <button id="zin" aria-label="Aproximar">+</button><div class="sep"></div>
-    <button id="zout" aria-label="Afastar">&minus;</button>
-  </div>
-  <div class="grp"><button id="loc" aria-label="Minha localização">
+    <button id="zout" aria-label="Afastar">&minus;</button><div class="sep"></div>
+    <button id="loc" aria-label="Minha localização">
     <svg viewBox="0 0 24 24" fill="none" stroke="#0A84FF" stroke-width="2" stroke-linejoin="round"><path d="M21 3 3 10.5l7.5 3L13.5 21z"/></svg>
   </button></div>
 </div>
@@ -77,9 +168,20 @@ export function mapHtml(dark: boolean): string {
        'https://cdn.jsdelivr.net/npm/maplibre-gl@${VERSION}/dist/maplibre-gl.js', start);
 
   function start() {
+    fetch('${style}').then(function (r) { return r.json(); })
+      .then(function (st) { create(styleFor(st, ${dark})); })
+      .catch(function () { create('${style}'); });
+  }
+${NIGHT_STYLE}
+  function create(st) {
     map = new maplibregl.Map({
-      container: 'map', style: '${style}', center: [-47.0608, -22.9056], zoom: 12,
+      container: 'map', style: st, center: [-47.0608, -22.9056], zoom: 12,
       attributionControl: { compact: true }, pitchWithRotate: false, dragRotate: false,
+    });
+    // Bolinhas coloridas dos lugares (desenhadas aqui, sem depender de imagens de fora).
+    map.on('styleimagemissing', function (e) {
+      var c = POI_COLORS[e.id.replace('gc-', '')];
+      if (c) map.addImage(e.id, dot(c), { pixelRatio: 2 });
     });
     map.on('load', function () {
       map.addSource('route', { type: 'geojson', data: line([]) });

@@ -8,10 +8,11 @@ import {
   useRef,
   useState,
 } from 'react';
-import { AppState, Linking } from 'react-native';
-import { SPOTIFY_ENABLED } from '../integrations/env';
+import { AppState } from 'react-native';
+import { SpotifyRemote } from '../../modules/spotify-remote';
+import { SPOTIFY_CLIENT_ID, SPOTIFY_ENABLED } from '../integrations/env';
 import type { MockTrack } from '../mocks/data';
-import { refreshTokens } from './auth';
+import { REDIRECT_URI, refreshTokens } from './auth';
 import { type SpTrack, toTrack } from './mapping';
 import {
   loadAccounts,
@@ -258,30 +259,49 @@ export function SpotifyProvider({ children }: { children: ReactNode }) {
   }, []);
 
   /**
-   * Comando de reprodução. O som sai do app do Spotify (Spotify Connect): se nenhum
-   * aparelho estiver ativo, usa o primeiro disponível; se não houver nenhum, abre o app do
-   * Spotify na multimídia para ele aparecer como aparelho.
+   * Comando de reprodução. O som sai do app do Spotify (Spotify Connect). Se nenhum aparelho
+   * estiver ativo, o GoClient liga o app do Spotify **por trás** (SDK oficial App Remote, sem
+   * trocar de tela), espera ele aparecer como aparelho e manda o comando para ele.
    */
   const command = useCallback(
     async (path: string, method: 'PUT' | 'POST', body?: object) => {
       const run = (devicePath: string) =>
         call(devicePath, { method, body: body ? JSON.stringify(body) : undefined });
+      const withDevice = (id: string) => `${path}${path.includes('?') ? '&' : '?'}device_id=${id}`;
+      const findDevice = async () => {
+        const list = await call<{ devices: { id: string; is_restricted: boolean }[] }>(
+          '/me/player/devices',
+        );
+        return list?.devices.find((d) => !d.is_restricted) ?? null;
+      };
       try {
         await run(path);
       } catch (e) {
         if (!(e instanceof SpotifyError) || e.status !== 404) throw e;
-        const list = await call<{ devices: { id: string; is_restricted: boolean }[] }>(
-          '/me/player/devices',
-        );
-        const device = list?.devices.find((d) => !d.is_restricted);
+        let device = await findDevice();
         if (!device) {
-          setNotice(
-            'Nenhum aparelho com o Spotify aberto. Abrindo o Spotify: dê play uma vez nele e volte ao GoClient.',
-          );
-          Linking.openURL('spotify:').catch(() => {});
-          return;
+          const woke = await wakeSpotify().catch((err: Error) => {
+            setNotice(remoteProblem(err));
+            return null;
+          });
+          if (woke === null) return;
+          if (!woke) {
+            setNotice('Instale o app do Spotify neste aparelho e entre na sua conta nele uma vez.');
+            return;
+          }
+          // O Spotify leva alguns segundos para aparecer como aparelho depois de ligado.
+          for (let i = 0; i < 8 && !device; i++) {
+            await new Promise((r) => setTimeout(r, 800));
+            device = await findDevice().catch(() => null);
+          }
+          if (!device) {
+            // Não apareceu: manda direto pelo SDK.
+            await remoteFallback(path, body);
+            setTimeout(refreshPlayback, 800);
+            return;
+          }
         }
-        await run(`${path}${path.includes('?') ? '&' : '?'}device_id=${device.id}`);
+        await run(withDevice(device.id));
       }
       setTimeout(refreshPlayback, 600);
     },
@@ -382,4 +402,44 @@ export function useSpotify(): SpotifyState {
 export function useSpotifyLive(): boolean {
   const s = useSpotify();
   return s.enabled && s.active !== null;
+}
+
+/**
+ * Liga o app do Spotify em segundo plano. `true` = conectado; `false` = não há app do
+ * Spotify (ou o módulo não existe nesta compilação). Lança erro se a conexão falhar.
+ */
+async function wakeSpotify(): Promise<boolean> {
+  if (!SpotifyRemote || !SpotifyRemote.isInstalled()) return false;
+  if (SpotifyRemote.isConnected()) return true;
+  // Na primeira vez o Spotify pode mostrar a tela "Permitir o GoClient?"; depois, não.
+  await SpotifyRemote.connect(SPOTIFY_CLIENT_ID, REDIRECT_URI, true);
+  return true;
+}
+
+/** O mesmo comando, direto pelo SDK (quando o Spotify não aparece na lista de aparelhos). */
+async function remoteFallback(path: string, body?: object) {
+  const r = SpotifyRemote;
+  if (!r) return;
+  const b = (body ?? {}) as { context_uri?: string; uris?: string[] };
+  if (path.startsWith('/me/player/play')) {
+    const uri = b.context_uri ?? b.uris?.[0];
+    await (uri ? r.play(uri) : r.resume());
+  } else if (path.startsWith('/me/player/pause')) await r.pause();
+  else if (path.startsWith('/me/player/next')) await r.skipNext();
+  else if (path.startsWith('/me/player/previous')) await r.skipPrevious();
+  else if (path.startsWith('/me/player/queue')) {
+    const uri = new URLSearchParams(path.split('?')[1] ?? '').get('uri');
+    if (uri) await r.queue(uri);
+  }
+}
+
+/** Mensagem para os erros do SDK do Spotify. */
+function remoteProblem(e: Error): string {
+  const code = (e as Error & { code?: string }).code ?? e.message;
+  if (/NotLoggedIn/i.test(code))
+    return 'Entre na sua conta no app do Spotify uma vez e tente de novo.';
+  if (/UserNotAuthorized|Authentication/i.test(code))
+    return 'O Spotify não autorizou o GoClient. Confira o cadastro do Android no Spotify for Developers.';
+  if (/OfflineMode/i.test(code)) return 'O Spotify está offline.';
+  return 'Não consegui ligar o Spotify por trás. Abra o app do Spotify uma vez e tente de novo.';
 }

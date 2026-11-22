@@ -122,8 +122,12 @@ demonstração. Código em `apps/automotive/src/spotify/`.
 - **Dados:** Músicas Curtidas, playlists, álbuns e programas salvos, artistas seguidos,
   tocadas recentemente, busca de músicas (máx. 10 resultados, regra de fev/2026).
 - **Reprodução:** tocar/pausar/próxima/anterior e tocar playlist/álbum/programa pela Web API; o
-  estado é lido a cada 4 s. Sem aparelho ativo, o GoClient usa o primeiro disponível ou abre o
-  app do Spotify.
+  estado é lido a cada 4 s. Sem aparelho ativo, o GoClient liga o app do Spotify **por trás**
+  com o SDK oficial App Remote 0.8.0 (módulo local `apps/automotive/modules/spotify-remote`, aar
+  do repositório github.com/spotify/android-sdk, licença Apache 2.0), espera ele aparecer como
+  aparelho e manda o comando; se não aparecer, manda o comando direto pelo SDK. A pessoa não sai
+  do GoClient. Exige o app do Spotify instalado e logado na multimídia; na primeira conexão o
+  Spotify pode mostrar uma tela pedindo para autorizar o GoClient.
 
 **Limitações reais (não contornáveis pelo GoClient):**
 
@@ -146,6 +150,11 @@ demonstração. Código em `apps/automotive/src/spotify/`.
 2. User Management: adicionar o e-mail Spotify de cada pessoa (até 5).
 3. GitHub → Settings → Secrets and variables → Actions → New repository secret:
    `SPOTIFY_CLIENT_ID` = Client ID do app. Rodar de novo o workflow "Android APK".
+4. Para o App Remote: no app do painel → Edit → marcar **Android** em "APIs used" e em
+   "Android packages" cadastrar o pacote `com.goclient.automotive` com a impressão digital SHA-1
+   `5E:8F:16:06:2E:A3:CD:2C:4A:0D:54:78:76:BA:A6:F3:8C:AB:F6:25` (a chave de assinatura que o
+   APK usa hoje é a chave de depuração padrão do modelo do Expo; se um dia o APK passar a ser
+   assinado com chave própria, a SHA-1 muda e precisa ser cadastrada de novo).
 
 ## WhatsApp
 

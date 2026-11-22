@@ -1,6 +1,7 @@
 import { Slot, usePathname } from 'expo-router';
-import { type ComponentRef, useRef } from 'react';
+import { type ComponentRef, useEffect, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
+import { warmVoice } from '../../havena/voice';
 import { KyteAgentHost } from '../../kyte/agent';
 import { usePhone, useSystemInsets, useTabBarSpace } from '../../layout/form-factor';
 import { StopsProvider } from '../../map/stops';
@@ -34,6 +35,8 @@ export default function MainLayout() {
   const fullHeight = underBar || section === 'musica';
   const system = useSystemInsets();
   const tabSpace = useTabBarSpace();
+  // Liga o motor de voz logo ao abrir o app: a primeira resposta da Havena já sai na hora.
+  useEffect(warmVoice, []);
   return (
     <StopsProvider>
       <View style={[styles.root, { backgroundColor: c.background }]}>
