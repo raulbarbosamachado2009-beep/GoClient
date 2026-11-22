@@ -5,8 +5,10 @@ import { Animated, Easing, Platform, Pressable, StyleSheet, View } from 'react-n
 import { usePhone, useTabBarLift } from '../layout/form-factor';
 import { layout, nativeDriver, useColors } from '../theme';
 import { useBlurTarget } from '../ui/blur-target';
+import { Button } from '../ui/primitives';
 import { HavenaCaption } from './caption';
 import { HavenaOrb, type OrbState } from './orb';
+import { useHavenaSession } from './session';
 
 const DURATION = 420;
 const ORB = 300;
@@ -35,9 +37,33 @@ export function HavenaPanel({ onClose }: { onClose: () => void }) {
   const enter = useRef(new Animated.Value(0)).current;
   const closing = useRef(false);
   const [leaving, setLeaving] = useState(false);
-  const [state, setState] = useState<OrbState>('listen');
+  const [demoState, setDemoState] = useState<OrbState>('listen');
   const phone = usePhone();
   const lift = useTabBarLift();
+  // Havena de verdade (app instalado): ouve, entende, age e responde. No Preview (web) fica
+  // a demonstração com falas de exemplo.
+  const live = Platform.OS !== 'web';
+  const session = useHavenaSession(live && !leaving);
+  const state: OrbState = live
+    ? session.phase === 'listening'
+      ? 'listen'
+      : session.phase === 'thinking'
+        ? 'think'
+        : session.phase === 'speaking'
+          ? 'speak'
+          : 'idle'
+    : demoState;
+  const text = live
+    ? session.phase === 'listening'
+      ? session.heard || session.caption
+      : session.caption
+    : undefined;
+  const confirm = live && session.awaiting && session.phase !== 'thinking' && (
+    <View style={styles.confirm}>
+      <Button label="Sim" size="md" onPress={() => session.reply(true)} />
+      <Button label="Não" variant="gray" size="md" onPress={() => session.reply(false)} />
+    </View>
+  );
 
   useEffect(() => {
     Animated.spring(enter, {
@@ -92,12 +118,18 @@ export function HavenaPanel({ onClose }: { onClose: () => void }) {
           <View style={{ width: CAPTION_PHONE, minHeight: 130, justifyContent: 'flex-end' }}>
             <HavenaCaption
               width={CAPTION_PHONE}
-              onSpeaking={(on) => setState(on ? 'speak' : 'listen')}
+              text={text}
+              onSpeaking={(on) => !live && setDemoState(on ? 'speak' : 'listen')}
             />
           </View>
-          <View accessibilityLabel="Havena">
+          {confirm}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Havena (toque para falar)"
+            onPress={session.talk}
+          >
             <HavenaOrb size={ORB_PHONE} state={state} />
-          </View>
+          </Pressable>
         </Animated.View>
       )}
 
@@ -122,13 +154,21 @@ export function HavenaPanel({ onClose }: { onClose: () => void }) {
           ]}
         >
           <View accessibilityLabel="Havena">
-            <HavenaOrb size={ORB} state={state} />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Havena (toque para falar)"
+              onPress={session.talk}
+            >
+              <HavenaOrb size={ORB} state={state} />
+            </Pressable>
             {/* Legenda logo abaixo do círculo, centrada nele. */}
             <View style={styles.caption}>
               <HavenaCaption
                 width={CAPTION}
-                onSpeaking={(on) => setState(on ? 'speak' : 'listen')}
+                text={text}
+                onSpeaking={(on) => !live && setDemoState(on ? 'speak' : 'listen')}
               />
+              {confirm}
             </View>
           </View>
         </Animated.View>
@@ -340,6 +380,7 @@ function RisingBlur({ enter, leaving }: { enter: Animated.Value; leaving: boolea
 }
 
 const styles = StyleSheet.create({
+  confirm: { flexDirection: 'row', gap: 16, justifyContent: 'center', marginTop: 12 },
   hband: { position: 'absolute', left: 0, right: 0, bottom: 0 },
   orbPhone: {
     position: 'absolute',

@@ -8,6 +8,8 @@ import { Platform } from 'react-native';
  * Expo conseguir substituí-las na compilação.
  */
 export const SPOTIFY_CLIENT_ID = process.env.EXPO_PUBLIC_SPOTIFY_CLIENT_ID ?? '';
+/** Chave da NVIDIA (modelos de IA na nuvem para a Havena; plano gratuito). */
+export const NVIDIA_API_KEY = process.env.EXPO_PUBLIC_NVIDIA_API_KEY ?? '';
 /** Chave do OpenRouteService (rotas, endereços e ordem das paradas; plano gratuito). */
 export const ORS_API_KEY = process.env.EXPO_PUBLIC_ORS_API_KEY ?? '';
 

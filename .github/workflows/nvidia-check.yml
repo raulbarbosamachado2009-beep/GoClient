@@ -17,3 +17,6 @@ jobs:
       - run: node .github/scripts/nvidia-check.mjs
         env:
           NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+      - run: node .github/scripts/havena-check.mjs
+        env:
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}

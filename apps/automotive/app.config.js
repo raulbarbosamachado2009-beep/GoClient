@@ -4,6 +4,8 @@
  *
  * - EXPO_PUBLIC_ORS_API_KEY: chave gratuita do OpenRouteService (rotas e endereços). Sem ela
  *   o app usa o mapa de demonstração. O desenho do mapa (OpenFreeMap) não usa chave.
+ * - EXPO_PUBLIC_NVIDIA_API_KEY: chave da NVIDIA (IA da Havena). Sem ela, a Havena só entende
+ *   comandos fixos.
  * - EXPO_PUBLIC_SPOTIFY_CLIENT_ID: Client ID do app no Spotify for Developers. Sem ele a
  *   Música continua em modo de demonstração.
  *
@@ -17,6 +19,19 @@ module.exports = ({ config }) => {
       [
         'expo-audio',
         { microphonePermission: 'O GoClient usa o microfone para você conversar com a Havena.' },
+      ],
+      // Havena: reconhecimento de voz do aparelho (serviço do Google no Android).
+      [
+        'expo-speech-recognition',
+        {
+          microphonePermission: 'O GoClient usa o microfone para você conversar com a Havena.',
+          speechRecognitionPermission: 'O GoClient reconhece a sua voz para a Havena.',
+          androidSpeechServicePackages: [
+            'com.google.android.googlequicksearchbox',
+            'com.google.android.as',
+            'com.google.android.tts',
+          ],
+        },
       ],
       [
         'expo-location',

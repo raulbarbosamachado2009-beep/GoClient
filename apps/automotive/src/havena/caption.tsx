@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Platform, StyleSheet } from 'react-native';
 import { FONT, nativeDriver, useColors } from '../theme';
 
-/** Falas de exemplo (só para ver a animação; a Havena ainda não fala). */
+/** Falas de exemplo (quando nenhuma fala real é passada, ex.: no Preview). */
 const PHRASES = [
   'Seu próximo cliente é a Boutique Albuquerque, a doze minutos daqui.',
   'No último pedido ela levou camisetas, calças e vestidos de linho.',
@@ -21,6 +21,58 @@ const GAP_MS = 380; // silêncio entre frases
  * pequeno desfoque. `onSpeaking` avisa quando há palavras surgindo, para o orbe acompanhar.
  */
 export function HavenaCaption({
+  width,
+  text,
+  onSpeaking,
+}: {
+  width: number;
+  /** Fala atual (real). Sem ela, a legenda mostra as falas de exemplo em ciclo. */
+  text?: string;
+  onSpeaking?: (speaking: boolean) => void;
+}) {
+  if (text !== undefined) return <LiveCaption width={width} text={text} onSpeaking={onSpeaking} />;
+  return <DemoCaption width={width} onSpeaking={onSpeaking} />;
+}
+
+/** Uma fala real: as palavras surgem uma a uma e a frase fica na tela até a próxima. */
+function LiveCaption({
+  width,
+  text,
+  onSpeaking,
+}: {
+  width: number;
+  text: string;
+  onSpeaking?: (speaking: boolean) => void;
+}) {
+  const c = useColors();
+  const [count, setCount] = useState(0);
+  const speaking = useRef(onSpeaking);
+  speaking.current = onSpeaking;
+  const words = text ? text.split(' ') : [];
+  useEffect(() => {
+    const list = text ? text.split(' ') : [];
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    let t = 60;
+    setCount(0);
+    if (list.length) timers.push(setTimeout(() => speaking.current?.(true), t));
+    list.forEach((w, i) => {
+      timers.push(setTimeout(() => setCount(i + 1), t));
+      t += Math.min(WORD_MS, 2600 / Math.max(list.length, 1)) + (/[,.?!]$/.test(w) ? 120 : 0);
+    });
+    timers.push(setTimeout(() => speaking.current?.(false), t));
+    return () => timers.forEach(clearTimeout);
+  }, [text]);
+  return (
+    <Animated.View style={[styles.line, { width }]} pointerEvents="none">
+      {words.map((w, i) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: a posição na frase é a identidade da palavra.
+        <Word key={`${text}-${i}`} text={w} color={c.text} visible={i < count} />
+      ))}
+    </Animated.View>
+  );
+}
+
+function DemoCaption({
   width,
   onSpeaking,
 }: {
