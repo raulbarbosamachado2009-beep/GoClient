@@ -1,0 +1,22 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'com.goclient'
+version = '0.1.0'
+
+android {
+  namespace "expo.modules.spotifyremote"
+  defaultConfig {
+    versionCode 1
+    versionName "0.1.0"
+  }
+}
+
+dependencies {
+  // SDK oficial do Spotify (App Remote 0.8.0, licença Apache 2.0), do repositório
+  // github.com/spotify/android-sdk. O Gson é exigido por ele.
+  implementation project(':spotify-remote$spotify-app-remote')
+  implementation 'com.google.code.gson:gson:2.10.1'
+}

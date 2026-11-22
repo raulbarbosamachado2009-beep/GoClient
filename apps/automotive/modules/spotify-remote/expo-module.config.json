@@ -1,0 +1,12 @@
+{
+  "platforms": ["android"],
+  "android": {
+    "modules": ["expo.modules.spotifyremote.SpotifyRemoteModule"],
+    "gradleAarProjects": [
+      {
+        "name": "spotify-app-remote",
+        "aarFilePath": "android/libs/spotify-app-remote-release-0.8.0.aar"
+      }
+    ]
+  }
+}

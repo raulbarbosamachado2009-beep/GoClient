@@ -1,5 +1,4 @@
 import { useRouter } from 'expo-router';
-import * as Speech from 'expo-speech';
 import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
@@ -9,6 +8,7 @@ import { useSpotify } from '../spotify/provider';
 import { ask, BRAIN_ENABLED, type Message } from './brain';
 import { fixedCommand, yesNo } from './offline';
 import { type HavenaDeps, runTool, TOOL_SPECS } from './tools';
+import { say, stopVoice, warmVoice } from './voice';
 
 /**
  * Uma conversa com a Havena: ouvir (reconhecimento de voz do aparelho), entender (comandos
@@ -51,23 +51,32 @@ export function useHavenaSession(open: boolean) {
   const alive = useRef(true);
 
   const speak = useCallback((text: string, then?: () => void) => {
-    setCaption(text);
     setPhase('speaking');
-    Speech.stop();
-    Speech.speak(text, {
-      language: 'pt-BR',
-      onDone: () => {
-        if (!alive.current) return;
-        if (then) then();
-        else setPhase('idle');
+    // O texto aparece quando a voz começa (ou em 500 ms, se o aparelho não avisar), para
+    // as palavras e a fala andarem juntas.
+    let shown = false;
+    const show = () => {
+      if (shown || !alive.current) return;
+      shown = true;
+      setCaption(text);
+    };
+    const fallback = setTimeout(show, 500);
+    const finish = () => {
+      clearTimeout(fallback);
+      show();
+      if (!alive.current) return;
+      if (then) then();
+      else setPhase('idle');
+    };
+    say(text, {
+      onStart: () => {
+        clearTimeout(fallback);
+        show();
       },
+      onDone: finish,
       onStopped: () => {
+        clearTimeout(fallback);
         if (alive.current) setPhase('idle');
-      },
-      onError: () => {
-        if (!alive.current) return;
-        if (then) then();
-        else setPhase('idle');
       },
     });
   }, []);
@@ -203,14 +212,16 @@ export function useHavenaSession(open: boolean) {
   // biome-ignore lint/correctness/useExhaustiveDependencies: só na abertura/fechamento
   useEffect(() => {
     alive.current = open;
-    if (open) void listen();
-    else {
-      Speech.stop();
+    if (open) {
+      warmVoice();
+      void listen();
+    } else {
+      stopVoice();
       ExpoSpeechRecognitionModule.abort?.();
     }
     return () => {
       alive.current = false;
-      Speech.stop();
+      stopVoice();
       ExpoSpeechRecognitionModule.abort?.();
     };
   }, [open]);
@@ -222,7 +233,7 @@ export function useHavenaSession(open: boolean) {
     awaiting,
     /** Toque no círculo: fala de novo (ou interrompe a fala). */
     talk: () => {
-      if (phase === 'speaking') Speech.stop();
+      if (phase === 'speaking') stopVoice();
       void listen();
     },
     /** Botões Sim/Não da confirmação. */
