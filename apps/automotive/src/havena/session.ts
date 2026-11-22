@@ -25,7 +25,9 @@ Seja um agente: entenda a intenção mesmo com palavras erradas, nomes mal ouvid
 Destinos ("me leva até X", "vamos para X", "rota para X"):
 - X pode ser um cliente OU um lugar (rua, avenida, bairro, cidade, loja, ponto conhecido). Palavras como rua, avenida, praça, bairro, shopping ou nomes de cidade indicam lugar.
 - Se parecer lugar, use lugar_buscar. Se parecer nome de pessoa ou barbearia, use cliente_buscar; se não achar cliente, tente lugar_buscar antes de desistir (e vice-versa).
-- Com o resultado, use rota_colocar com nome e endereço exatamente como as ferramentas devolveram (agora=true quando a pessoa quer ir já).
+- Com o resultado, use rota_colocar copiando o endereço exatamente como a ferramenta devolveu, sem cortar nada.
+- agora=true só quando a pessoa quer ir já ("me leva", "vamos", "bora", "agora", "ir até"). "Coloca na rota" ou "adiciona na rota" é agora=false (rota do dia).
+- Se lugar_buscar devolver opções em cidades diferentes, prefira a mais perto do carro (km_do_carro) e diga qual escolheu.
 - Se cliente_buscar devolver "parecidos", pergunte se é um deles (ex.: "Você quis dizer Barbearia do Adilson?").
 
 Para pôr um cliente na rota ou mandar WhatsApp, use o endereço/telefone que cliente_buscar devolver; nunca invente endereço nem telefone. Se vierem vários, pergunte qual. Se o cliente não tiver endereço, diga que é preciso cadastrar o endereço no Kyte.`;

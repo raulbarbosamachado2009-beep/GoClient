@@ -682,7 +682,7 @@ const styles = StyleSheet.create({
     height: '100%',
     fontSize: 30,
     color: '#121212',
-    fontFamily: 'SFProText-Regular',
+    fontFamily: 'Figtree-Regular',
   },
   browse: { height: 124, borderRadius: 10, padding: 24, overflow: 'hidden' },
   browseArt: {

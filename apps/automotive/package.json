@@ -12,6 +12,7 @@
     "preview:bundle": "expo export --platform web --output-dir dist && node scripts/single-file-preview.mjs"
   },
   "dependencies": {
+    "@expo-google-fonts/figtree": "^0.4.1",
     "@expo/vector-icons": "^15.1.1",
     "@goclient/core": "workspace:*",
     "@goclient/design-tokens": "workspace:*",

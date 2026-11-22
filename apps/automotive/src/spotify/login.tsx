@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { WebView } from 'react-native-webview';
-import { DESKTOP_USER_AGENT } from '../kyte/config';
+import { usePhone } from '../layout/form-factor';
 import { spacing } from '../theme';
 import { Button, IconButton, Text } from '../ui/primitives';
+import { Unscaled } from '../ui/unscaled';
 import {
   createAuthRequest,
   exchangeCode,
@@ -33,6 +34,7 @@ function SpotifyLogin() {
   const [status, setStatus] = useState<'page' | 'exchanging' | 'error'>('page');
   const [error, setError] = useState<string | null>(null);
   const handled = useRef(false);
+  const phone = usePhone();
 
   const start = () => {
     handled.current = false;
@@ -102,20 +104,27 @@ function SpotifyLogin() {
           accessibilityLabel="Fechar login"
           onPress={closeLogin}
         />
-        <Text variant="title2" color="#FFFFFF">
-          Entrar no Spotify
-        </Text>
-        <View style={{ flex: 1 }} />
-        <Text variant="callout" color="rgba(255,255,255,0.6)">
-          Use e-mail e senha (o login pelo Google não abre dentro de apps)
-        </Text>
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text variant="title2" color="#FFFFFF" numberOfLines={1}>
+            Entrar no Spotify
+          </Text>
+          <Text
+            variant={phone ? 'footnote' : 'callout'}
+            color="rgba(255,255,255,0.6)"
+            numberOfLines={2}
+          >
+            Use e-mail e senha (o login pelo Google não abre dentro de apps)
+          </Text>
+        </View>
       </View>
 
       <View style={{ flex: 1 }}>
         {request && status === 'page' && (
+          // Página no tamanho real do aparelho e na versão de celular do Spotify, que se
+          // ajusta sozinha em pé e deitado.
+          <Unscaled>
           <WebView
             source={{ uri: request.url }}
-            userAgent={DESKTOP_USER_AGENT}
             domStorageEnabled
             javaScriptEnabled
             sharedCookiesEnabled
@@ -140,6 +149,7 @@ function SpotifyLogin() {
             )}
             style={{ flex: 1, backgroundColor: '#121212' }}
           />
+          </Unscaled>
         )}
         {(status === 'exchanging' || (!request && status === 'page')) && (
           <Center>

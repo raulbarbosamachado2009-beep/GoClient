@@ -22,7 +22,7 @@ const fake = {
         }
       : /adriano/i.test(nome)
         ? { varios: ['Adriano', 'Adriano Barb. Americanópolis'] }
-        : /adiu|adilç|adirso/i.test(nome)
+        : /adiu|adilç|adirso/i.test(nome.normalize('NFD').replace(/[\u0300-\u036f]/g, ''))
           ? { nenhum_exato: nome, parecidos: ['Adilsom/ Dona Bimba', 'Adriano'] }
           : `Nenhum cliente com "${nome}". Pode ser um lugar: tente lugar_buscar.`,
   lugar_buscar: ({ busca }) =>

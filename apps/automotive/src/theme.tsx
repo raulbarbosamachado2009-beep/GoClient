@@ -165,7 +165,24 @@ export const FONT = {
   textRegular: 'SFProText-Regular',
   textMedium: 'SFProText-Medium',
   textSemibold: 'SFProText-Semibold',
+  // Música: Figtree (livre, OFL), a mais parecida com a fonte do Spotify, que não é liberada.
+  spRegular: 'Figtree-Regular',
+  spMedium: 'Figtree-Medium',
+  spBold: 'Figtree-Bold',
+  spBlack: 'Figtree-ExtraBold',
 } as const;
+
+/** Troca SF Pro pela fonte da Música, mantendo o peso. */
+export const SPOTIFY_FONT: Record<string, string> = {
+  [FONT.displayLight]: FONT.spRegular,
+  [FONT.displayRegular]: FONT.spRegular,
+  [FONT.displayMedium]: FONT.spMedium,
+  [FONT.displaySemibold]: FONT.spBold,
+  [FONT.displayBold]: FONT.spBlack,
+  [FONT.textRegular]: FONT.spRegular,
+  [FONT.textMedium]: FONT.spMedium,
+  [FONT.textSemibold]: FONT.spBold,
+};
 
 /**
  * Como no iOS: SF Pro Display a partir de 20 pt, SF Pro Text abaixo disso. O peso vem da
@@ -204,7 +221,7 @@ export const spacing = {
 export const layout = {
   width: 1600,
   height: 900,
-  sidebarWidth: 170,
+  sidebarWidth: 204,
   gutter: 24,
   /** Alvo mínimo de toque no carro. */
   touch: 76,

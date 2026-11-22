@@ -1,6 +1,6 @@
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { type Href, usePathname, useRouter } from 'expo-router';
-import { type ReactNode, useEffect, useRef } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { Animated, Easing, StyleSheet, View } from 'react-native';
 import { HavenaOrb } from '../havena/orb';
 import { HavenaPanel } from '../havena/panel';
@@ -26,9 +26,9 @@ const ITEMS: Item[] = [
   { href: '/musica', match: '/musica', label: 'Música' },
 ];
 
-// Barra 25% mais larga que a primeira versão (pedido do usuário): blocos e ícones maiores.
-const TILE_W = 140;
-const TILE_H = 104;
+// Barra ~50% mais larga que a primeira versão (pedidos do usuário): blocos e ícones maiores.
+const TILE_W = 168;
+const TILE_H = 124;
 const GAP = 12;
 const SLOT = TILE_H + GAP;
 
@@ -73,15 +73,7 @@ export function Sidebar() {
       />
 
       <View style={styles.status}>
-        <Text variant="title2" style={{ fontSize: 28, lineHeight: 32 }}>
-          09:41
-        </Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <Text variant="subhead" style={{ fontSize: 20 }}>
-            5G
-          </Text>
-          <Icon name="cellular" size={22} color={c.text} />
-        </View>
+        <Clock />
       </View>
 
       <View style={{ height: ITEMS.length * SLOT + TILE_H }}>
@@ -119,14 +111,14 @@ export function Sidebar() {
               onPress={() => router.replace(item.href)}
             >
               {item.glyph ? (
-                <OutlineGlyph glyph={item.glyph} size={56} color={color} />
+                <OutlineGlyph glyph={item.glyph} size={66} color={color} />
               ) : (
                 <MusicSwap
                   show={showPlaying}
                   logo={
                     <FontAwesome5
                       name="spotify"
-                      size={56}
+                      size={66}
                       color={active ? c.accent : dark ? '#C7C7CC' : '#3A3A3C'}
                     />
                   }
@@ -148,7 +140,7 @@ export function Sidebar() {
           );
         })}
         <Tile top={ITEMS.length * SLOT} label="Falar com a Havena" onPress={openHavena}>
-          <HavenaOrb size={80} ambient />
+          <HavenaOrb size={96} ambient />
         </Tile>
       </View>
 
@@ -165,7 +157,7 @@ export function Sidebar() {
           selected={settingsActive}
           onPress={() => router.replace('/configuracoes')}
         >
-          <OutlineGlyph glyph="ajustes" size={56} color={settingsActive ? c.accent : ink} />
+          <OutlineGlyph glyph="ajustes" size={66} color={settingsActive ? c.accent : ink} />
         </Tile>
       </View>
     </View>
@@ -302,3 +294,28 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 4,
   },
 });
+
+/** Hora de verdade (atualiza a cada minuto). */
+function Clock() {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const tick = () => setNow(new Date());
+    const wait = 60_000 - (Date.now() % 60_000);
+    let every: ReturnType<typeof setInterval> | undefined;
+    const first = setTimeout(() => {
+      tick();
+      every = setInterval(tick, 60_000);
+    }, wait);
+    return () => {
+      clearTimeout(first);
+      if (every) clearInterval(every);
+    };
+  }, []);
+  const hh = String(now.getHours()).padStart(2, '0');
+  const mm = String(now.getMinutes()).padStart(2, '0');
+  return (
+    <Text variant="title2" style={{ fontSize: 30, lineHeight: 34 }}>
+      {hh}:{mm}
+    </Text>
+  );
+}

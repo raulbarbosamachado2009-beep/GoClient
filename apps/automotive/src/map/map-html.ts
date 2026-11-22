@@ -107,8 +107,11 @@ export function mapHtml(dark: boolean): string {
     map.on('error', function (e) { post({ type: 'error', message: String(e && e.error && e.error.message || e) }); });
   }
 
+  var zTarget = null;
   function zoomBy(d) {
-    var z = Math.max(3, Math.min(20, map.getZoom() + d));
+    // Toques seguidos somam a partir do zoom de destino, não do meio da animação.
+    var base = zTarget != null && map.isEasing() ? zTarget : map.getZoom();
+    var z = zTarget = Math.max(3, Math.min(20, Math.round(base) + d));
     if (state && state.follow) followZoom = z;
     map.easeTo({ zoom: z, duration: 300 });
   }
