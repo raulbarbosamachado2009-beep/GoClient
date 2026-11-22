@@ -13,7 +13,12 @@ import { SAMPLE, SAMPLE_STORE } from './sample';
 export type Kind = 'product' | 'customer' | 'sale';
 type Row = { product: KyteProduct; customer: KyteCustomer; sale: KyteSale };
 
-const STALE_MS = 5 * 60_000;
+// Vendas mudam o tempo todo; cadastros quase nunca (e são listas grandes de ler).
+const STALE_MS: Record<Kind, number> = {
+  sale: 3 * 60_000,
+  product: 30 * 60_000,
+  customer: 30 * 60_000,
+};
 const cache: { [K in Kind]?: { list: Row[K][]; at: number } } = {};
 const loading: { [K in Kind]?: Promise<void> } = {};
 const listeners = new Set<() => void>();
@@ -120,7 +125,7 @@ export function useKyteList<K extends Kind>(kind: K, active = true) {
       if (PREVIEW) return;
       await restore();
       const c = cache[kind];
-      if (!force && c && Date.now() - c.at < STALE_MS) return;
+      if (!force && c && Date.now() - c.at < STALE_MS[kind]) return;
       if (!kyteAgentAvailable() || !kyteLogged()) {
         setError('Entre no Kyte para ver os seus dados.');
         return;
@@ -161,7 +166,7 @@ export interface Figure {
 
 let kyteNumbers: {
   at: number;
-  data: Record<'today' | 'yesterday' | 'month', Figure | null>;
+  data: Record<'today' | 'yesterday' | 'month' | 'last30', Figure | null>;
 } | null = null;
 
 /**
@@ -181,7 +186,12 @@ export function useKyteSummary(sales: KyteSale[] | null) {
           v ? { count: v.count, total: v.total } : null;
         kyteNumbers = {
           at: Date.now(),
-          data: { today: f(d.today), yesterday: f(d.yesterday), month: f(d.month) },
+          data: {
+            today: f(d.today),
+            yesterday: f(d.yesterday),
+            month: f(d.month),
+            last30: f(d.last30 ?? null),
+          },
         };
         if (alive) tick((n) => n + 1);
       })
@@ -191,13 +201,13 @@ export function useKyteSummary(sales: KyteSale[] | null) {
     };
   }, []);
   const mine = summarize(sales ?? []);
-  const own = (k: 'today' | 'yesterday' | 'month'): Figure =>
+  const own = (k: 'today' | 'yesterday' | 'month' | 'last30'): Figure =>
     kyteNumbers?.data[k] ?? { count: mine[k].count, total: brl(mine[k].total) };
   return {
     today: own('today'),
     yesterday: own('yesterday'),
     month: own('month'),
-    last30: { count: mine.last30.count, total: brl(mine.last30.total) },
+    last30: own('last30'),
   };
 }
 

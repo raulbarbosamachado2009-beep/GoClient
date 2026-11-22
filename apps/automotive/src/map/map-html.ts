@@ -173,9 +173,12 @@ export function mapHtml(dark: boolean): string {
       .catch(function () { create('${style}'); });
   }
 ${NIGHT_STYLE}
+  // Abre onde a pessoa estava da última vez (até o GPS responder), nunca numa cidade fixa.
+  var saved = null;
+  try { saved = JSON.parse(localStorage.getItem('gc-view') || 'null'); } catch (e) {}
   function create(st) {
     map = new maplibregl.Map({
-      container: 'map', style: st, center: [-47.0608, -22.9056], zoom: 12,
+      container: 'map', style: st, center: saved ? saved.c : [-46.6333, -23.5505], zoom: saved ? saved.z : 11,
       attributionControl: { compact: true }, pitchWithRotate: false, dragRotate: false,
     });
     // Bolinhas coloridas dos lugares (desenhadas aqui, sem depender de imagens de fora).
@@ -206,6 +209,9 @@ ${NIGHT_STYLE}
       if (state.follow) { followZoom = Math.max(followZoom, 17); apply(); }
       else map.easeTo({ center: [state.user.lng, state.user.lat], zoom: Math.max(map.getZoom(), 16), padding: state.padding, duration: 600 });
     };
+    map.on('moveend', function () {
+      try { var c = map.getCenter(); localStorage.setItem('gc-view', JSON.stringify({ c: [c.lng, c.lat], z: Math.min(map.getZoom(), 16) })); } catch (e) {}
+    });
     map.on('error', function (e) { post({ type: 'error', message: String(e && e.error && e.error.message || e) }); });
   }
 
@@ -271,7 +277,7 @@ ${NIGHT_STYLE}
       var b = s.path.reduce(function (acc, p) { return acc.extend(p); }, new maplibregl.LngLatBounds(s.path[0], s.path[0]));
       map.fitBounds(b, { padding: s.padding, pitch: 0, bearing: 0, duration: 700, maxZoom: 16 });
     } else if (s.user && !centered && !key) {
-      map.jumpTo({ center: [s.user.lng, s.user.lat], zoom: 15, padding: s.padding });
+      map.jumpTo({ center: [s.user.lng, s.user.lat], zoom: 16, padding: s.padding });
     }
     if (s.user) centered = true;
     lastRoute = key;

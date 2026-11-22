@@ -5,7 +5,7 @@ import { callPhone, openWhatsApp } from '../../integrations/contact';
 import { useTabBarSpace } from '../../layout/form-factor';
 import { useStops } from '../../map/stops';
 import { Touchable } from '../../ui/primitives';
-import { brl, dayLabel, hhmm, type KyteCustomer, norm } from '../model';
+import { brl, type KyteCustomer, norm } from '../model';
 import { useKyteList } from '../store';
 import {
   FooterBar,
@@ -16,9 +16,11 @@ import {
   SearchField,
   SmallButton,
   State,
+  Tabs,
   Text,
   useKySize,
 } from '../ui';
+import { SaleRow } from './history';
 import { useKyteNav } from './nav';
 
 type Filter = 'todos' | 'primeira' | 'negativo' | 'positivo';
@@ -31,7 +33,6 @@ export function ClientsScreen() {
   const sales = useKyteList('sale');
   const [q, setQ] = useState('');
   const [filter, setFilter] = useState<Filter>('todos');
-  const tabSpace = useTabBarSpace();
 
   // Primeira compra: clientes com uma única venda entre as lidas do Histórico.
   const buys = useMemo(() => {
@@ -124,7 +125,7 @@ export function ClientsScreen() {
         />
       )}
       {hasBalance && (
-        <View style={{ marginBottom: s.phone ? tabSpace : 0 }}>
+        <View>
           <FooterBar>
             <KIcon name="wallet-outline" size={s.icon + 6} color="#FFFFFF" />
             <View style={{ flex: 1 }}>
@@ -187,7 +188,7 @@ function ClientRow({ c, onOpen }: { c: KyteCustomer; onOpen: () => void }) {
   );
 }
 
-/** Ficha do cliente: dados do Kyte, contato, rota e as últimas compras. */
+/** Ficha do cliente (prints 11 a 14): Dados, Vendas, Pedidos e Conta — só consulta. */
 export function ClientDetail({ id }: { id: string }) {
   const s = useKySize();
   const nav = useKyteNav();
@@ -195,6 +196,7 @@ export function ClientDetail({ id }: { id: string }) {
   const router = useRouter();
   const data = useKyteList('customer');
   const sales = useKyteList('sale');
+  const [tab, setTab] = useState<'dados' | 'vendas' | 'pedidos' | 'conta'>('dados');
   const c = (data.list ?? []).find((x) => (x.id || x.name) === id);
   const [msg, setMsg] = useState<string | null>(null);
   const tabSpace = useTabBarSpace();
@@ -209,135 +211,158 @@ export function ClientDetail({ id }: { id: string }) {
 
   const address = [c.address, c.complement, c.district, c.city].filter(Boolean).join(', ');
   const stop = { name: c.name, address, phone: c.phone };
-  const mine = (sales.list ?? []).filter(
-    (v) => v.customer && norm(v.customer.name) === norm(c.name),
+  const mine = (sales.list ?? [])
+    .filter((v) => v.customer && norm(v.customer.name) === norm(c.name))
+    .sort((a, b) => (b.date ?? 0) - (a.date ?? 0));
+  const field = (label: string, value: string) => (
+    <View
+      style={{
+        backgroundColor: KY.card,
+        borderRadius: 16,
+        paddingHorizontal: 24,
+        paddingVertical: 16,
+        flex: 1,
+      }}
+    >
+      <Text size={s.small} weight="semibold" color={KY.faint}>
+        {label}
+      </Text>
+      <Text size={s.row}>{value}</Text>
+    </View>
   );
 
   return (
     <View style={{ flex: 1, backgroundColor: KY.bg }}>
       <Header title={c.name} onBack={nav.back} />
-      <ScrollView
-        contentContainerStyle={{
-          padding: s.pad,
-          paddingTop: 0,
-          gap: 16,
-          paddingBottom: tabSpace + 30,
-        }}
-      >
-        <View style={{ backgroundColor: KY.card, borderRadius: 18, padding: 26, gap: 18 }}>
-          <Info icon="call-outline" label="Celular" value={c.phone || 'Sem telefone'} />
-          <Info
-            icon="location-outline"
-            label="Endereço"
-            value={address || 'Sem endereço no Kyte'}
-          />
-          {c.email ? <Info icon="mail-outline" label="E-mail" value={c.email} /> : null}
-          {c.balance != null && (
-            <Info
-              icon="wallet-outline"
-              label="Saldo"
-              value={brl(c.balance)}
-              color={c.balance < 0 ? KY.red : c.balance > 0 ? KY.greenInk : KY.ink}
-            />
+      <View style={{ paddingHorizontal: s.pad, paddingBottom: 12 }}>
+        <Tabs
+          value={tab}
+          onChange={setTab}
+          tabs={[
+            { key: 'dados', label: 'DADOS', icon: 'person-outline' },
+            { key: 'vendas', label: 'VENDAS', icon: 'receipt-outline' },
+            { key: 'pedidos', label: 'PEDIDOS', icon: 'document-text-outline' },
+            { key: 'conta', label: 'CONTA', icon: 'wallet-outline' },
+          ]}
+        />
+      </View>
+      {tab === 'vendas' ? (
+        <FlatList
+          data={mine}
+          keyExtractor={(v) => v.id || v.number}
+          contentContainerStyle={{ paddingHorizontal: s.pad, gap: 8, paddingBottom: tabSpace + 30 }}
+          ListEmptyComponent={
+            <State empty="Nenhuma venda deste cliente nas vendas lidas do Kyte." />
+          }
+          renderItem={({ item }) => (
+            <SaleRow v={item} onOpen={() => nav.open({ type: 'sale', id: item.id })} />
           )}
-        </View>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
-          <SmallButton
-            label="Ir agora"
-            icon="navigate"
-            tone="green"
-            onPress={() => {
-              if (!address) return setMsg('Cadastre o endereço deste cliente no Kyte primeiro.');
-              stops.goNow(stop);
-              router.replace('/mapa');
-            }}
-          />
-          <SmallButton
-            label="Colocar na rota"
-            icon="add-circle-outline"
-            onPress={() => {
-              if (!address) return setMsg('Cadastre o endereço deste cliente no Kyte primeiro.');
-              stops.add(stop);
-              setMsg(`${c.name} está na rota do dia.`);
-            }}
-          />
-          <SmallButton
-            label="WhatsApp"
-            icon="logo-whatsapp"
-            onPress={() =>
-              openWhatsApp(c.phone) ? null : setMsg('Este cliente não tem celular válido no Kyte.')
-            }
-          />
-          <SmallButton
-            label="Ligar"
-            icon="call"
-            onPress={() =>
-              callPhone(c.phone) ? null : setMsg('Este cliente não tem telefone válido no Kyte.')
-            }
-          />
-        </View>
-        {msg && (
-          <Text size={s.sub} color={KY.sub}>
-            {msg}
-          </Text>
-        )}
-        {mine.length > 0 && (
-          <View style={{ backgroundColor: KY.card, borderRadius: 18, padding: 26, gap: 4 }}>
-            <Text size={s.big} weight="semibold" style={{ marginBottom: 8 }}>
-              Últimas compras
-            </Text>
-            {mine.slice(0, 8).map((v) => (
-              <Touchable
-                key={v.id}
-                onPress={() => nav.open({ type: 'sale', id: v.id })}
+          ListFooterComponent={
+            mine.length ? (
+              <View
+                style={{ backgroundColor: '#DDF5EC', borderRadius: 16, padding: 22, marginTop: 6 }}
+              >
+                <Text size={s.row} weight="bold" color={KY.greenInk}>
+                  {brl(mine.reduce((a, v) => a + (v.canceled ? 0 : (v.total ?? 0)), 0))} em{' '}
+                  {mine.length} {mine.length === 1 ? 'venda' : 'vendas'}
+                </Text>
+              </View>
+            ) : undefined
+          }
+        />
+      ) : (
+        <ScrollView
+          contentContainerStyle={{
+            paddingHorizontal: s.pad,
+            gap: 14,
+            paddingBottom: tabSpace + 30,
+          }}
+        >
+          {tab === 'dados' && (
+            <>
+              <View
                 style={{
-                  flexDirection: 'row',
+                  backgroundColor: '#E4E8ED',
+                  borderRadius: 18,
+                  padding: 24,
                   alignItems: 'center',
-                  paddingVertical: 14,
-                  borderTopWidth: 1,
-                  borderTopColor: KY.line,
-                  gap: 16,
                 }}
               >
-                <Text size={s.row} weight="semibold" style={{ flex: 1 }}>
-                  {brl(v.total)}
+                <View
+                  style={{
+                    width: 130,
+                    height: 130,
+                    borderRadius: 65,
+                    backgroundColor: '#D3D9E0',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <KIcon name="image-outline" size={52} color={KY.ink} />
+                </View>
+                <Touchable
+                  onPress={() => c.phone && openWhatsApp(c.phone)}
+                  style={{ marginTop: -26, marginLeft: 90 }}
+                >
+                  <KIcon name="logo-whatsapp" size={44} color={c.phone ? KY.wa : KY.ink} />
+                </Touchable>
+              </View>
+              <View style={{ flexDirection: s.phone ? 'column' : 'row', gap: 14 }}>
+                {field('Nome', c.name)}
+                {field('Celular/WhatsApp', c.phone || '—')}
+              </View>
+              {field('Endereço', address || 'Sem endereço no Kyte')}
+              {c.email ? field('E-mail', c.email) : null}
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
+                <SmallButton
+                  label="Ir agora"
+                  icon="navigate"
+                  tone="green"
+                  onPress={() => {
+                    if (!address)
+                      return setMsg('Cadastre o endereço deste cliente no Kyte primeiro.');
+                    stops.goNow(stop);
+                    router.replace('/mapa');
+                  }}
+                />
+                <SmallButton
+                  label="Colocar na rota"
+                  icon="add-circle-outline"
+                  onPress={() => {
+                    if (!address)
+                      return setMsg('Cadastre o endereço deste cliente no Kyte primeiro.');
+                    stops.add(stop);
+                    setMsg(`${c.name} está na rota do dia.`);
+                  }}
+                />
+                <SmallButton
+                  label="Ligar"
+                  icon="call"
+                  onPress={() =>
+                    callPhone(c.phone)
+                      ? null
+                      : setMsg('Este cliente não tem telefone válido no Kyte.')
+                  }
+                />
+              </View>
+              {msg && (
+                <Text size={s.sub} color={KY.sub}>
+                  {msg}
                 </Text>
-                <Text size={s.small} color={KY.sub}>
-                  {v.date ? `${dayLabel(v.date)} · ${hhmm(v.date)}` : ''}
-                </Text>
-                <KIcon name="chevron-forward" size={s.icon - 6} color={KY.sub} />
-              </Touchable>
-            ))}
-          </View>
-        )}
-      </ScrollView>
-    </View>
-  );
-}
-
-function Info({
-  icon,
-  label,
-  value,
-  color = KY.ink,
-}: {
-  icon: 'call-outline' | 'location-outline' | 'mail-outline' | 'wallet-outline';
-  label: string;
-  value: string;
-  color?: string;
-}) {
-  const s = useKySize();
-  return (
-    <View style={{ flexDirection: 'row', gap: 18, alignItems: 'flex-start' }}>
-      <KIcon name={icon} size={s.icon} color={KY.sub} />
-      <View style={{ flex: 1 }}>
-        <Text size={s.small} color={KY.sub}>
-          {label}
-        </Text>
-        <Text size={s.row} weight="medium" color={color}>
-          {value}
-        </Text>
-      </View>
+              )}
+            </>
+          )}
+          {tab === 'pedidos' && <State empty="Nenhum pedido em aberto deste cliente." />}
+          {tab === 'conta' && (
+            <View style={{ gap: 14 }}>
+              {field('Saldo', c.balance == null ? '—' : brl(c.balance))}
+              <Text size={s.small} color={KY.sub}>
+                Saldo negativo = o cliente deve; positivo = crédito com a loja.
+              </Text>
+            </View>
+          )}
+        </ScrollView>
+      )}
     </View>
   );
 }

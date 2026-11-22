@@ -1,6 +1,7 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { type ComponentRef, useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
+import { callPhone, openWhatsApp } from '../../integrations/contact';
 import { MAPS_ENABLED } from '../../integrations/env';
 import {
   TAB_BAR_HEIGHT,
@@ -13,6 +14,7 @@ import { LiveMap, type MapPin } from '../../map/live-map';
 import { type Guidance as TurnGuidance, useTurnByTurn } from '../../map/navigation';
 import { PannableMap } from '../../map/pannable-map';
 import { ExploreSheet, RouteSheet, type TripInfo } from '../../map/phone-sheet';
+import { RoutePlanner } from '../../map/route-planner';
 import {
   formatArrival,
   formatDuration,
@@ -173,7 +175,7 @@ export default function MapScreen() {
         ? { arrival: '11:58', duration: { value: '1:12', unit: 'hrs' }, km: '24,6' }
         : { arrival: '09:59', duration: { value: '18', unit: 'min' }, km: '7,4' };
   const stopLabel =
-    mode === 'day'
+    mode === 'day' && routeClients.length > 1
       ? `Parada ${wrap(stop, routeClients.length) + 1} de ${routeClients.length}`
       : undefined;
 
@@ -212,8 +214,12 @@ export default function MapScreen() {
               client={client}
               stopLabel={stopLabel}
               trip={trip}
-              onNext={mode === 'day' ? () => setStop((s) => s + 1) : undefined}
-              onPrevious={mode === 'day' ? () => setStop((s) => s - 1) : undefined}
+              onNext={
+                mode === 'day' && routeClients.length > 1 ? () => setStop((s) => s + 1) : undefined
+              }
+              onPrevious={
+                mode === 'day' && routeClients.length > 1 ? () => setStop((s) => s - 1) : undefined
+              }
               onNavigate={() =>
                 mode === 'explore'
                   ? router.replace({
@@ -296,12 +302,12 @@ export default function MapScreen() {
               client={client}
               mode={mode}
               stopLabel={
-                mode === 'day'
+                mode === 'day' && routeClients.length > 1
                   ? `Parada ${wrap(stop, routeClients.length) + 1} de ${routeClients.length}`
                   : undefined
               }
-              onNext={() => setStop((s) => s + 1)}
-              onPrevious={() => setStop((s) => s - 1)}
+              onNext={routeClients.length > 1 ? () => setStop((s) => s + 1) : undefined}
+              onPrevious={routeClients.length > 1 ? () => setStop((s) => s - 1) : undefined}
             />
           ) : (
             <WelcomeCard />
@@ -497,7 +503,7 @@ function Stat({ value, label }: { value: string; label: string }) {
   );
 }
 
-/** Cartão do cliente (referência: imagem 2) — flutua sobre o mapa com fundo desfocado. */
+/** Cartão do cliente com o destino escolhido: compacto, no pé do espaço do cartão. */
 function ClientCard({
   client,
   mode,
@@ -508,107 +514,77 @@ function ClientCard({
   client: MockClient;
   mode: MapMode;
   stopLabel?: string;
-  onNext: () => void;
-  onPrevious: () => void;
+  onNext?: () => void;
+  onPrevious?: () => void;
 }) {
   const c = useColors();
   const router = useRouter();
-  const active = client.status === 'Ativo';
   const tile = c.mode === 'dark' ? 'rgba(255,255,255,0.1)' : '#FFFFFF';
+  const district = client.district.split(' · ')[0];
+  const square = (icon: IconName, label: string, onPress: () => void) => (
+    <Touchable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={onPress}
+      style={[styles.step, { backgroundColor: tile }]}
+    >
+      <Icon name={icon} size={34} />
+    </Touchable>
+  );
 
   return (
-    <Material style={styles.card}>
-      <Appear distance={10}>
+    <Material style={styles.compact}>
+      <Appear distance={10} style={{ gap: spacing[5] }}>
         {stopLabel && (
-          <Text variant="footnote" tone="secondary" style={{ marginBottom: spacing[3] }}>
+          <Text variant="footnote" tone="secondary">
             {stopLabel}
           </Text>
         )}
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[5] }}>
-          <View style={[styles.avatarTile, { backgroundColor: tile }]}>
-            <Avatar name={client.name} size={84} square />
-          </View>
-          <View style={{ flex: 1, gap: 4 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[4] }}>
+          <Avatar name={client.name} size={72} square />
+          <View style={{ flex: 1, gap: 2 }}>
             <Text variant="title2" numberOfLines={2}>
-              {client.name}
+              {client.tradeName || client.name}
             </Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[2] }}>
-              <View
-                style={[styles.dot, { backgroundColor: active ? c.success : c.textTertiary }]}
-              />
-              <Text variant="headline">{client.status}</Text>
-            </View>
+            <Text variant="subhead" tone="secondary" numberOfLines={2}>
+              {[client.address, district].filter(Boolean).join(' · ')}
+            </Text>
           </View>
         </View>
-
-        <View style={{ marginTop: spacing[8], gap: spacing[2] }}>
-          <Text variant="title2">Pedido</Text>
-          {client.order.map((line) => (
-            <Text key={line} variant="body" numberOfLines={1}>
-              {line}
-            </Text>
-          ))}
+        <View style={{ flexDirection: 'row', gap: spacing[3] }}>
+          {client.phone ? square('call', 'Ligar', () => callPhone(client.phone)) : null}
+          {client.phone
+            ? square('logo-whatsapp', 'WhatsApp', () => openWhatsApp(client.phone))
+            : null}
+          <View style={{ flex: 1 }} />
+          {onPrevious ? square('chevron-back', 'Cliente anterior', onPrevious) : null}
+          {onNext ? square('chevron-forward', 'Próximo cliente', onNext) : null}
         </View>
-
-        <View style={{ marginTop: spacing[8], gap: spacing[4] }}>
-          <InfoLine
-            icon="location"
-            tile={tile}
-            text={client.address}
-            sub={client.district.split(' · ')[0]}
+        {mode === 'explore' && (
+          <Button
+            label="IR"
+            icon="navigate"
+            onPress={() =>
+              router.replace({ pathname: '/mapa', params: { rota: 'cliente', id: client.id } })
+            }
           />
-          <InfoLine icon="call" tile={tile} text={client.phone.replace(/^\(/, '(+55) (')} />
-        </View>
+        )}
       </Appear>
-
-      <View style={{ flex: 1, minHeight: spacing[6] }} />
-
-      {mode === 'explore' ? (
-        <Button
-          label="IR"
-          icon="navigate"
-          onPress={() =>
-            router.replace({ pathname: '/mapa', params: { rota: 'cliente', id: client.id } })
-          }
-        />
-      ) : (
-        <View style={styles.stepRow}>
-          <Touchable
-            accessibilityRole="button"
-            accessibilityLabel="Cliente anterior"
-            onPress={onPrevious}
-            style={[styles.step, { backgroundColor: tile }]}
-          >
-            <Icon name="chevron-back" size={40} />
-          </Touchable>
-          <Touchable
-            accessibilityRole="button"
-            onPress={onNext}
-            style={[styles.next, { flex: 1, backgroundColor: tile }]}
-          >
-            <Text variant="headline" numberOfLines={1} style={{ fontSize: 24, letterSpacing: 0.3 }}>
-              PRÓXIMO CLIENTE
-            </Text>
-          </Touchable>
-          <Touchable
-            accessibilityRole="button"
-            accessibilityLabel="Próximo cliente"
-            onPress={onNext}
-            style={[styles.step, { backgroundColor: tile }]}
-          >
-            <Icon name="chevron-forward" size={40} />
-          </Touchable>
-        </View>
-      )}
     </Material>
   );
 }
 
 /** Cartão inicial: nenhum cliente selecionado ainda. */
 function WelcomeCard() {
-  const router = useRouter();
   // "Escolher cliente" abre a lista dentro do próprio cartão (sem trocar de tela).
   const [picking, setPicking] = useState(false);
+  const [planning, setPlanning] = useState(false);
+  if (planning)
+    return (
+      <Material style={[styles.welcome, { justifyContent: 'flex-start' }]}>
+        <RoutePlanner big onClose={() => setPlanning(false)} />
+      </Material>
+    );
   if (picking)
     return (
       <Material style={[styles.welcome, { justifyContent: 'flex-start' }]}>
@@ -641,40 +617,10 @@ function WelcomeCard() {
           variant="tinted"
           size="xl"
           style={styles.welcomeButton}
-          onPress={() => router.replace('/rotas')}
+          onPress={() => setPlanning(true)}
         />
       </View>
     </Material>
-  );
-}
-
-function InfoLine({
-  icon,
-  tile,
-  text,
-  sub,
-}: {
-  icon: IconName;
-  tile: string;
-  text: string;
-  sub?: string;
-}) {
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[4] }}>
-      <View style={[styles.iconTile, { backgroundColor: tile }]}>
-        <Icon name={icon} size={30} />
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text variant="body" numberOfLines={1}>
-          {text}
-        </Text>
-        {sub && (
-          <Text variant="body" numberOfLines={1}>
-            {sub}
-          </Text>
-        )}
-      </View>
-    </View>
   );
 }
 
@@ -732,6 +678,7 @@ const styles = StyleSheet.create({
     borderRadius: layout.radius.xl,
   },
   card: { flex: 1, borderRadius: 40, padding: spacing[8] },
+  compact: { marginTop: 'auto', borderRadius: 36, padding: spacing[6] },
   welcome: {
     flex: 1,
     borderRadius: 40,

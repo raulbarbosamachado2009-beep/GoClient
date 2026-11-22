@@ -52,7 +52,20 @@ function useSpotifyGet<T, R>(path: string | null, map: (raw: T) => R) {
     }
     let alive = true;
     setState({ key });
-    call<T>(path)
+    // "all:" = busca todas as páginas (segue o "next" do Spotify, até 2.000 itens).
+    const load = path.startsWith('all:')
+      ? (async () => {
+          let next: string | null = path.slice(4);
+          const items: unknown[] = [];
+          while (next && items.length < 2000) {
+            const page: { items?: unknown[]; next?: string | null } | null = await call(next);
+            items.push(...(page?.items ?? []));
+            next = page?.next ? page.next.replace('https://api.spotify.com/v1', '') : null;
+          }
+          return { items } as T;
+        })()
+      : call<T>(path);
+    load
       .then((raw) => {
         const data = map(raw as T);
         cache.set(key, data);
@@ -201,9 +214,9 @@ export function usePlaylistData(id: string) {
     !live
       ? null
       : id === 'liked'
-        ? '/me/tracks?limit=50'
+        ? 'all:/me/tracks?limit=50'
         : isPlaylist
-          ? `/playlists/${sid}/items?limit=50`
+          ? `all:/playlists/${sid}/items?limit=50`
           : null,
     (r) =>
       r.items

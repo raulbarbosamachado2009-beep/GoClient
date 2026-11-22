@@ -16,6 +16,8 @@ export interface KyteWindowHandle {
   select: (key: KyteSectionKey) => void;
   /** Entrega os números do Início para a página. */
   home: (data: HomeData) => void;
+  /** Roda um script na página (ex.: pôr o carrinho do GoClient no Kyte). */
+  run: (js: string) => void;
 }
 
 /**
@@ -40,6 +42,7 @@ export const KyteWindow = forwardRef<
         web.current?.injectJavaScript(
           `window.__goclientSelect && window.__goclientSelect(${JSON.stringify(key)}); true;`,
         ),
+      run: (js) => web.current?.injectJavaScript(`${js}\ntrue;`),
       home: (data) =>
         web.current?.injectJavaScript(
           `window.__gcHomeData && window.__gcHomeData(${JSON.stringify(data)}); true;`,

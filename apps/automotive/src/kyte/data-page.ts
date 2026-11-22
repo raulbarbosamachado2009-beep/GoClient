@@ -244,7 +244,10 @@ export const DATA_HELPERS = String.raw`(function(){
         items: Array.isArray(items) ? items.map(function(it){
           it = plain(it);
           var q = num(pick(it, N.qty, 0)), unit = num(pick(it, N.price, 1)), tot = num(pick(it, ['total', 'totalValue', 'subtotal', 'value', 'valor'], 0));
-          return { name: str(pick(it, ['name', 'nome', 'description', 'title', 'productName'], 1)), qty: q == null ? 1 : q, unitPrice: unit, total: tot != null ? tot : (unit != null ? unit * (q || 1) : null) };
+          var NM = ['name', 'nome', 'productName', 'product_name', 'description', 'descricao', 'title', 'label'];
+          var prod = pick(it, ['product', 'produto', 'item', 'productData'], 1);
+          var nm = str(pick(it, NM, 1)) || (prod && typeof prod === 'object' ? str(pick(prod, NM, 1)) : '') || str(pick(it, NM, 0));
+          return { name: nm, qty: q == null ? 1 : q, unitPrice: unit, total: tot != null ? tot : (unit != null ? unit * (q || 1) : null) };
         }) : [],
       };
     },

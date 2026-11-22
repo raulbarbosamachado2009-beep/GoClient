@@ -25,10 +25,11 @@ import { callPhone, openWhatsApp } from '../integrations/contact';
 import { kyteAgent, kyteAgentAvailable, kyteLogged } from '../kyte/agent';
 import { customerAddress, findCustomer, useKyteList } from '../kyte/store';
 import { TAB_BAR_HEIGHT, useSystemInsets, useTabBarSpace } from '../layout/form-factor';
-import { CLIENTS, type MockClient, REGIONS, TODAY_ROUTE } from '../mocks/data';
+import { CLIENTS, type MockClient, REGIONS } from '../mocks/data';
 import { useFrameScale } from '../preview/automotive-frame';
 import { layout, spacing, useColors } from '../theme';
 import { Avatar, Icon, type IconName, Text, Touchable } from '../ui/primitives';
+import { RoutePlanner } from './route-planner';
 import { useStops } from './stops';
 
 /**
@@ -498,7 +499,15 @@ export function ExploreSheet() {
   const stops = useStops();
   const kyte = useKyteNames(query, mode === 'clients');
   const [notice, setNotice] = useState<string | null>(null);
+  // Montar a rota do dia dentro da própria aba (sem página separada).
+  const [planning, setPlanning] = useState(false);
+  const openPlanner = () => {
+    setMode(null);
+    setPlanning(true);
+    sheet.current?.snap(2);
+  };
   const openClients = () => {
+    setPlanning(false);
     setMode('clients');
     setNotice(null);
     sheet.current?.snap(2);
@@ -630,7 +639,16 @@ export function ExploreSheet() {
         </View>
       }
     >
-      {searching ? (
+      {planning ? (
+        <View style={{ height: 1150 }}>
+          <RoutePlanner
+            onClose={() => {
+              setPlanning(false);
+              sheet.current?.snap(1);
+            }}
+          />
+        </View>
+      ) : searching ? (
         <SearchBody
           clientsMode={mode === 'clients'}
           kyteNames={mode === 'clients' ? kyte.names : null}
@@ -673,7 +691,7 @@ export function ExploreSheet() {
               subTone="accent"
               color="#30D158"
               icon={<Icon name="trail-sign" size={52} color="#FFFFFF" />}
-              onPress={() => router.replace('/rotas')}
+              onPress={openPlanner}
             />
           </View>
 
@@ -705,7 +723,7 @@ export function ExploreSheet() {
             ))}
           </View>
 
-          <Section title="Rota de hoje" onPress={() => router.replace('/rotas')} />
+          <Section title="Rota de hoje" onPress={openPlanner} />
           <Tap
             accessibilityRole="button"
             onPress={() => router.replace({ pathname: '/mapa', params: { rota: 'dia' } })}
@@ -719,15 +737,11 @@ export function ExploreSheet() {
               Visitas de hoje
             </Text>
             <Text variant="callout" tone="secondary" style={TYPE.rowSub}>
-              {TODAY_ROUTE.length} clientes
+              {stops.dayIds.length} clientes
             </Text>
           </Tap>
 
-          <WideAction
-            icon="trail-sign"
-            label="Montar rota do dia"
-            onPress={() => router.replace('/rotas')}
-          />
+          <WideAction icon="trail-sign" label="Montar rota do dia" onPress={openPlanner} />
           <WideAction icon="share-outline" label="Compartilhar localização" />
         </>
       )}

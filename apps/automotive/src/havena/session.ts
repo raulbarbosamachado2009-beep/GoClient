@@ -106,13 +106,22 @@ export function useHavenaSession(open: boolean) {
     });
   }, []);
 
+  // Ouve logo depois de falar (um instante para o alto-falante liberar o áudio).
+  const autoListen = useRef(false);
+  const listenSoon = useCallback(() => {
+    autoListen.current = true;
+    setTimeout(() => {
+      if (alive.current) void listen();
+    }, 350);
+  }, [listen]);
+
   const confirmFlow = useCallback(
     (p: Pending) => {
       pending.current = p;
       setAwaiting(true);
-      speak(p.summary, () => listen());
+      speak(p.summary, () => listenSoon());
     },
-    [speak, listen],
+    [speak, listenSoon],
   );
 
   const answer = useCallback(
@@ -122,7 +131,7 @@ export function useHavenaSession(open: boolean) {
       if (pending.current) {
         const yn = yesNo(text);
         const p = pending.current;
-        if (yn === null) return speak('Não entendi. Diga sim ou não.', () => listen());
+        if (yn === null) return speak('Não entendi. Diga sim ou não.', () => listenSoon());
         pending.current = null;
         setAwaiting(false);
         if (!yn) return speak('Tudo bem, cancelei.');
@@ -159,7 +168,9 @@ export function useHavenaSession(open: boolean) {
           const r = await ask(msgs, TOOL_SPECS);
           if (!r.calls.length) {
             history.current = [...msgs.slice(1), r.raw];
-            return speak(r.text || 'Pronto.');
+            // Depois de responder, já escuta de novo: a pessoa pode responder a uma pergunta
+            // dela ou continuar a conversa (se ficar em silêncio, ela só para de ouvir).
+            return speak(r.text || 'Pronto.', () => listenSoon());
           }
           msgs.push(r.raw);
           for (const call of r.calls) {
@@ -183,13 +194,14 @@ export function useHavenaSession(open: boolean) {
         return speak('Estou sem conexão com a inteligência agora. Tente um comando simples.');
       }
     },
-    [speak, listen, confirmFlow],
+    [speak, confirmFlow, listenSoon],
   );
 
   useSpeechRecognitionEvent('result', (e) => {
     const t = e.results[0]?.transcript ?? '';
     setHeard(t);
     if (e.isFinal && t.trim()) {
+      autoListen.current = false;
       ExpoSpeechRecognitionModule.stop();
       const alts = e.results
         .slice(1)
@@ -201,6 +213,11 @@ export function useHavenaSession(open: boolean) {
   useSpeechRecognitionEvent('error', (e) => {
     if (!alive.current) return;
     setPhase('idle');
+    // Escuta automática depois da fala dela: silêncio não é erro, mantém a última frase.
+    if (autoListen.current && (e.error === 'no-speech' || e.error === 'speech-timeout')) {
+      autoListen.current = false;
+      return;
+    }
     setCaption(
       e.error === 'no-speech' || e.error === 'speech-timeout'
         ? 'Não ouvi nada. Toque no círculo para falar.'

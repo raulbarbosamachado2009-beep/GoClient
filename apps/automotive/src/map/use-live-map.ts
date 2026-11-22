@@ -26,6 +26,15 @@ export function useCarPosition(enabled = MAPS_ENABLED) {
         return;
       }
       const last = await Location.getLastKnownPositionAsync().catch(() => null);
+      // Sem posição guardada: pede uma rápida (rede/Wi-Fi) antes do GPS de navegação.
+      if (!last)
+        Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced })
+          .then((p) => {
+            if (!alive) return;
+            lastPosition = { latitude: p.coords.latitude, longitude: p.coords.longitude };
+            setPosition((cur) => cur ?? lastPosition);
+          })
+          .catch(() => {});
       if (last && alive) {
         setPosition(last.coords);
         lastPosition = { latitude: last.coords.latitude, longitude: last.coords.longitude };

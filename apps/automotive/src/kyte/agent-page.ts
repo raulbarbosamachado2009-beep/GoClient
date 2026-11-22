@@ -164,7 +164,9 @@ export const JOBS = {
       var m = new RegExp(label + ':?\\\\s*(\\\\d+)\\\\s*vendas?\\\\s*R\\\\$\\\\s*([\\\\d.,]+)', 'i').exec(text);
       return m ? { count: Number(m[1]), total: 'R$ ' + m[2] } : null;
     };
-    return { today: grab('Hoje'), yesterday: grab('Ontem'), week: grab('Esta semana'), month: grab('Este m[eê]s') };`,
+    var all = document.body.innerText.replace(/\\s+/g, ' ');
+    var m30 = /[ÚU]ltimos 30 dias:?\\s*R\\$\\s*([\\d.,]+)\\s*em\\s*(\\d+)\\s*vendas?/i.exec(all);
+    return { today: grab('Hoje'), yesterday: grab('Ontem'), week: grab('Esta semana'), month: grab('Este m[eê]s'), last30: m30 ? { count: Number(m30[2]), total: 'R$ ' + m30[1] } : null };`,
   /** Cadastra um cliente (nome, celular e endereço). */
   createClient: (c: { name: string; phone?: string; address?: string }) => `
     await A.menu('Clientes');
@@ -201,17 +203,53 @@ export const JOBS = {
     try { await A.menu(label); } catch (e) {}
     var list = [], start = Date.now();
     while (Date.now() - start < 9000) { list = await A.read(${JSON.stringify(kind)}); if (list.length) break; await A.sleep(700); }
-    // Listas longas chegam aos poucos: rola até parar de crescer.
-    for (var round = 0, last = -1; round < 18 && list.length !== last && Date.now() - start < 40000; round++) {
+    // Listas longas chegam aos poucos: rola até parar de crescer (3 voltas sem novidade).
+    for (var round = 0, last = -1, still = 0; round < 70 && still < 3 && Date.now() - start < 100000; round++) {
+      still = list.length === last ? still + 1 : 0;
       last = list.length;
       Array.prototype.forEach.call(document.querySelectorAll('div,main,section,ul'), function(e){
-        if (e.scrollHeight > e.clientHeight + 60 && e.clientHeight > 200) e.scrollTop = e.scrollHeight;
+        if (e.scrollHeight > e.clientHeight + 60 && e.clientHeight > 150) { e.scrollTop = e.scrollHeight; e.dispatchEvent(new Event('scroll', { bubbles: true })); }
       });
+      var rows = document.querySelectorAll('[role=row],li,tr');
+      if (rows.length) try { rows[rows.length - 1].scrollIntoView({ block: 'end' }); } catch (e) {}
       window.scrollTo(0, document.body.scrollHeight);
-      await A.sleep(900);
+      await A.sleep(1300);
       list = await A.read(${JSON.stringify(kind)});
     }
     return { list: list };`,
+  /**
+   * Põe no carrinho do Kyte (tela Vendedor, visível) os itens e o cliente escolhidos no
+   * GoClient. Não conclui: o pagamento e a conclusão são feitos pela pessoa no próprio Kyte.
+   */
+  fillSale: (plan: { items: { name: string; qty: number }[]; customer: string | null }) => `
+    await A.menu('Vendedor');
+    var box = await A.waitFor(function(){ return A.field(/nome ou c[oó]digo|buscar|procur/i); }, 12000, 'a busca de produtos do Kyte');
+    var miss = [];
+    var items = ${JSON.stringify(plan.items)};
+    for (var i = 0; i < items.length; i++) {
+      var it = items[i];
+      A.set(box, it.name);
+      await A.sleep(900);
+      var want = A.norm(it.name);
+      var tile = A.leaves(/./).filter(function(e){ return A.visible(e) && A.norm(e.innerText) === want; })[0];
+      if (!tile) { miss.push(it.name); continue; }
+      var target = tile.closest('[role=button],button,a,li') || tile.parentElement || tile;
+      for (var n = 0; n < Math.round(it.qty); n++) { A.click(target); await A.sleep(250); }
+    }
+    A.set(box, '');
+    var cust = ${JSON.stringify(plan.customer)};
+    if (cust) {
+      var sel = A.leaves(/^selecionar cliente$/i)[0];
+      if (sel) {
+        A.click(sel.closest('a,button,[role=button]') || sel);
+        var cbox = await A.waitFor(function(){ return A.field(/procure|nome|cliente/i); }, 9000, 'a busca de clientes');
+        A.set(cbox, cust);
+        await A.sleep(1300);
+        var row = A.leaves(/./).filter(function(e){ return A.visible(e) && A.norm(e.innerText) === A.norm(cust); })[0];
+        if (row) A.click(row.closest('tr,li,[role=row],[role=button],a,button') || row); else miss.push('cliente ' + cust);
+      } else miss.push('cliente ' + cust);
+    }
+    return { missing: miss };`,
   /** Nome e textos da loja (para o recibo). */
   readStore: () => `return await A.store();`,
   /** Estrutura dos dados do Kyte (só nomes de campos e quantidades). */

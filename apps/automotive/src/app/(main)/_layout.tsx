@@ -32,7 +32,7 @@ export default function MainLayout() {
   // O Mapa passa por baixo da barra (lateral ou de abas), que é translúcida.
   const underBar = section === 'mapa';
   // No celular, o Spotify também vai até o rodapé, por trás da barra de abas flutuante.
-  const fullHeight = underBar || section === 'musica';
+  const fullHeight = underBar || section === 'musica' || section === 'kyte';
   const system = useSystemInsets();
   const tabSpace = useTabBarSpace();
   // Liga o motor de voz logo ao abrir o app: a primeira resposta da Havena já sai na hora.
@@ -52,7 +52,7 @@ export default function MainLayout() {
               marginBottom: phone && !fullHeight ? tabSpace : 0,
               // Celular: o fundo vai até a borda de cima; o conteúdo desce da câmera/entalhe.
               // (O Mapa vai inteiro até a borda e afasta só os próprios controles.)
-              paddingTop: phone && !underBar ? system.top : 0,
+              paddingTop: phone && !underBar && section !== 'kyte' ? system.top : 0,
               backgroundColor: phone && section === 'musica' ? SP_BG : undefined,
             }}
           >

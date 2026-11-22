@@ -131,6 +131,7 @@ export const kyteAgent = {
       yesterday: { count: number; total: string } | null;
       week: { count: number; total: string } | null;
       month: { count: number; total: string } | null;
+      last30?: { count: number; total: string } | null;
     }>(JOBS.salesSummary()),
   createClient: (c: { name: string; phone?: string; address?: string }) =>
     run<{ saved: boolean }>(JOBS.createClient(c), 30000),
@@ -139,7 +140,7 @@ export const kyteAgent = {
   logout: () => run<{ ok: boolean }>(JOBS.logout()),
   /** Listas do Kyte já no formato do GoClient (ver data-page.ts). */
   readData: <K extends 'product' | 'customer' | 'sale'>(kind: K) =>
-    run<{ list: unknown[] }>(JOBS.readData(kind), 50000),
+    run<{ list: unknown[] }>(JOBS.readData(kind), 120000),
   readStore: () =>
     run<{ name: string; header: string; footer: string; logo: string } | null>(JOBS.readStore()),
   diagnose: () => run<KyteDiagnosis>(JOBS.diagnose(), 40000),

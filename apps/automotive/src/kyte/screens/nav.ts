@@ -15,6 +15,7 @@ export const SECTIONS: { key: Section; label: string; icon: string }[] = [
 export type Detail =
   | { type: 'client'; id: string }
   | { type: 'sale'; id: string }
+  | { type: 'product'; id: string }
   | { type: 'receipt'; id: string }
   | { type: 'diagnostico' };
 

@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 import { ScrollView, SectionList, View } from 'react-native';
-import { useTabBarSpace } from '../../layout/form-factor';
 import { Touchable } from '../../ui/primitives';
 import { brl, dayLabel, hhmm, itemsLine, type KyteSale, norm } from '../model';
 import { useKyteList, useKyteSummary } from '../store';
@@ -36,7 +35,6 @@ export function HistoryScreen() {
   const [q, setQ] = useState('');
   const [seller, setSeller] = useState<string | null>(null);
   const [pickSeller, setPickSeller] = useState(false);
-  const tabSpace = useTabBarSpace();
 
   const sellers = useMemo(
     () => [...new Set((data.list ?? []).map((v) => v.seller).filter(Boolean))].sort(),
@@ -178,7 +176,7 @@ export function HistoryScreen() {
           )}
         />
       )}
-      <View style={{ marginBottom: s.phone ? tabSpace : 0 }}>
+      <View>
         <FooterBar>
           <KIcon name="calendar-outline" size={s.icon + 6} color="#FFFFFF" />
           <View style={{ width: 2, height: 54, backgroundColor: 'rgba(255,255,255,.2)' }} />
@@ -196,7 +194,7 @@ export function HistoryScreen() {
   );
 }
 
-function SaleRow({ v, onOpen }: { v: KyteSale; onOpen: () => void }) {
+export function SaleRow({ v, onOpen }: { v: KyteSale; onOpen: () => void }) {
   const s = useKySize();
   return (
     <Touchable

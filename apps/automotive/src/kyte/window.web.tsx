@@ -9,6 +9,7 @@ export interface KyteWindowHandle {
   reload: () => void;
   select: (key: KyteSectionKey) => void;
   home: (data: HomeData) => void;
+  run: (js: string) => void;
 }
 
 const PATHS: Record<KyteSectionKey, string> = {
@@ -38,6 +39,7 @@ export const KyteWindow = forwardRef<
     ref,
     () => ({
       reload: () => setKey((k) => k + 1),
+      run: () => {},
       // Num iframe de outro site o app não lê nem altera a página: só troca o endereço.
       select: (k) => {
         setPath(PATHS[k]);

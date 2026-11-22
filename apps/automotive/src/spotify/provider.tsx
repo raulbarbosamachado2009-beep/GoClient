@@ -274,6 +274,11 @@ export function SpotifyProvider({ children }: { children: ReactNode }) {
         );
         return list?.devices.find((d) => !d.is_restricted) ?? null;
       };
+      // App do Spotify instalado aqui: liga ele por trás antes do comando, para este aparelho
+      // estar vivo como player (senão o Spotify manda o som para um aparelho parado).
+      if (SpotifyRemote?.isInstalled() && !SpotifyRemote.isConnected()) {
+        await wakeSpotify().catch((err: Error) => setNotice(remoteProblem(err)));
+      }
       try {
         await run(path);
       } catch (e) {
@@ -313,7 +318,12 @@ export function SpotifyProvider({ children }: { children: ReactNode }) {
       if (req.hint) setPlayback((p) => ({ ...p, track: req.hint ?? p.track, isPlaying: true }));
       const body: Record<string, unknown> = {};
       if (req.contextUri) body.context_uri = req.contextUri;
-      if (req.uris) body.uris = req.uris.slice(0, 100);
+      // O Spotify aceita até 100 faixas por pedido: manda uma janela em volta da escolhida.
+      if (req.uris) {
+        const at = req.offsetUri ? Math.max(0, req.uris.indexOf(req.offsetUri)) : 0;
+        const start = Math.max(0, Math.min(at - 10, req.uris.length - 100));
+        body.uris = req.uris.slice(start, start + 100);
+      }
       if (
         req.offsetUri &&
         (req.contextUri?.includes(':playlist:') || req.contextUri?.includes(':album:') || req.uris)
@@ -441,5 +451,5 @@ function remoteProblem(e: Error): string {
   if (/UserNotAuthorized|Authentication/i.test(code))
     return 'O Spotify não autorizou o GoClient. Confira o cadastro do Android no Spotify for Developers.';
   if (/OfflineMode/i.test(code)) return 'O Spotify está offline.';
-  return 'Não consegui ligar o Spotify por trás. Abra o app do Spotify uma vez e tente de novo.';
+  return `Não consegui ligar o Spotify por trás (${code}). Abra o app do Spotify uma vez e tente de novo.`;
 }

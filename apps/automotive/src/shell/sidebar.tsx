@@ -50,31 +50,40 @@ export function Sidebar() {
   const y = useSpring(Math.max(activeIndex, 0) * SLOT);
   const openHavena = () => setOverlay(<HavenaPanel onClose={() => setOverlay(null)} />);
 
-  const dark = c.mode === 'dark';
+  // A barra acompanha a página aberta: clara no Kyte (fundo cinza-claro), preta no Spotify.
+  const onKyte = pathname.startsWith('/kyte');
+  const onMusic = pathname.startsWith('/musica');
+  const dark = c.mode === 'dark' && !onKyte;
   const tile = dark ? '#1C1C1F' : 'rgba(0,0,0,0.05)';
   const selected = dark ? 'rgba(10,132,255,0.16)' : 'rgba(0,122,255,0.12)';
   const ink = dark ? '#F2F2F7' : '#1C1C1E';
 
   return (
-    <View style={[styles.bar, { borderRightColor: c.material.border }]}>
+    <View
+      style={[styles.bar, { borderRightColor: onKyte ? 'rgba(0,0,0,0.06)' : c.material.border }]}
+    >
       <Blur radius={40} tint={c.material.tint} />
       <View
         style={[
           StyleSheet.absoluteFill,
           {
-            backgroundColor: LIVE_BLUR
-              ? dark
-                ? 'rgba(10,10,12,0.62)'
-                : 'rgba(240,240,244,0.6)'
-              : dark
-                ? 'rgba(14,14,16,0.94)'
-                : 'rgba(244,244,247,0.94)',
+            backgroundColor: onKyte
+              ? '#E4E8EE'
+              : onMusic && dark
+                ? '#0A0A0A'
+                : LIVE_BLUR
+                  ? dark
+                    ? 'rgba(10,10,12,0.62)'
+                    : 'rgba(240,240,244,0.6)'
+                  : dark
+                    ? 'rgba(14,14,16,0.94)'
+                    : 'rgba(244,244,247,0.94)',
           },
         ]}
       />
 
       <View style={styles.status}>
-        <Clock />
+        <Clock color={dark ? '#F2F2F7' : '#1C1C1E'} />
       </View>
 
       <View style={{ height: ITEMS.length * SLOT + TILE_H }}>
@@ -299,7 +308,7 @@ const styles = StyleSheet.create({
 });
 
 /** Hora de verdade (atualiza a cada minuto). */
-function Clock() {
+function Clock({ color }: { color: string }) {
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
     const tick = () => setNow(new Date());
@@ -317,7 +326,7 @@ function Clock() {
   const hh = String(now.getHours()).padStart(2, '0');
   const mm = String(now.getMinutes()).padStart(2, '0');
   return (
-    <Text variant="title2" style={{ fontSize: 30, lineHeight: 34 }}>
+    <Text variant="title2" color={color} style={{ fontSize: 30, lineHeight: 34 }}>
       {hh}:{mm}
     </Text>
   );

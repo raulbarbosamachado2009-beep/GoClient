@@ -3,6 +3,7 @@ import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } fro
 import { Platform, StyleSheet, View } from 'react-native';
 import { HavenaPanel } from '../../havena/panel';
 import { kyteLogged, noteKyteLogged, reloadKyteAgent } from '../../kyte/agent';
+import { AGENT_HELPERS, JOBS } from '../../kyte/agent-page';
 import type { KyteMessage } from '../../kyte/bridge';
 import { KyteConnect } from '../../kyte/connect';
 import { ClientDetail, ClientsScreen } from '../../kyte/screens/clients';
@@ -17,8 +18,9 @@ import {
   type Section,
   useKyteNav as useContextNav,
 } from '../../kyte/screens/nav';
-import { ProductsScreen } from '../../kyte/screens/products';
+import { ProductDetail, ProductsScreen } from '../../kyte/screens/products';
 import { Receipt, SaleDetail } from '../../kyte/screens/sale';
+import { type SellPlan, SellScreen } from '../../kyte/screens/sell';
 import { Header, type IconName, KIcon, KY, Text, useKySize } from '../../kyte/ui';
 import { KyteWindow, type KyteWindowHandle } from '../../kyte/window';
 import { usePhone } from '../../layout/form-factor';
@@ -42,6 +44,10 @@ export default function KyteScreen() {
   // Android: sabe se há login no Kyte (lembrado); se não houver, mostra a página de login.
   const [logged, setLogged] = useState(() => Platform.OS === 'web' || kyteLogged());
   const win = useRef<KyteWindowHandle>(null);
+  // Venda montada no GoClient, esperando para ir ao carrinho do Kyte (página real).
+  const [sell, setSell] = useState<SellPlan | null>(null);
+  const [sellMsg, setSellMsg] = useState<string | null>(null);
+  const filled = useRef(false);
 
   useEffect(() => {
     if (!secao) return;
@@ -62,6 +68,7 @@ export default function KyteScreen() {
     () => ({
       section,
       go: (s) => {
+        setSell(null);
         setSection(s);
         setStack([]);
         setMenuOpen(false);
@@ -76,8 +83,35 @@ export default function KyteScreen() {
 
   if (!kyteOpen) return <KyteConnect onOpen={() => setKyteOpen(true)} />;
 
-  const onMessage = (m: KyteMessage) => {
+  const fill = () => {
+    if (!sell || filled.current) return;
+    filled.current = true;
+    setSellMsg('Colocando os itens no carrinho do Kyte…');
+    setTimeout(
+      () =>
+        win.current?.run(
+          `${AGENT_HELPERS}\nwindow.__gcA.job(-1, async function(){ var A = window.__gcA; ${JOBS.fillSale(sell)} });`,
+        ),
+      1800,
+    );
+  };
+
+  const onMessage = (
+    m: KyteMessage | { type: 'job'; ok: boolean; data?: { missing?: string[] }; error?: string },
+  ) => {
+    if (m.type === 'job') {
+      const miss = m.data?.missing ?? [];
+      setSellMsg(
+        !m.ok
+          ? `Não consegui montar o carrinho (${m.error}). Adicione os itens aqui no Kyte.`
+          : miss.length
+            ? `Faltou pôr: ${miss.join(', ')}. Confira e conclua a venda.`
+            : 'Itens e cliente no carrinho. Escolha o pagamento e conclua a venda.',
+      );
+      return;
+    }
     if (m.type !== 'route') return;
+    if (m.logged) fill();
     noteKyteLogged(m.logged);
     if (m.logged && !logged) {
       // Acabou de entrar: a janela invisível passa a usar o mesmo login.
@@ -86,8 +120,8 @@ export default function KyteScreen() {
     } else if (!m.logged && logged && Platform.OS !== 'web') setLogged(false);
   };
 
-  // Página real: login (sem conta) ou Vender.
-  const web = !logged || section === 'vender';
+  // Página real: login (sem conta) ou para concluir a venda montada aqui.
+  const web = !logged || !!sell;
   const top = stack[stack.length - 1];
   const key = web ? 'web' : top ? `${top.type}:${'id' in top ? top.id : ''}` : section;
 
@@ -95,9 +129,31 @@ export default function KyteScreen() {
   if (web)
     body = (
       <View style={{ flex: 1, backgroundColor: KY.card }}>
-        {logged && <Header title="Vender" onMenu={nav.menu} />}
+        {logged && (
+          <Header
+            title="Concluir venda"
+            onBack={() => {
+              setSell(null);
+              setSellMsg(null);
+              filled.current = false;
+            }}
+          />
+        )}
+        {sellMsg && (
+          <View style={{ backgroundColor: '#E6FAF4', paddingHorizontal: 24, paddingVertical: 12 }}>
+            <Text size={phone ? 18 : 20} weight="medium" color={KY.greenInk}>
+              {sellMsg}
+            </Text>
+          </View>
+        )}
         <View style={{ flex: 1 }}>
-          <KyteWindow ref={win} dark={false} phone={phone} minimal onMessage={onMessage} />
+          <KyteWindow
+            ref={win}
+            dark={false}
+            phone={phone}
+            minimal
+            onMessage={(m) => onMessage(m as Parameters<typeof onMessage>[0])}
+          />
         </View>
       </View>
     );
@@ -105,6 +161,17 @@ export default function KyteScreen() {
   else if (top?.type === 'sale') body = <SaleDetail id={top.id} />;
   else if (top?.type === 'receipt') body = <Receipt id={top.id} />;
   else if (top?.type === 'diagnostico') body = <DiagnosticScreen />;
+  else if (top?.type === 'product') body = <ProductDetail id={top.id} />;
+  else if (section === 'vender')
+    body = (
+      <SellScreen
+        onFinish={(p) => {
+          filled.current = false;
+          setSellMsg(null);
+          setSell(p);
+        }}
+      />
+    );
   else if (section === 'produtos') body = <ProductsScreen />;
   else if (section === 'clientes') body = <ClientsScreen />;
   else if (section === 'historico') body = <HistoryScreen />;

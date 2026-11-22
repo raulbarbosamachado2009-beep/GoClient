@@ -1,5 +1,6 @@
 import { useRouter } from 'expo-router';
 import { createContext, type ReactNode, useCallback, useContext, useMemo, useState } from 'react';
+import { Platform } from 'react-native';
 import { CLIENTS, type MockClient, TODAY_ROUTE } from '../mocks/data';
 
 /**
@@ -26,6 +27,8 @@ interface StopsState {
   remove: (id: string) => void;
   /** Mostra a rota do dia no Mapa. */
   showDay: () => void;
+  /** Troca a rota do dia pela lista escolhida (montar rota). */
+  setDay: (list: ExternalStop[]) => void;
 }
 
 const Ctx = createContext<StopsState | null>(null);
@@ -67,9 +70,9 @@ export function StopsProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<StopsState>(() => {
-    const dayIds = [...TODAY_ROUTE, ...extra.map((x) => x.id)].filter(
-      (id) => !removed.includes(id),
-    );
+    // Visitas de exemplo só no Preview; no app, a rota é só de clientes reais (Kyte/Havena).
+    const base = Platform.OS === 'web' ? TODAY_ROUTE : [];
+    const dayIds = [...base, ...extra.map((x) => x.id)].filter((id) => !removed.includes(id));
     return {
       extra,
       dayIds,
@@ -83,6 +86,10 @@ export function StopsProvider({ children }: { children: ReactNode }) {
       },
       remove: (id) => setRemoved((cur) => [...cur, id]),
       showDay: () => router.replace({ pathname: '/mapa', params: { rota: 'dia' } }),
+      setDay: (list) => {
+        setExtra(list.map(toClient));
+        setRemoved(Platform.OS === 'web' ? [...TODAY_ROUTE] : []);
+      },
     };
   }, [extra, removed, router, upsert]);
 

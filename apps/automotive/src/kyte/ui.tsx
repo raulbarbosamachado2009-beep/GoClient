@@ -11,7 +11,7 @@ import {
   View,
   type ViewStyle,
 } from 'react-native';
-import { usePhone } from '../layout/form-factor';
+import { usePhone, useSystemInsets, useTabBarSpace } from '../layout/form-factor';
 import { FONT } from '../theme';
 import { Touchable } from '../ui/primitives';
 
@@ -129,9 +129,20 @@ export function Header({
   dark?: boolean;
 }) {
   const s = useKySize();
+  // Celular: o cabeçalho começa embaixo da câmera (a tela vai de ponta a ponta).
+  const top = useSystemInsets().top;
   const ink = dark ? '#FFFFFF' : KY.ink;
   return (
-    <View style={[styles.header, { paddingHorizontal: s.pad, height: s.phone ? 96 : 96 }]}>
+    <View
+      style={[
+        styles.header,
+        {
+          paddingHorizontal: s.pad,
+          height: 96 + (s.phone ? top : 0),
+          paddingTop: s.phone ? top : 0,
+        },
+      ]}
+    >
       {onBack ? (
         <IconButton icon="chevron-back" onPress={onBack} color={ink} label="Voltar" />
       ) : onMenu ? (
@@ -370,6 +381,8 @@ export function Thumb({ image, name, size }: { image: string; name: string; size
 /** Barra escura do rodapé (totais). */
 export function FooterBar({ children }: { children: ReactNode }) {
   const s = useKySize();
+  // Celular: a barra desce até a borda, por trás da barra de abas flutuante.
+  const tab = useTabBarSpace();
   return (
     <View
       style={{
@@ -378,7 +391,8 @@ export function FooterBar({ children }: { children: ReactNode }) {
         marginHorizontal: s.phone ? 0 : s.pad,
         marginBottom: s.phone ? 0 : 18,
         paddingHorizontal: s.pad + 8,
-        paddingVertical: s.phone ? 22 : 18,
+        paddingTop: s.phone ? 22 : 18,
+        paddingBottom: s.phone ? tab + 10 : 18,
         flexDirection: 'row',
         alignItems: 'center',
         gap: 20,
