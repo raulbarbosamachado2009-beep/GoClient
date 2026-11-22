@@ -9,6 +9,7 @@ import { MiniPlayer } from '../../../shell/mini-player';
 import { useSpotify } from '../../../spotify/provider';
 import { spacing, useColors } from '../../../theme';
 import { ScreenTransition } from '../../../ui/motion';
+import { SpotifyFontScope } from '../../../ui/primitives';
 
 /**
  * Área de Música: primeiro a apresentação/login; depois o conteúdo e o player minimizado
@@ -16,6 +17,14 @@ import { ScreenTransition } from '../../../ui/motion';
  * das páginas (lupa no Início, "Sua Biblioteca" na grade e botões de voltar).
  */
 export default function MusicLayout() {
+  return (
+    <SpotifyFontScope>
+      <MusicArea />
+    </SpotifyFontScope>
+  );
+}
+
+function MusicArea() {
   const c = useColors();
   const { musicConnected, setMusicConnected } = usePrototype();
   const pathname = usePathname();

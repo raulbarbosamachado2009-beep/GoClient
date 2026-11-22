@@ -9,7 +9,7 @@ import { usePrototype } from '../prototype/state';
 import { layout, spacing } from '../theme';
 import { Cover } from '../ui/brand';
 import { Appear } from '../ui/motion';
-import { Avatar, Icon, IconButton, Text, Touchable } from '../ui/primitives';
+import { Avatar, Icon, IconButton, SpotifyFontScope, Text, Touchable } from '../ui/primitives';
 
 const W = '#FFFFFF';
 const W2 = 'rgba(255,255,255,0.72)';
@@ -539,5 +539,5 @@ const styles = StyleSheet.create({
 
 /** Celular em pé: versão no estilo do app do Spotify; multimídia: a de cima. */
 export default function Screen() {
-  return usePhone() ? <PhonePlayer /> : <CarPlayer />;
+  return <SpotifyFontScope>{usePhone() ? <PhonePlayer /> : <CarPlayer />}</SpotifyFontScope>;
 }

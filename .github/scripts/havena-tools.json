@@ -5,7 +5,10 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "acao": { "type": "string", "enum": ["proxima", "anterior", "pausar", "continuar"] }
+        "acao": {
+          "type": "string",
+          "enum": ["proxima", "anterior", "pausar", "continuar"]
+        }
       },
       "required": ["acao"]
     }
@@ -16,8 +19,14 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "busca": { "type": "string", "description": "Nome da música e, se houver, do artista" },
-        "fila": { "type": "boolean", "description": "true = pôr na fila em vez de tocar agora" }
+        "busca": {
+          "type": "string",
+          "description": "Nome da música e, se houver, do artista"
+        },
+        "fila": {
+          "type": "boolean",
+          "description": "true = pôr na fila em vez de tocar agora"
+        }
       },
       "required": ["busca"]
     }
@@ -27,20 +36,46 @@
     "description": "Procura um cliente pelo nome no Kyte e devolve nome, telefone e endereço. Use antes de pôr na rota ou mandar WhatsApp.",
     "parameters": {
       "type": "object",
-      "properties": { "nome": { "type": "string" } },
+      "properties": {
+        "nome": {
+          "type": "string"
+        }
+      },
       "required": ["nome"]
     }
   },
   {
-    "name": "rota_colocar",
-    "description": "Põe um cliente na rota do dia, ou traça a rota até ele agora (agora=true). Precisa do endereço (busque o cliente antes).",
+    "name": "lugar_buscar",
+    "description": "Procura um lugar no mapa (rua, avenida, bairro, cidade, loja, ponto conhecido) perto do carro e devolve até 4 opções com endereço completo e distância. Use para destinos que não são clientes, ou quando cliente_buscar não achar nada.",
     "parameters": {
       "type": "object",
       "properties": {
-        "nome": { "type": "string" },
-        "endereco": { "type": "string" },
-        "telefone": { "type": "string" },
-        "agora": { "type": "boolean" }
+        "busca": {
+          "type": "string",
+          "description": "O lugar como a pessoa disse, corrigido se a fala saiu errada"
+        }
+      },
+      "required": ["busca"]
+    }
+  },
+  {
+    "name": "rota_colocar",
+    "description": "Põe um cliente ou lugar na rota do dia, ou traça a rota até ele agora (agora=true). Precisa do endereço (use cliente_buscar ou lugar_buscar antes).",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "nome": {
+          "type": "string"
+        },
+        "endereco": {
+          "type": "string"
+        },
+        "telefone": {
+          "type": "string"
+        },
+        "agora": {
+          "type": "boolean"
+        }
       },
       "required": ["nome", "endereco"]
     }
@@ -48,7 +83,10 @@
   {
     "name": "rota_do_dia",
     "description": "Mostra a rota do dia no Mapa (todas as paradas, na melhor ordem).",
-    "parameters": { "type": "object", "properties": {} }
+    "parameters": {
+      "type": "object",
+      "properties": {}
+    }
   },
   {
     "name": "whatsapp",
@@ -56,9 +94,15 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "nome": { "type": "string" },
-        "telefone": { "type": "string" },
-        "mensagem": { "type": "string" }
+        "nome": {
+          "type": "string"
+        },
+        "telefone": {
+          "type": "string"
+        },
+        "mensagem": {
+          "type": "string"
+        }
       },
       "required": ["telefone", "mensagem"]
     }
@@ -69,9 +113,15 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "nome": { "type": "string" },
-        "telefone": { "type": "string" },
-        "endereco": { "type": "string" }
+        "nome": {
+          "type": "string"
+        },
+        "telefone": {
+          "type": "string"
+        },
+        "endereco": {
+          "type": "string"
+        }
       },
       "required": ["nome"]
     }
@@ -82,8 +132,13 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "nome": { "type": "string" },
-        "preco": { "type": "string", "description": "Preço de venda, ex.: 25,00" }
+        "nome": {
+          "type": "string"
+        },
+        "preco": {
+          "type": "string",
+          "description": "Preço de venda, ex.: 25,00"
+        }
       },
       "required": ["nome", "preco"]
     }
@@ -91,14 +146,22 @@
   {
     "name": "vendas_resumo",
     "description": "Quanto foi vendido hoje, ontem, na semana e no mês (Histórico do Kyte).",
-    "parameters": { "type": "object", "properties": {} }
+    "parameters": {
+      "type": "object",
+      "properties": {}
+    }
   },
   {
     "name": "abrir_tela",
     "description": "Abre uma tela do app.",
     "parameters": {
       "type": "object",
-      "properties": { "tela": { "type": "string", "enum": ["mapa", "musica", "kyte", "ajustes"] } },
+      "properties": {
+        "tela": {
+          "type": "string",
+          "enum": ["mapa", "musica", "kyte", "ajustes"]
+        }
+      },
       "required": ["tela"]
     }
   }

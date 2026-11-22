@@ -10,7 +10,7 @@ const session = readFileSync(
   'utf8',
 );
 const SYSTEM = /const SYSTEM = `([\s\S]*?)`;/.exec(session)[1];
-const MODELS = ['nvidia/nemotron-3.5-super-vl-120b-a12b', 'mistralai/mistral-large-4-1t-a52b'];
+const MODELS = ['nvidia/nemotron-3.5-super-vl-120b-a12b'];
 
 const fake = {
   cliente_buscar: ({ nome }) =>
@@ -22,7 +22,23 @@ const fake = {
         }
       : /adriano/i.test(nome)
         ? { varios: ['Adriano', 'Adriano Barb. Americanópolis'] }
-        : `Nenhum cliente com "${nome}".`,
+        : /adiu|adilç|adirso/i.test(nome.normalize('NFD').replace(/[\u0300-\u036f]/g, ''))
+          ? { nenhum_exato: nome, parecidos: ['Adilsom/ Dona Bimba', 'Adriano'] }
+          : `Nenhum cliente com "${nome}". Pode ser um lugar: tente lugar_buscar.`,
+  lugar_buscar: ({ busca }) =>
+    /alvarenga/i.test(busca)
+      ? [
+          { endereco: 'Avenida Alvarenga, Vila Industrial, Campinas, SP', km_do_carro: 3.2 },
+          { endereco: 'Rua Alvarenga, Butantã, São Paulo, SP', km_do_carro: 88.4 },
+        ]
+      : /iguatemi/i.test(busca)
+        ? [
+            {
+              endereco: 'Shopping Iguatemi Campinas, Avenida Iguatemi, Campinas, SP',
+              km_do_carro: 6.1,
+            },
+          ]
+        : `Não achei "${busca}" no mapa.`,
   vendas_resumo: () => ({
     today: { count: 0, total: 'R$ 0,00' },
     yesterday: { count: 47, total: 'R$ 9.403,00' },
@@ -42,6 +58,9 @@ const cases = [
   'manda um zap pro Adilsom dizendo que eu chego em dez minutos',
   'coloca o Adriano na rota',
   'passa a música',
+  'me leva até a Alvarenga',
+  'bora pro iguatemi',
+  'coloca o Adíuson na rota',
 ];
 
 for (const model of MODELS) {

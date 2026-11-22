@@ -1,11 +1,16 @@
+import * as Location from 'expo-location';
 import type { useRouter } from 'expo-router';
 import { openWhatsApp } from '../integrations/contact';
+import { MAPS_ENABLED } from '../integrations/env';
 import { kyteAgent, kyteAgentAvailable, kyteLogged } from '../kyte/agent';
+import { type LatLng, searchPlaces } from '../map/routing';
 import type { useStops } from '../map/stops';
+import { getLastPosition } from '../map/use-live-map';
 import { CLIENTS } from '../mocks/data';
 import type { usePrototype } from '../prototype/state';
 import type { useSpotify } from '../spotify/provider';
 import type { ToolSpec } from './brain';
+import { closest } from './fuzzy';
 
 /**
  * Ferramentas da Havena: tudo o que ela pode fazer no app. Ações que mudam algo (rota,
@@ -59,9 +64,24 @@ export const TOOL_SPECS: ToolSpec[] = [
     parameters: { type: 'object', properties: { nome: { type: 'string' } }, required: ['nome'] },
   },
   {
+    name: 'lugar_buscar',
+    description:
+      'Procura um lugar no mapa (rua, avenida, bairro, cidade, loja, ponto conhecido) perto do carro e devolve até 4 opções com endereço completo e distância. Use para destinos que não são clientes, ou quando cliente_buscar não achar nada.',
+    parameters: {
+      type: 'object',
+      properties: {
+        busca: {
+          type: 'string',
+          description: 'O lugar como a pessoa disse, corrigido se a fala saiu errada',
+        },
+      },
+      required: ['busca'],
+    },
+  },
+  {
     name: 'rota_colocar',
     description:
-      'Põe um cliente na rota do dia, ou traça a rota até ele agora (agora=true). Precisa do endereço (busque o cliente antes).',
+      'Põe um cliente ou lugar na rota do dia, ou traça a rota até ele agora (agora=true). Precisa do endereço (use cliente_buscar ou lugar_buscar antes).',
     parameters: {
       type: 'object',
       properties: {
@@ -135,6 +155,13 @@ export const TOOL_SPECS: ToolSpec[] = [
 
 const kyteOn = () => kyteAgentAvailable() && kyteLogged();
 
+async function carPosition(): Promise<LatLng | null> {
+  const p = getLastPosition();
+  if (p) return p;
+  const last = await Location.getLastKnownPositionAsync().catch(() => null);
+  return last ? { latitude: last.coords.latitude, longitude: last.coords.longitude } : null;
+}
+
 export async function runTool(
   name: string,
   args: Record<string, unknown>,
@@ -174,10 +201,31 @@ export async function runTool(
         const r = await kyteAgent.findClient(nome);
         if (r.client) return { result: r.client };
         if (r.matches?.length) return { result: { varios: r.matches } };
-        return { result: `Nenhum cliente com "${nome}" no Kyte.` };
+        // Nada com esse texto: procura nomes parecidos (fala mal entendida).
+        const start = norm(nome)
+          .replace(/^(barbearia|barber)\s+/, '')
+          .slice(0, 2);
+        const pool = new Set<string>();
+        for (const q of ['', start]) {
+          const l = await kyteAgent.listClients(q).catch(() => ({ names: [] as string[] }));
+          for (const n of l.names) pool.add(n);
+        }
+        const near = closest(nome, [...pool]);
+        if (near.length) return { result: { nenhum_exato: nome, parecidos: near } };
+        return {
+          result: `Nenhum cliente com "${nome}" no Kyte. Pode ser um lugar: tente lugar_buscar.`,
+        };
       }
       const q = norm(nome);
-      const hits = CLIENTS.filter((c) => norm(`${c.tradeName} ${c.name}`).includes(q));
+      let hits = CLIENTS.filter((c) => norm(`${c.tradeName} ${c.name}`).includes(q));
+      if (!hits.length) {
+        const near = closest(
+          nome,
+          CLIENTS.map((c) => c.tradeName),
+        );
+        if (near.length) return { result: { nenhum_exato: nome, parecidos: near } };
+        hits = [];
+      }
       if (hits.length === 1) {
         const c = hits[0];
         return {
@@ -190,7 +238,16 @@ export async function runTool(
         };
       }
       if (hits.length > 1) return { result: { varios: hits.map((c) => c.tradeName) } };
-      return { result: `Nenhum cliente com "${nome}".` };
+      return { result: `Nenhum cliente com "${nome}". Pode ser um lugar: tente lugar_buscar.` };
+    }
+    case 'lugar_buscar': {
+      const q = str(args.busca);
+      if (!MAPS_ENABLED) return { result: 'O mapa real não está ativo nesta versão.' };
+      const hits = await searchPlaces(q, await carPosition());
+      if (!hits.length) return { result: `Não achei "${q}" no mapa.` };
+      return {
+        result: hits.map((h) => ({ endereco: h.label, km_do_carro: h.km })),
+      };
     }
     case 'rota_colocar': {
       const stop = { name: str(args.nome), address: str(args.endereco), phone: str(args.telefone) };
