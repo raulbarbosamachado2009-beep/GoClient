@@ -1,0 +1,19 @@
+name: ORS check
+
+# Testa a chave do OpenRouteService com pedidos reais (rodar à mão ou num ramo debug/ors-*).
+on:
+  workflow_dispatch:
+  push:
+    branches: ['debug/ors-**']
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node .github/scripts/ors-check.mjs
+        env:
+          ORS_API_KEY: ${{ secrets.ORS_API_KEY }}
