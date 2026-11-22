@@ -166,6 +166,10 @@ export function SpotifyProvider({ children }: { children: ReactNode }) {
 
   // --- Reprodução -----------------------------------------------------------------------
 
+  const lastItem = useRef<{ id: string | null; next: SpTrack | null | undefined }>({
+    id: null,
+    next: null,
+  });
   const refreshPlayback = useCallback(async () => {
     if (!activeRef.current) return;
     try {
@@ -175,17 +179,38 @@ export function SpotifyProvider({ children }: { children: ReactNode }) {
         device?: { name: string };
       }>('/me/player?additional_types=episode');
       if (!state?.item) {
-        setPlayback((p) => ({ ...p, isPlaying: false, device: state?.device?.name ?? null }));
+        const device = state?.device?.name ?? null;
+        setPlayback((p) =>
+          !p.isPlaying && p.device === device ? p : { ...p, isPlaying: false, device },
+        );
         return;
       }
-      const queue = await call<{ queue: SpTrack[] }>('/me/player/queue').catch(() => null);
-      const nextItem = queue?.queue?.[0];
-      setPlayback({
-        track: toTrack(state.item),
-        isPlaying: state.is_playing,
-        upNext: nextItem ? toTrack(nextItem) : null,
-        device: state.device?.name ?? null,
-      });
+      // A fila só muda quando a faixa muda: não pede de novo a cada ciclo.
+      const itemId = state.item.id ?? state.item.name;
+      let nextItem: SpTrack | undefined | null;
+      if (itemId !== lastItem.current.id) {
+        const queue = await call<{ queue: SpTrack[] }>('/me/player/queue').catch(() => null);
+        nextItem = queue?.queue?.[0] ?? null;
+        lastItem.current = { id: itemId, next: nextItem };
+      } else {
+        nextItem = lastItem.current.next;
+      }
+      const isPlaying = state.is_playing;
+      const device = state.device?.name ?? null;
+      // Só atualiza a tela quando algo mudou (o app inteiro fica dentro deste provedor).
+      setPlayback((p) =>
+        p.track?.id === toTrack(state.item as SpTrack).id &&
+        p.isPlaying === isPlaying &&
+        p.device === device &&
+        (p.upNext?.id ?? null) === (nextItem ? toTrack(nextItem).id : null)
+          ? p
+          : {
+              track: toTrack(state.item as SpTrack),
+              isPlaying,
+              upNext: nextItem ? toTrack(nextItem) : null,
+              device,
+            },
+      );
     } catch {
       // Falha de rede momentânea: tenta de novo no próximo ciclo.
     }

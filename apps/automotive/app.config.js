@@ -16,6 +16,9 @@ module.exports = ({ config }) => {
     ...config,
     plugins: [
       ...config.plugins,
+      // Barra de botões do Android (fica na lateral com o aparelho deitado): sem a faixa
+      // clara que o sistema põe por padrão; o fundo escuro do app aparece por trás dela.
+      ['expo-navigation-bar', { style: 'dark', enforceContrast: false }],
       [
         'expo-audio',
         { microphonePermission: 'O GoClient usa o microfone para você conversar com a Havena.' },

@@ -1,7 +1,7 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef } from 'react';
 import { View } from 'react-native';
-import { kyteAgent, reloadKyteAgent } from '../../kyte/agent';
+import { kyteAgent, noteKyteLogged, reloadKyteAgent } from '../../kyte/agent';
 import { KYTE_SECTIONS, type KyteMessage, type KyteSectionKey } from '../../kyte/bridge';
 import { KyteConnect } from '../../kyte/connect';
 import { KyteWindow, type KyteWindowHandle } from '../../kyte/window';
@@ -42,6 +42,7 @@ export default function KyteScreen() {
     if (m.type === 'route') {
       const was = logged.current;
       logged.current = m.logged;
+      noteKyteLogged(m.logged);
       // Acabou de entrar: a janela invisível da Havena passa a usar o mesmo login.
       if (!was && m.logged) reloadKyteAgent();
       if (m.logged && wanted.current) {

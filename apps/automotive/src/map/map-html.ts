@@ -37,8 +37,29 @@ export function mapHtml(dark: boolean): string {
         color: #fff; font: 600 14px -apple-system, Roboto, sans-serif; display: flex;
         align-items: center; justify-content: center; box-sizing: border-box; }
   .maplibregl-ctrl-attrib { font-size: 10px; }
+  #ctl { position: absolute; z-index: 5; display: none; flex-direction: column; gap: 10px; }
+  #ctl .grp { display: flex; flex-direction: column; border-radius: 14px; overflow: hidden;
+        background: ${dark ? 'rgba(30,30,32,.94)' : 'rgba(250,250,252,.96)'};
+        border: 1px solid ${dark ? 'rgba(255,255,255,.12)' : 'rgba(0,0,0,.08)'};
+        box-shadow: 0 2px 10px rgba(0,0,0,.25); }
+  #ctl button { width: 48px; height: 48px; border: 0; background: transparent; padding: 0;
+        color: ${dark ? '#F2F2F7' : '#1C1C1E'}; font: 400 28px/48px -apple-system, Roboto, sans-serif;
+        display: flex; align-items: center; justify-content: center; -webkit-tap-highlight-color: transparent; }
+  #ctl button:active { background: ${dark ? 'rgba(255,255,255,.1)' : 'rgba(0,0,0,.06)'}; }
+  #ctl .sep { height: 1px; background: ${dark ? 'rgba(255,255,255,.12)' : 'rgba(0,0,0,.08)'}; }
+  #ctl svg { width: 24px; height: 24px; }
+  #ctl .on svg { fill: #0A84FF; }
 </style>
 </head><body><div id="map"></div>
+<div id="ctl">
+  <div class="grp">
+    <button id="zin" aria-label="Aproximar">+</button><div class="sep"></div>
+    <button id="zout" aria-label="Afastar">&minus;</button>
+  </div>
+  <div class="grp"><button id="loc" aria-label="Minha localização">
+    <svg viewBox="0 0 24 24" fill="none" stroke="#0A84FF" stroke-width="2" stroke-linejoin="round"><path d="M21 3 3 10.5l7.5 3L13.5 21z"/></svg>
+  </button></div>
+</div>
 <script>
   function post(m) { try { window.ReactNativeWebView.postMessage(JSON.stringify(m)); } catch (e) {} }
   function load(src, alt, done) {
@@ -49,6 +70,8 @@ export function mapHtml(dark: boolean): string {
     document.head.appendChild(s);
   }
   var state = null, map = null, me = null, markers = {}, lastRoute = '', centered = false, wasFollow = false;
+  // Navegando: zoom escolhido pela pessoa (pinça ou botões) e pausa quando ela arrasta o mapa.
+  var followZoom = 17, paused = false;
   window.__gc = function (s) { state = s; if (map && map.loaded()) apply(); };
   load('https://unpkg.com/maplibre-gl@${VERSION}/dist/maplibre-gl.js',
        'https://cdn.jsdelivr.net/npm/maplibre-gl@${VERSION}/dist/maplibre-gl.js', start);
@@ -67,9 +90,33 @@ export function mapHtml(dark: boolean): string {
         layout: { 'line-join': 'round', 'line-cap': 'round' },
         paint: { 'line-color': '#0A84FF', 'line-width': 6 } });
       post({ type: 'ready' });
+      mark();
       if (state) apply();
     });
+    // Gestos da pessoa (não os movimentos de câmera do app).
+    map.on('dragstart', function (e) { if (e.originalEvent && state && state.follow) { paused = true; mark(); } });
+    map.on('zoomend', function (e) { if (e.originalEvent && state && state.follow) followZoom = map.getZoom(); });
+    document.getElementById('zin').onclick = function () { zoomBy(1); };
+    document.getElementById('zout').onclick = function () { zoomBy(-1); };
+    document.getElementById('loc').onclick = function () {
+      paused = false; mark();
+      if (!state || !state.user) return;
+      if (state.follow) { followZoom = Math.max(followZoom, 17); apply(); }
+      else map.easeTo({ center: [state.user.lng, state.user.lat], zoom: Math.max(map.getZoom(), 16), padding: state.padding, duration: 600 });
+    };
     map.on('error', function (e) { post({ type: 'error', message: String(e && e.error && e.error.message || e) }); });
+  }
+
+  function zoomBy(d) {
+    var z = Math.max(3, Math.min(20, map.getZoom() + d));
+    if (state && state.follow) followZoom = z;
+    map.easeTo({ zoom: z, duration: 300 });
+  }
+  function mark() { document.getElementById('loc').className = paused ? '' : 'on'; }
+  function place(p) {
+    var c = document.getElementById('ctl'); c.style.display = 'flex';
+    c.style.right = (p.right > 120 ? p.right + 16 : 16) + 'px';
+    c.style.top = Math.max(p.top, 16) + 'px';
   }
 
   function line(coords) {
@@ -78,6 +125,7 @@ export function mapHtml(dark: boolean): string {
 
   function apply() {
     var s = state;
+    place(s.padding);
     map.getSource('route').setData(line(s.path));
 
     // Pinos dos clientes / paradas.
@@ -110,8 +158,9 @@ export function mapHtml(dark: boolean): string {
     // Câmera: navegando, segue o carro olhando para a frente; com rota nova, mostra a rota
     // inteira; sem rota, centra no carro uma vez.
     var key = s.path.length ? s.path.length + ':' + s.path[0] + ':' + s.path[s.path.length - 1] : '';
+    if (!s.follow) paused = false;
     if (s.follow && s.user) {
-      map.easeTo({ center: [s.user.lng, s.user.lat], zoom: 17, pitch: 50,
+      if (!paused) map.easeTo({ center: [s.user.lng, s.user.lat], zoom: followZoom, pitch: 50,
         bearing: s.heading != null ? s.heading : map.getBearing(), padding: s.padding, duration: 900 });
     } else if (key && (key !== lastRoute || wasFollow)) {
       var b = s.path.reduce(function (acc, p) { return acc.extend(p); }, new maplibregl.LngLatBounds(s.path[0], s.path[0]));

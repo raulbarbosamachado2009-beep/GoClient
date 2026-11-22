@@ -1,4 +1,5 @@
-import { type ComponentRef, useMemo, useRef } from 'react';
+import { type ComponentRef, useEffect, useMemo, useRef, useState } from 'react';
+import * as SecureStore from 'expo-secure-store';
 import { Platform, StyleSheet, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { AGENT_HELPERS, JOBS } from './agent-page';
@@ -9,6 +10,9 @@ import { DESKTOP_USER_AGENT } from './config';
  * Janela **invisível** do Kyte, só da Havena: ela abre telas, busca clientes e lê endereços
  * por trás, sem trocar a tela da pessoa (que continua no Mapa, por exemplo). Usa o mesmo
  * login do Kyte (os cookies do aparelho são compartilhados entre as janelas).
+ *
+ * Para não pesar o aparelho, ela só existe enquanto a Havena precisa: abre no primeiro pedido
+ * e fecha sozinha depois de {@link IDLE_MS} sem uso.
  *
  * Só no app Android. No Preview (web) o Kyte não abre dentro de outra página; ali a Havena
  * usa os clientes de exemplo.
@@ -27,21 +31,61 @@ type Pending = {
 };
 
 let send: ((js: string) => void) | null = null;
+/** O layout montou o host (a janela em si só abre quando há pedido). */
+let hosted = false;
+let setOpen: ((open: boolean) => void) | null = null;
+let idleTimer: ReturnType<typeof setTimeout> | null = null;
+const IDLE_MS = 90_000;
+
+function wake() {
+  if (idleTimer) clearTimeout(idleTimer);
+  idleTimer = null;
+  setOpen?.(true);
+}
+
+function sleepLater() {
+  if (idleTimer) clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => {
+    if (pending.size === 0) setOpen?.(false);
+  }, IDLE_MS);
+}
 let ready = false;
 let logged = false;
+/** Recebeu da janela invisível se está logada (desde que ela abriu). */
+let routeSeen = false;
+const LOGGED_KEY = 'kyte.logged';
+// Lembra entre aberturas do app se a pessoa entrou no Kyte (a janela invisível só abre
+// quando a Havena precisa, então não dá para perguntar a ela antes).
+let remembered = false;
+if (Platform.OS === 'android') {
+  SecureStore.getItemAsync(LOGGED_KEY)
+    .then((v) => {
+      remembered = v === '1';
+    })
+    .catch(() => {});
+}
+
+/** A aba Kyte avisa quando a pessoa entra ou sai da conta. */
+export function noteKyteLogged(v: boolean) {
+  if (v === remembered) return;
+  remembered = v;
+  SecureStore.setItemAsync(LOGGED_KEY, v ? '1' : '0').catch(() => {});
+}
 const pending = new Map<number, Pending>();
 let seq = 0;
 // Uma ação por vez: a janela é uma só.
 let queue: Promise<unknown> = Promise.resolve();
 
-export const kyteAgentAvailable = () => Platform.OS === 'android' && send !== null;
-export const kyteLogged = () => logged;
+export const kyteAgentAvailable = () => Platform.OS === 'android' && hosted;
+export const kyteLogged = () => logged || remembered;
 
 function run<T>(body: string, timeout = 25000): Promise<T> {
   const task = async (): Promise<T> => {
-    if (!send) throw new Error('O Kyte só funciona no app instalado.');
+    if (!hosted) throw new Error('O Kyte só funciona no app instalado.');
+    wake();
     const started = Date.now();
-    while (!ready && Date.now() - started < 15000) await new Promise((r) => setTimeout(r, 300));
+    while ((!ready || !send || !routeSeen) && Date.now() - started < 20000)
+      await new Promise((r) => setTimeout(r, 300));
     if (!logged) throw new Error('Entre no Kyte primeiro (aba Kyte).');
     const id = ++seq;
     return new Promise<T>((resolve, reject) => {
@@ -56,6 +100,7 @@ window.__gcA.job(${id}, async function(){ var A = window.__gcA; ${body} }); true
   };
   const next = queue.then(task, task);
   queue = next.catch(() => {});
+  next.finally(sleepLater).catch(() => {});
   return next;
 }
 
@@ -79,13 +124,34 @@ export const kyteAgent = {
   logout: () => run<{ ok: boolean }>(JOBS.logout()),
 };
 
-/** Monta a janela invisível (uma vez, no layout principal do app). */
+/** Monta o lugar da janela invisível (uma vez, no layout principal do app). */
 export function KyteAgentHost() {
+  const [open, setOpenState] = useState(false);
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    hosted = true;
+    setOpen = setOpenState;
+    return () => {
+      hosted = false;
+      setOpen = null;
+    };
+  }, []);
+  if (Platform.OS !== 'android' || !open) return null;
+  return <AgentWindow />;
+}
+
+function AgentWindow() {
   const web = useRef<ComponentRef<typeof WebView>>(null);
   // Sem tema e no tamanho de computador: é a página "crua" do Kyte, ninguém a vê.
   const script = useMemo(() => kyteScript({ dark: false, phone: false, agent: true }), []);
-  if (Platform.OS !== 'android') return null;
-  send = (js) => web.current?.injectJavaScript(js);
+  useEffect(() => {
+    send = (js) => web.current?.injectJavaScript(js);
+    return () => {
+      send = null;
+      ready = false;
+      routeSeen = false;
+    };
+  }, []);
   return (
     <View pointerEvents="none" style={styles.hidden}>
       <WebView
@@ -111,7 +177,11 @@ export function KyteAgentHost() {
               error?: string;
               logged?: boolean;
             };
-            if (m.type === 'route') logged = !!m.logged;
+            if (m.type === 'route') {
+              logged = !!m.logged;
+              routeSeen = true;
+              noteKyteLogged(logged);
+            }
             if (m.type === 'job' && m.id != null) {
               const p = pending.get(m.id);
               if (!p) return;
@@ -134,6 +204,7 @@ export function KyteAgentHost() {
 export function reloadKyteAgent() {
   logged = false;
   ready = false;
+  routeSeen = false;
   send?.('location.reload(); true;');
 }
 

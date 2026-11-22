@@ -7,6 +7,7 @@ import { HavenaPanel } from '../havena/panel';
 import { TAB_BAR_BOTTOM, useTabBarLift } from '../layout/form-factor';
 import { useFrameScale } from '../preview/automotive-frame';
 import { usePrototype } from '../prototype/state';
+import { LIVE_BLUR } from '../ui/blur-target';
 import { useColors } from '../theme';
 import { Blur, Touchable } from '../ui/primitives';
 import { OutlineGlyph } from './app-icons';
@@ -210,7 +211,15 @@ export function TabBar() {
         <View
           style={[
             StyleSheet.absoluteFill,
-            { backgroundColor: dark ? 'rgba(28,28,30,0.62)' : 'rgba(250,250,252,0.66)' },
+            {
+              backgroundColor: LIVE_BLUR
+                ? dark
+                  ? 'rgba(28,28,30,0.62)'
+                  : 'rgba(250,250,252,0.66)'
+                : dark
+                  ? 'rgba(30,30,32,0.95)'
+                  : 'rgba(250,250,252,0.95)',
+            },
           ]}
         />
         {item > 0 && (

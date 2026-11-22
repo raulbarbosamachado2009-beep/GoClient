@@ -2,7 +2,7 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { MAPS_ENABLED } from '../../integrations/env';
-import { kyteAgent, reloadKyteAgent } from '../../kyte/agent';
+import { kyteAgent, noteKyteLogged, reloadKyteAgent } from '../../kyte/agent';
 import { usePhone } from '../../layout/form-factor';
 import { usePrototype } from '../../prototype/state';
 import { useSpotify } from '../../spotify/provider';
@@ -142,6 +142,7 @@ export default function SettingsScreen() {
                 .logout()
                 .catch(() => {})
                 .finally(() => {
+                  noteKyteLogged(false);
                   reloadKyteAgent();
                   setKyteOpen(false);
                 });

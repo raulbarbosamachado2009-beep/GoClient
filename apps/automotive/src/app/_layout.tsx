@@ -1,5 +1,6 @@
 import { automotiveScale, ScaleProvider } from '@goclient/native';
 import { useFonts } from 'expo-font';
+import { NavigationBar } from 'expo-navigation-bar';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import type { ReactNode } from 'react';
@@ -38,7 +39,13 @@ export default function RootLayout() {
 
 function Frame({ children }: { children: ReactNode }) {
   const c = useColors();
-  return <AutomotiveFrame background={c.background}>{children}</AutomotiveFrame>;
+  return (
+    <>
+      {/* Botões do Android no tom do app (escuro no tema escuro). */}
+      <NavigationBar style={c.mode === 'dark' ? 'dark' : 'light'} />
+      <AutomotiveFrame background={c.background}>{children}</AutomotiveFrame>
+    </>
+  );
 }
 
 function Routes() {

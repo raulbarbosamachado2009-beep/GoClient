@@ -1,7 +1,11 @@
 import type { useRouter } from 'expo-router';
 import { openWhatsApp } from '../integrations/contact';
 import { kyteAgent, kyteAgentAvailable, kyteLogged } from '../kyte/agent';
+import * as Location from 'expo-location';
+import { MAPS_ENABLED } from '../integrations/env';
+import { type LatLng, searchPlaces } from '../map/routing';
 import type { useStops } from '../map/stops';
+import { getLastPosition } from '../map/use-live-map';
 import { CLIENTS } from '../mocks/data';
 import type { usePrototype } from '../prototype/state';
 import type { useSpotify } from '../spotify/provider';
@@ -59,9 +63,24 @@ export const TOOL_SPECS: ToolSpec[] = [
     parameters: { type: 'object', properties: { nome: { type: 'string' } }, required: ['nome'] },
   },
   {
+    name: 'lugar_buscar',
+    description:
+      'Procura um lugar no mapa (rua, avenida, bairro, cidade, loja, ponto conhecido) perto do carro e devolve até 4 opções com endereço completo e distância. Use para destinos que não são clientes, ou quando cliente_buscar não achar nada.',
+    parameters: {
+      type: 'object',
+      properties: {
+        busca: {
+          type: 'string',
+          description: 'O lugar como a pessoa disse, corrigido se a fala saiu errada',
+        },
+      },
+      required: ['busca'],
+    },
+  },
+  {
     name: 'rota_colocar',
     description:
-      'Põe um cliente na rota do dia, ou traça a rota até ele agora (agora=true). Precisa do endereço (busque o cliente antes).',
+      'Põe um cliente ou lugar na rota do dia, ou traça a rota até ele agora (agora=true). Precisa do endereço (use cliente_buscar ou lugar_buscar antes).',
     parameters: {
       type: 'object',
       properties: {
@@ -135,6 +154,66 @@ export const TOOL_SPECS: ToolSpec[] = [
 
 const kyteOn = () => kyteAgentAvailable() && kyteLogged();
 
+/** Distância de edição entre dois textos (para nomes mal ouvidos). */
+function editDistance(a: string, b: string): number {
+  const row = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    let prev = row[0] ?? 0;
+    row[0] = i;
+    for (let j = 1; j <= b.length; j++) {
+      const tmp = row[j] ?? 0;
+      row[j] = Math.min(
+        (row[j] ?? 0) + 1,
+        (row[j - 1] ?? 0) + 1,
+        prev + (a[i - 1] === b[j - 1] ? 0 : 1),
+      );
+      prev = tmp;
+    }
+  }
+  return row[b.length] ?? 0;
+}
+
+/**
+ * Quão parecido um nome de cliente é com o que foi dito (0 a 1): compara cada palavra dita
+ * com a palavra mais próxima do nome, tolerando letras trocadas ("Adilsom" ≈ "Adilson").
+ */
+export function similarity(said: string, name: string): number {
+  const words = (t: string) =>
+    norm(t)
+      .split(/[^a-z0-9]+/)
+      .filter((w) => w.length > 2 && !/^(barbearia|barber|shop|salao|studio|do|da|de|dos)$/.test(w));
+  const ws = words(said);
+  const wn = words(name);
+  if (!ws.length || !wn.length) return 0;
+  let total = 0;
+  for (const w of ws) {
+    let best = 0;
+    for (const n of wn) {
+      const d = editDistance(w, n);
+      best = Math.max(best, 1 - d / Math.max(w.length, n.length));
+    }
+    total += best;
+  }
+  return total / ws.length;
+}
+
+/** Nomes parecidos com o dito, do mais ao menos parecido. */
+export function closest(said: string, names: string[], min = 0.6): string[] {
+  return names
+    .map((n) => ({ n, s: similarity(said, n) }))
+    .filter((x) => x.s >= min)
+    .sort((a, b) => b.s - a.s)
+    .slice(0, 4)
+    .map((x) => x.n);
+}
+
+async function carPosition(): Promise<LatLng | null> {
+  const p = getLastPosition();
+  if (p) return p;
+  const last = await Location.getLastKnownPositionAsync().catch(() => null);
+  return last ? { latitude: last.coords.latitude, longitude: last.coords.longitude } : null;
+}
+
 export async function runTool(
   name: string,
   args: Record<string, unknown>,
@@ -174,10 +253,27 @@ export async function runTool(
         const r = await kyteAgent.findClient(nome);
         if (r.client) return { result: r.client };
         if (r.matches?.length) return { result: { varios: r.matches } };
-        return { result: `Nenhum cliente com "${nome}" no Kyte.` };
+        // Nada com esse texto: procura nomes parecidos (fala mal entendida).
+        const start = norm(nome).replace(/^(barbearia|barber)\s+/, '').slice(0, 2);
+        const pool = new Set<string>();
+        for (const q of ['', start]) {
+          const l = await kyteAgent.listClients(q).catch(() => ({ names: [] as string[] }));
+          for (const n of l.names) pool.add(n);
+        }
+        const near = closest(nome, [...pool]);
+        if (near.length) return { result: { nenhum_exato: nome, parecidos: near } };
+        return { result: `Nenhum cliente com "${nome}" no Kyte. Pode ser um lugar: tente lugar_buscar.` };
       }
       const q = norm(nome);
-      const hits = CLIENTS.filter((c) => norm(`${c.tradeName} ${c.name}`).includes(q));
+      let hits = CLIENTS.filter((c) => norm(`${c.tradeName} ${c.name}`).includes(q));
+      if (!hits.length) {
+        const near = closest(
+          nome,
+          CLIENTS.map((c) => c.tradeName),
+        );
+        if (near.length) return { result: { nenhum_exato: nome, parecidos: near } };
+        hits = [];
+      }
       if (hits.length === 1) {
         const c = hits[0];
         return {
@@ -190,7 +286,16 @@ export async function runTool(
         };
       }
       if (hits.length > 1) return { result: { varios: hits.map((c) => c.tradeName) } };
-      return { result: `Nenhum cliente com "${nome}".` };
+      return { result: `Nenhum cliente com "${nome}". Pode ser um lugar: tente lugar_buscar.` };
+    }
+    case 'lugar_buscar': {
+      const q = str(args.busca);
+      if (!MAPS_ENABLED) return { result: 'O mapa real não está ativo nesta versão.' };
+      const hits = await searchPlaces(q, await carPosition());
+      if (!hits.length) return { result: `Não achei "${q}" no mapa.` };
+      return {
+        result: hits.map((h) => ({ endereco: h.label, km_do_carro: h.km })),
+      };
     }
     case 'rota_colocar': {
       const stop = { name: str(args.nome), address: str(args.endereco), phone: str(args.telefone) };

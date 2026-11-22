@@ -19,12 +19,22 @@ import { Platform, type StyleProp, View, type ViewStyle } from 'react-native';
  * - os cartões do Mapa desfocam só o mapa;
  * - dentro das telas, sem uma área própria, o desfoque usa a cor de reserva do material.
  */
+/**
+ * Desfoque ao vivo no Android: desligado. Ele redesenha a área de trás (com o mapa e as
+ * páginas, que são janelas web) a cada quadro e deixava o app travando em celulares comuns.
+ * No Android os vidros viram uma cor quase opaca; na Web e no iOS nada muda.
+ */
+export const LIVE_BLUR = Platform.OS !== 'android';
+
 export type BlurTargetRef = RefObject<ComponentRef<typeof View> | null>;
 
 const BlurTargetContext = createContext<BlurTargetRef | null>(null);
 
 /** Área que os efeitos de desfoque deste trecho da árvore vão desfocar. */
-export const useBlurTarget = () => useContext(BlurTargetContext);
+export const useBlurTarget = () => {
+  const t = useContext(BlurTargetContext);
+  return LIVE_BLUR ? t : null;
+};
 
 export function BlurTargetProvider({
   value,
@@ -46,7 +56,7 @@ export function BlurArea({
   style?: StyleProp<ViewStyle>;
   children: ReactNode;
 }) {
-  if (Platform.OS !== 'android') {
+  if (!LIVE_BLUR || Platform.OS !== 'android') {
     return (
       <View ref={targetRef} style={style}>
         {children}

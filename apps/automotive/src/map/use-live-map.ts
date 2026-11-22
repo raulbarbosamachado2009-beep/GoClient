@@ -5,6 +5,10 @@ import type { MockClient } from '../mocks/data';
 import { computeRoute, geocode, type LatLng, type LiveRoute } from './routing';
 
 /** Posição do carro pelo GPS (pede a permissão na primeira vez). */
+/** Última posição conhecida do carro (para a Havena procurar lugares por perto). */
+let lastPosition: LatLng | null = null;
+export const getLastPosition = () => lastPosition;
+
 export function useCarPosition(enabled = MAPS_ENABLED) {
   const [position, setPosition] = useState<LatLng | null>(null);
   // Direção do carro (graus a partir do norte), para girar o mapa na navegação.
@@ -22,12 +26,16 @@ export function useCarPosition(enabled = MAPS_ENABLED) {
         return;
       }
       const last = await Location.getLastKnownPositionAsync().catch(() => null);
-      if (last && alive) setPosition(last.coords);
+      if (last && alive) {
+        setPosition(last.coords);
+        lastPosition = { latitude: last.coords.latitude, longitude: last.coords.longitude };
+      }
       sub = await Location.watchPositionAsync(
         { accuracy: Location.Accuracy.BestForNavigation, distanceInterval: 5, timeInterval: 1000 },
         (p) => {
           if (!alive) return;
-          setPosition({ latitude: p.coords.latitude, longitude: p.coords.longitude });
+          lastPosition = { latitude: p.coords.latitude, longitude: p.coords.longitude };
+          setPosition(lastPosition);
           // Parado, o GPS não sabe a direção (vem -1): mantém a última.
           if (p.coords.heading != null && p.coords.heading >= 0 && (p.coords.speed ?? 0) > 1)
             setHeading(p.coords.heading);

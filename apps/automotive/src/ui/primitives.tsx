@@ -17,7 +17,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { layout, nativeDriver, spacing, type TypeVariant, type, useColors } from '../theme';
-import { useBlurTarget } from './blur-target';
+import { LIVE_BLUR, useBlurTarget } from './blur-target';
 import { useSpring } from './motion';
 
 export type IconName = ComponentProps<typeof Ionicons>['name'];
@@ -567,6 +567,8 @@ export function Blur({ radius = 40, tint }: { radius?: number; tint: 'dark' | 'l
       />
     );
   }
+  // Android: sem desfoque ao vivo (ver LIVE_BLUR); quem usa já tem a cor de reserva.
+  if (!LIVE_BLUR) return null;
   return <NativeBlur radius={radius} tint={tint} />;
 }
 

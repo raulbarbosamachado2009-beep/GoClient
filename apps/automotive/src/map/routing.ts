@@ -68,6 +68,48 @@ export async function geocode(address: string): Promise<LatLng | null> {
   return value;
 }
 
+export interface PlaceHit {
+  /** Nome completo (ex.: "Avenida Alvarenga, Butantã, São Paulo, SP"). */
+  label: string;
+  coordinate: LatLng;
+  /** Distância (km) do ponto de referência, quando houver. */
+  km: number | null;
+}
+
+/**
+ * Procura lugares (ruas, bairros, cidades, estabelecimentos) para a Havena, com preferência
+ * pelos mais perto de `near` (a posição do carro).
+ */
+export async function searchPlaces(text: string, near?: LatLng | null): Promise<PlaceHit[]> {
+  const q = new URLSearchParams({ text, 'boundary.country': 'BR', size: '4', lang: 'pt' });
+  if (near) {
+    q.set('focus.point.lat', String(near.latitude));
+    q.set('focus.point.lon', String(near.longitude));
+  }
+  const json = await request<{
+    features?: {
+      geometry?: { coordinates?: [number, number] };
+      properties?: { label?: string; name?: string; distance?: number };
+    }[];
+  }>(`${BASE}/pelias/v1/search?${q}`);
+  const hits: PlaceHit[] = [];
+  for (const f of json.features ?? []) {
+    const c = f.geometry?.coordinates;
+    const label = f.properties?.label ?? f.properties?.name;
+    if (!c || !label) continue;
+    const coordinate = { latitude: c[1], longitude: c[0] };
+    // Guarda no cache: a rota depois geocodifica pelo mesmo texto e cai no mesmo ponto.
+    geocodeCache.set(label, coordinate);
+    geocodeCache.set(`${label}, Brasil`, coordinate);
+    hits.push({
+      label,
+      coordinate,
+      km: f.properties?.distance != null ? Math.round(f.properties.distance * 10) / 10 : null,
+    });
+  }
+  return hits;
+}
+
 /**
  * Manobra no formato do OpenRouteService. `type`: 0 esquerda, 1 direita, 2 esquerda
  * fechada, 3 direita fechada, 4 levemente à esquerda, 5 levemente à direita, 6 em frente,

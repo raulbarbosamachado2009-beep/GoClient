@@ -5,6 +5,7 @@ import { Animated, Easing, StyleSheet, View } from 'react-native';
 import { HavenaOrb } from '../havena/orb';
 import { HavenaPanel } from '../havena/panel';
 import { usePrototype } from '../prototype/state';
+import { LIVE_BLUR } from '../ui/blur-target';
 import { layout, nativeDriver, spacing, useColors } from '../theme';
 import { useSpring } from '../ui/motion';
 import { Blur, Icon, Text, Touchable } from '../ui/primitives';
@@ -59,7 +60,15 @@ export function Sidebar() {
       <View
         style={[
           StyleSheet.absoluteFill,
-          { backgroundColor: dark ? 'rgba(10,10,12,0.62)' : 'rgba(240,240,244,0.6)' },
+          {
+            backgroundColor: LIVE_BLUR
+              ? dark
+                ? 'rgba(10,10,12,0.62)'
+                : 'rgba(240,240,244,0.6)'
+              : dark
+                ? 'rgba(14,14,16,0.94)'
+                : 'rgba(244,244,247,0.94)',
+          },
         ]}
       />
 

@@ -17,10 +17,18 @@ import { type HavenaDeps, runTool, TOOL_SPECS } from './tools';
  */
 export type Phase = 'listening' | 'thinking' | 'speaking' | 'idle';
 
-const SYSTEM = `Você é a Havena, assistente de voz do app GoClient, usado dirigindo por uma família de vendedores de cosméticos que visita barbearias.
+const SYSTEM = `Você é a Havena, assistente de voz e agente do app GoClient, usado dirigindo por uma família de vendedores de cosméticos que visita barbearias.
 Fale em português do Brasil, em no máximo duas frases curtas (a resposta é falada em voz alta). Nada de listas nem markdown.
-Use as ferramentas para agir no app. Para pôr um cliente na rota ou mandar WhatsApp, primeiro use cliente_buscar e use o endereço/telefone que ela devolver; nunca invente endereço nem telefone. Se vierem vários clientes, pergunte qual.
-Se o cliente não tiver endereço, diga que é preciso cadastrar o endereço no Kyte.`;
+
+Seja um agente: entenda a intenção mesmo com palavras erradas, nomes mal ouvidos pelo reconhecimento de voz, frases incompletas ou gírias, e resolva usando as ferramentas em sequência, sem pedir à pessoa o que você mesmo pode descobrir. Só pergunte quando houver dúvida real entre opções, e então ofereça as opções em uma frase.
+
+Destinos ("me leva até X", "vamos para X", "rota para X"):
+- X pode ser um cliente OU um lugar (rua, avenida, bairro, cidade, loja, ponto conhecido). Palavras como rua, avenida, praça, bairro, shopping ou nomes de cidade indicam lugar.
+- Se parecer lugar, use lugar_buscar. Se parecer nome de pessoa ou barbearia, use cliente_buscar; se não achar cliente, tente lugar_buscar antes de desistir (e vice-versa).
+- Com o resultado, use rota_colocar com nome e endereço exatamente como as ferramentas devolveram (agora=true quando a pessoa quer ir já).
+- Se cliente_buscar devolver "parecidos", pergunte se é um deles (ex.: "Você quis dizer Barbearia do Adilson?").
+
+Para pôr um cliente na rota ou mandar WhatsApp, use o endereço/telefone que cliente_buscar devolver; nunca invente endereço nem telefone. Se vierem vários, pergunte qual. Se o cliente não tiver endereço, diga que é preciso cadastrar o endereço no Kyte.`;
 
 type Pending = { summary: string; run: () => Promise<string> };
 
@@ -82,6 +90,8 @@ export function useHavenaSession(open: boolean) {
       interimResults: true,
       continuous: false,
       addsPunctuation: true,
+      // Outras formas de entender a mesma fala (nomes e ruas costumam sair errados).
+      maxAlternatives: 3,
     });
   }, []);
 
@@ -95,7 +105,7 @@ export function useHavenaSession(open: boolean) {
   );
 
   const answer = useCallback(
-    async (text: string) => {
+    async (text: string, alternatives: string[] = []) => {
       setHeard(text);
       // Resposta a uma confirmação pendente.
       if (pending.current) {
@@ -126,7 +136,12 @@ export function useHavenaSession(open: boolean) {
       const msgs: Message[] = [
         { role: 'system', content: SYSTEM },
         ...history.current.slice(-8),
-        { role: 'user', content: text },
+        {
+          role: 'user',
+          content: alternatives.length
+            ? `${text}\n(o reconhecimento de voz também entendeu: ${alternatives.map((a) => `"${a}"`).join(', ')})`
+            : text,
+        },
       ];
       try {
         for (let round = 0; round < 4; round++) {
@@ -165,7 +180,11 @@ export function useHavenaSession(open: boolean) {
     setHeard(t);
     if (e.isFinal && t.trim()) {
       ExpoSpeechRecognitionModule.stop();
-      void answer(t);
+      const alts = e.results
+        .slice(1)
+        .map((r) => r.transcript.trim())
+        .filter((a) => a && a !== t.trim());
+      void answer(t, alts);
     }
   });
   useSpeechRecognitionEvent('error', (e) => {
