@@ -12,15 +12,17 @@ import {
 } from 'react';
 import {
   Animated,
+  Keyboard,
   PanResponder,
   type PanResponderCallbacks,
   Platform,
   ScrollView,
   StyleSheet,
+  TextInput,
   View,
 } from 'react-native';
 import { TAB_BAR_HEIGHT, useSystemInsets, useTabBarSpace } from '../layout/form-factor';
-import { CLIENTS, type MockClient, TODAY_ROUTE } from '../mocks/data';
+import { CLIENTS, type MockClient, REGIONS, TODAY_ROUTE } from '../mocks/data';
 import { useFrameScale } from '../preview/automotive-frame';
 import { layout, spacing, useColors } from '../theme';
 import { Avatar, Icon, type IconName, Text, Touchable } from '../ui/primitives';
@@ -31,6 +33,7 @@ import { Avatar, Icon, type IconName, Text, Touchable } from '../ui/primitives';
  * mais próxima (ou na direção do gesto, se for rápido). Na altura cheia o conteúdo rola.
  */
 export type Detent = 0 | 1 | 2;
+export type SheetController = { snap: (d: Detent) => void };
 
 /** Diz se o último gesto na aba foi um arrasto (aí o toque nos botões é ignorado). */
 const DraggedContext = createContext<{ current: boolean }>({ current: false });
@@ -61,12 +64,18 @@ export function DragSheet({
   children,
   initial = 1,
   collapsed = 200,
+  controller,
+  onDetent,
 }: {
   header: ReactNode;
   children: ReactNode;
   initial?: Detent;
   /** Altura recolhida (alça + cabeçalho). */
   collapsed?: number;
+  /** Permite à tela abrir/fechar a aba (ex.: tocar na busca abre a aba cheia). */
+  controller?: { current: SheetController | null };
+  /** Avisa quando a aba para numa altura. */
+  onDetent?: (d: Detent) => void;
 }) {
   const c = useColors();
   // Altura da tela do Mapa (a aba se adapta a qualquer celular).
@@ -138,7 +147,10 @@ export function DragSheet({
     // da animação ela custaria quadros.
     detentRef.current = d;
     const to = heightsRef.current[d] ?? collapsed;
-    const done = () => setDetent(detentRef.current);
+    const done = () => {
+      setDetent(detentRef.current);
+      onDetentRef.current?.(detentRef.current);
+    };
     // Mola quase crítica, com a "resposta" (~0,45 s) da aba do Apple Maps: desliza contínua,
     // herda a velocidade do dedo e assenta sem quicar.
     if (WEB) {
@@ -178,6 +190,9 @@ export function DragSheet({
   };
   const snapRef = useRef(snap);
   snapRef.current = snap;
+  const onDetentRef = useRef(onDetent);
+  onDetentRef.current = onDetent;
+  if (controller) controller.current = { snap: (d) => snapRef.current(d) };
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: reposiciona quando a tela é medida
   useEffect(() => {
@@ -456,121 +471,345 @@ export function ExploreSheet() {
   const recent = RECENT.map((id) => CLIENTS.find((x) => x.id === id) as MockClient);
   const goTo = (id: string) =>
     router.replace({ pathname: '/mapa', params: { rota: 'cliente', id } });
+  // Busca como no Apple Maps: tocar no campo abre a aba inteira, mostra o teclado,
+  // atalhos de filtro e sugestões — sem sair do Mapa.
+  const sheet = useRef<SheetController | null>(null);
+  const input = useRef<ComponentRef<typeof TextInput>>(null);
+  const [searching, setSearching] = useState(false);
+  const [query, setQuery] = useState('');
+  const [region, setRegion] = useState<string | null>(null);
+  const startSearch = () => {
+    setSearching(true);
+    sheet.current?.snap(2);
+    requestAnimationFrame(() => input.current?.focus());
+  };
+  const endSearch = () => {
+    setSearching(false);
+    setQuery('');
+    setRegion(null);
+    Keyboard.dismiss();
+    input.current?.blur();
+    sheet.current?.snap(0);
+  };
+  const q = normalize(query.trim());
+  const results = CLIENTS.filter(
+    (x) =>
+      (!region || x.region === region) &&
+      (!q || normalize(`${x.tradeName} ${x.name} ${x.address} ${x.district}`).includes(q)),
+  );
 
   return (
     <DragSheet
       initial={0}
       collapsed={146}
+      controller={sheet}
+      onDetent={(d) => {
+        // Arrastou a aba para baixo durante a busca: encerra a busca.
+        if (d === 0 && searching) {
+          setSearching(false);
+          setQuery('');
+          setRegion(null);
+          Keyboard.dismiss();
+        }
+      }}
       header={
         <View style={styles.searchRow}>
-          <Tap
-            accessibilityRole="search"
-            accessibilityLabel="Buscar cliente ou endereço"
-            onPress={() => router.replace('/clientes')}
-            style={[styles.search, { backgroundColor: c.fill }]}
-          >
-            <Icon name="search" size={36} color={c.textSecondary} />
-            <Text
-              variant="body"
-              tone="secondary"
-              style={[TYPE.body, { flex: 1 }]}
-              numberOfLines={1}
+          {searching ? (
+            <View style={[styles.search, { backgroundColor: c.fill }]}>
+              <Icon name="search" size={36} color={c.textSecondary} />
+              <TextInput
+                ref={input}
+                value={query}
+                onChangeText={setQuery}
+                placeholder="Buscar cliente ou endereço"
+                placeholderTextColor={c.textSecondary}
+                returnKeyType="search"
+                autoCorrect={false}
+                selectionColor={c.accent}
+                accessibilityLabel="Buscar cliente ou endereço"
+                style={[TYPE.body, styles.input, { color: c.text }]}
+              />
+              {query !== '' ? (
+                <Tap
+                  accessibilityRole="button"
+                  accessibilityLabel="Limpar busca"
+                  onPress={() => setQuery('')}
+                >
+                  <Icon name="close-circle" size={36} color={c.textTertiary} />
+                </Tap>
+              ) : (
+                <Icon name="mic" size={36} color={c.textSecondary} />
+              )}
+            </View>
+          ) : (
+            <Tap
+              accessibilityRole="search"
+              accessibilityLabel="Buscar cliente ou endereço"
+              onPress={startSearch}
+              style={[styles.search, { backgroundColor: c.fill }]}
             >
-              Buscar cliente ou endereço
-            </Text>
-            <Icon name="mic" size={36} color={c.textSecondary} />
-          </Tap>
-          <Tap
-            accessibilityRole="button"
-            accessibilityLabel="Ajustes da conta"
-            onPress={() => router.replace('/configuracoes')}
-          >
-            <Avatar name="Raul Barbosa" size={84} colors={['#8E9BD6', '#6A76B8']} />
-          </Tap>
+              <Icon name="search" size={36} color={c.textSecondary} />
+              <Text
+                variant="body"
+                tone="secondary"
+                style={[TYPE.body, { flex: 1 }]}
+                numberOfLines={1}
+              >
+                Buscar cliente ou endereço
+              </Text>
+              <Icon name="mic" size={36} color={c.textSecondary} />
+            </Tap>
+          )}
+          {searching ? (
+            <Tap
+              accessibilityRole="button"
+              accessibilityLabel="Cancelar busca"
+              onPress={endSearch}
+              style={[styles.cancel, { backgroundColor: c.fill }]}
+            >
+              <Icon name="close" size={36} color={c.text} />
+            </Tap>
+          ) : (
+            <Tap
+              accessibilityRole="button"
+              accessibilityLabel="Ajustes da conta"
+              onPress={() => router.replace('/configuracoes')}
+            >
+              <Avatar name="Raul Barbosa" size={84} colors={['#8E9BD6', '#6A76B8']} />
+            </Tap>
+          )}
         </View>
       }
     >
-      <Section title="Atalhos" />
-      <View style={styles.shortcuts}>
-        <Shortcut
-          label="Clientes"
-          sub="no Kyte"
-          color="#0A84FF"
-          icon={<Icon name="people" size={56} color="#FFFFFF" />}
-          onPress={() => router.replace({ pathname: '/kyte', params: { secao: 'clientes' } })}
+      {searching ? (
+        <SearchBody
+          query={query}
+          region={region}
+          onRegion={(r) => setRegion(region === r ? null : r)}
+          results={results}
+          recent={recent}
+          onPick={(id) => {
+            Keyboard.dismiss();
+            goTo(id);
+          }}
+          onDayRoute={() => router.replace({ pathname: '/mapa', params: { rota: 'dia' } })}
         />
-        <Shortcut
-          label="Produtos"
-          sub="no Kyte"
-          color="#FF9F0A"
-          icon={<Icon name="pricetag" size={52} color="#FFFFFF" />}
-          onPress={() => router.replace({ pathname: '/kyte', params: { secao: 'produtos' } })}
-        />
-        <Shortcut
-          label="Rotas"
-          sub="Montar"
-          subTone="accent"
-          color="#30D158"
-          icon={<Icon name="trail-sign" size={52} color="#FFFFFF" />}
-          onPress={() => router.replace('/rotas')}
-        />
-      </View>
-
-      <Section title="Recentes" onPress={() => router.replace('/clientes')} />
-      <View style={[styles.card, { backgroundColor: c.fill }]}>
-        {recent.map((x, i) => (
-          <View key={x.id}>
-            {i > 0 && <View style={[styles.sep, { backgroundColor: c.separator }]} />}
-            <Tap
-              accessibilityRole="button"
-              onPress={() => goTo(x.id)}
-              scaleTo={0.98}
-              style={styles.recent}
-            >
-              <View style={[styles.pin, { backgroundColor: '#FF375F' }]}>
-                <Icon name="location-sharp" size={34} color="#FFFFFF" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text variant="headline" style={TYPE.rowTitle} numberOfLines={1}>
-                  {x.tradeName}
-                </Text>
-                <Text variant="callout" tone="secondary" style={TYPE.rowSub} numberOfLines={1}>
-                  {x.address} · {x.district.split(' · ').slice(1).join(' · ')}
-                </Text>
-              </View>
-              <Icon name="ellipsis-horizontal" size={40} color={c.textSecondary} />
-            </Tap>
+      ) : (
+        <>
+          <Section title="Atalhos" />
+          <View style={styles.shortcuts}>
+            <Shortcut
+              label="Clientes"
+              sub="no Kyte"
+              color="#0A84FF"
+              icon={<Icon name="people" size={56} color="#FFFFFF" />}
+              onPress={() => router.replace({ pathname: '/kyte', params: { secao: 'clientes' } })}
+            />
+            <Shortcut
+              label="Produtos"
+              sub="no Kyte"
+              color="#FF9F0A"
+              icon={<Icon name="pricetag" size={52} color="#FFFFFF" />}
+              onPress={() => router.replace({ pathname: '/kyte', params: { secao: 'produtos' } })}
+            />
+            <Shortcut
+              label="Rotas"
+              sub="Montar"
+              subTone="accent"
+              color="#30D158"
+              icon={<Icon name="trail-sign" size={52} color="#FFFFFF" />}
+              onPress={() => router.replace('/rotas')}
+            />
           </View>
-        ))}
-      </View>
 
-      <Section title="Rota de hoje" onPress={() => router.replace('/rotas')} />
-      <Tap
-        accessibilityRole="button"
-        onPress={() => router.replace({ pathname: '/mapa', params: { rota: 'dia' } })}
-        scaleTo={0.98}
-        style={[styles.guide, { backgroundColor: c.fill }]}
-      >
-        <View style={[styles.guideArt, { backgroundColor: '#0A84FF' }]}>
-          <Icon name="map" size={72} color="#FFFFFF" />
-        </View>
-        <Text variant="headline" style={TYPE.rowTitle}>
-          Visitas de hoje
-        </Text>
-        <Text variant="callout" tone="secondary" style={TYPE.rowSub}>
-          {TODAY_ROUTE.length} clientes
-        </Text>
-      </Tap>
+          <Section title="Recentes" onPress={() => router.replace('/clientes')} />
+          <View style={[styles.card, { backgroundColor: c.fill }]}>
+            {recent.map((x, i) => (
+              <View key={x.id}>
+                {i > 0 && <View style={[styles.sep, { backgroundColor: c.separator }]} />}
+                <Tap
+                  accessibilityRole="button"
+                  onPress={() => goTo(x.id)}
+                  scaleTo={0.98}
+                  style={styles.recent}
+                >
+                  <View style={[styles.pin, { backgroundColor: '#FF375F' }]}>
+                    <Icon name="location-sharp" size={34} color="#FFFFFF" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text variant="headline" style={TYPE.rowTitle} numberOfLines={1}>
+                      {x.tradeName}
+                    </Text>
+                    <Text variant="callout" tone="secondary" style={TYPE.rowSub} numberOfLines={1}>
+                      {x.address} · {x.district.split(' · ').slice(1).join(' · ')}
+                    </Text>
+                  </View>
+                  <Icon name="ellipsis-horizontal" size={40} color={c.textSecondary} />
+                </Tap>
+              </View>
+            ))}
+          </View>
 
-      <WideAction
-        icon="trail-sign"
-        label="Montar rota do dia"
-        onPress={() => router.replace('/rotas')}
-      />
-      <WideAction icon="share-outline" label="Compartilhar localização" />
+          <Section title="Rota de hoje" onPress={() => router.replace('/rotas')} />
+          <Tap
+            accessibilityRole="button"
+            onPress={() => router.replace({ pathname: '/mapa', params: { rota: 'dia' } })}
+            scaleTo={0.98}
+            style={[styles.guide, { backgroundColor: c.fill }]}
+          >
+            <View style={[styles.guideArt, { backgroundColor: '#0A84FF' }]}>
+              <Icon name="map" size={72} color="#FFFFFF" />
+            </View>
+            <Text variant="headline" style={TYPE.rowTitle}>
+              Visitas de hoje
+            </Text>
+            <Text variant="callout" tone="secondary" style={TYPE.rowSub}>
+              {TODAY_ROUTE.length} clientes
+            </Text>
+          </Tap>
+
+          <WideAction
+            icon="trail-sign"
+            label="Montar rota do dia"
+            onPress={() => router.replace('/rotas')}
+          />
+          <WideAction icon="share-outline" label="Compartilhar localização" />
+        </>
+      )}
     </DragSheet>
   );
 }
+
+/** Sem acentos e minúsculo, para a busca achar "Atelie" em "Ateliê". */
+function normalize(t: string) {
+  return t
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+}
+
+const FILTERS = REGIONS.filter((r) => r !== 'Todas');
+
+function SearchBody({
+  query,
+  region,
+  onRegion,
+  results,
+  recent,
+  onPick,
+  onDayRoute,
+}: {
+  query: string;
+  region: string | null;
+  onRegion: (r: string) => void;
+  results: MockClient[];
+  recent: MockClient[];
+  onPick: (id: string) => void;
+  onDayRoute: () => void;
+}) {
+  const c = useColors();
+  const filtering = query.trim() !== '' || region !== null;
+  const list = filtering ? results : recent;
+  return (
+    <>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={styles.chips}
+        style={styles.chipStrip}
+      >
+        <Chip icon="map" label="Rota de hoje" onPress={onDayRoute} />
+        {FILTERS.map((r) => (
+          <Chip
+            key={r}
+            icon="location"
+            label={r}
+            active={region === r}
+            onPress={() => onRegion(r)}
+          />
+        ))}
+      </ScrollView>
+
+      <Section title={filtering ? 'Clientes' : 'Sugestões'} />
+      {list.length === 0 ? (
+        <View style={[styles.card, styles.empty, { backgroundColor: c.fill }]}>
+          <Text variant="headline" style={TYPE.rowTitle}>
+            Nenhum cliente encontrado
+          </Text>
+          <Text variant="callout" tone="secondary" style={[TYPE.rowSub, { textAlign: 'center' }]}>
+            Confira o nome ou tente outra região.
+          </Text>
+        </View>
+      ) : (
+        <View style={[styles.card, { backgroundColor: c.fill }]}>
+          {list.map((x, i) => (
+            <View key={x.id}>
+              {i > 0 && <View style={[styles.sep, { backgroundColor: c.separator }]} />}
+              <Tap
+                accessibilityRole="button"
+                onPress={() => onPick(x.id)}
+                scaleTo={0.98}
+                style={styles.recent}
+              >
+                <View
+                  style={[styles.pin, { backgroundColor: filtering ? '#0A84FF' : c.fillStrong }]}
+                >
+                  <Icon
+                    name={filtering ? 'storefront' : 'time'}
+                    size={32}
+                    color={filtering ? '#FFFFFF' : c.textSecondary}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text variant="headline" style={TYPE.rowTitle} numberOfLines={1}>
+                    {x.tradeName}
+                  </Text>
+                  <Text variant="callout" tone="secondary" style={TYPE.rowSub} numberOfLines={1}>
+                    {x.address} · {x.district.split(' · ')[0]}
+                  </Text>
+                </View>
+                <View style={ARROW}>
+                  <Icon name="arrow-up-outline" size={32} color={c.textTertiary} />
+                </View>
+              </Tap>
+            </View>
+          ))}
+        </View>
+      )}
+    </>
+  );
+}
+
+function Chip({
+  icon,
+  label,
+  active,
+  onPress,
+}: {
+  icon: IconName;
+  label: string;
+  active?: boolean;
+  onPress: () => void;
+}) {
+  const c = useColors();
+  return (
+    <Tap
+      accessibilityRole="button"
+      accessibilityState={{ selected: !!active }}
+      onPress={onPress}
+      scaleTo={0.95}
+      style={[styles.chip, { backgroundColor: active ? c.accent : c.fill }]}
+    >
+      <Icon name={icon} size={28} color={active ? '#FFFFFF' : c.accent} />
+      <Text variant="headline" style={TYPE.chip} color={active ? '#FFFFFF' : c.text}>
+        {label}
+      </Text>
+    </Tap>
+  );
+}
+
+const ARROW = { transform: [{ rotate: '-45deg' }] };
 
 // ─── Conteúdo: destino escolhido (cliente ou rota do dia) ───────────────────────────────
 
@@ -835,6 +1074,7 @@ const TYPE = StyleSheet.create({
   rowSub: { fontSize: 27, lineHeight: 34 },
   label: { fontSize: 25, lineHeight: 31 },
   caption: { fontSize: 22, lineHeight: 28 },
+  chip: { fontSize: 27, lineHeight: 34 },
 });
 
 const styles = StyleSheet.create({
@@ -871,6 +1111,33 @@ const styles = StyleSheet.create({
   header: { paddingHorizontal: 24, paddingBottom: 18 },
   content: { paddingHorizontal: 24, paddingBottom: TAB_BAR_HEIGHT + 48, gap: spacing[4] },
   searchRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
+  input: {
+    flex: 1,
+    // Web: sem largura mínima, o campo empurrava o botão de limpar para fora.
+    minWidth: 0,
+    width: 0,
+    padding: 0,
+    // Web: sem o contorno azul do navegador no campo.
+    ...(Platform.OS === 'web' ? ({ outlineStyle: 'none' } as object) : null),
+  },
+  cancel: {
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chipStrip: { marginHorizontal: -24, flexGrow: 0 },
+  chips: { gap: spacing[3], paddingHorizontal: 24 },
+  chip: {
+    height: 68,
+    borderRadius: 34,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[2],
+    paddingHorizontal: spacing[5],
+  },
+  empty: { alignItems: 'center', gap: spacing[2], paddingVertical: spacing[8] },
   search: {
     flex: 1,
     height: 84,

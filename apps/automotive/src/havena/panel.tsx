@@ -34,6 +34,7 @@ const OFFSCREEN_PHONE = BOTTOM_PHONE + ORB_PHONE + 60;
 export function HavenaPanel({ onClose }: { onClose: () => void }) {
   const enter = useRef(new Animated.Value(0)).current;
   const closing = useRef(false);
+  const [leaving, setLeaving] = useState(false);
   const [state, setState] = useState<OrbState>('listen');
   const phone = usePhone();
   const lift = useTabBarLift();
@@ -50,6 +51,7 @@ export function HavenaPanel({ onClose }: { onClose: () => void }) {
   const close = useCallback(() => {
     if (closing.current) return;
     closing.current = true;
+    setLeaving(true);
     Animated.timing(enter, {
       toValue: 0,
       duration: DURATION + 80,
@@ -65,7 +67,7 @@ export function HavenaPanel({ onClose }: { onClose: () => void }) {
         onPress={close}
         style={StyleSheet.absoluteFill}
       />
-      {phone ? <RisingBlur enter={enter} /> : <FadingBlur enter={enter} />}
+      {phone ? <RisingBlur enter={enter} leaving={leaving} /> : <FadingBlur enter={enter} />}
 
       {phone && (
         <Animated.View
@@ -238,66 +240,93 @@ const PHONE_BANDS = [
   { h: 0.32, intensity: 48 },
 ];
 
-function RisingBlur({ enter }: { enter: Animated.Value }) {
+function RisingBlur({ enter, leaving }: { enter: Animated.Value; leaving: boolean }) {
   const c = useColors();
   const target = useBlurTarget();
   const dark = c.mode === 'dark';
   const shade = dark ? 'rgba(0,0,0,0.7)' : 'rgba(225,228,236,0.66)';
   const web = Platform.OS === 'web';
+  // Web: o desfoque nunca fica dentro de uma camada semitransparente. No Safari, um pai com
+  // opacidade < 1 desliga o desfoque dos filhos — com a mola de entrada passando de 1 e
+  // voltando, o desfoque aparecia, sumia e voltava. Aqui o raio do desfoque é que cresce
+  // (transição CSS) e só o escurecimento usa opacidade, numa camada separada.
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    if (!web) return;
+    if (leaving) {
+      setOn(false);
+      return;
+    }
+    const f = requestAnimationFrame(() => setOn(true));
+    return () => cancelAnimationFrame(f);
+  }, [web, leaving]);
+  const fade = enter.interpolate({ inputRange: [0, 1], outputRange: [0, 1], extrapolate: 'clamp' });
+
+  if (web)
+    return (
+      <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+        {/* Faixas presas no rodapé, cada uma um pouco mais curta e mais desfocada: os
+            desfoques se somam embaixo e quase somem em cima. Sem máscara e sem deslocamento
+            (o Safari do iPhone erra os dois). */}
+        {WEB_BANDS.map((b) => {
+          const f = on ? `blur(${b.blur}px) saturate(${b.sat}%)` : 'blur(0px) saturate(100%)';
+          return (
+            <View
+              key={b.h}
+              style={[
+                styles.hband,
+                {
+                  height: `${b.h * 100}%`,
+                  backdropFilter: f,
+                  WebkitBackdropFilter: f,
+                  transitionProperty: 'backdrop-filter, -webkit-backdrop-filter',
+                  transitionDuration: leaving ? `${DURATION}ms` : '420ms',
+                  transitionTimingFunction: 'cubic-bezier(0.25, 0.1, 0.25, 1)',
+                } as object,
+              ]}
+            />
+          );
+        })}
+        <Animated.View style={[StyleSheet.absoluteFill, { opacity: fade }]}>
+          <LinearGradient
+            colors={['rgba(0,0,0,0)', shade]}
+            locations={[0.25, 0.95]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+        </Animated.View>
+      </View>
+    );
+
   return (
     <Animated.View
       pointerEvents="none"
       style={[
         StyleSheet.absoluteFill,
-        web
-          ? // Web (inclusive Safari do iPhone): uma camada só, na tela inteira, que aparece
-            // suavemente. Camadas sobrepostas ou máscara saem deslocadas no Safari.
+        {
+          transform: [
             {
-              opacity: enter.interpolate({
+              translateY: enter.interpolate({
                 inputRange: [0, 1],
-                outputRange: [0, 1],
+                outputRange: [HAZE_H, 0],
                 extrapolate: 'clamp',
               }),
-            }
-          : {
-              transform: [
-                {
-                  translateY: enter.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [HAZE_H, 0],
-                    extrapolate: 'clamp',
-                  }),
-                },
-              ],
             },
+          ],
+        },
       ]}
     >
-      {web
-        ? // Faixas presas no rodapé, cada uma um pouco mais curta e mais desfocada: os
-          // desfoques se somam embaixo e quase somem em cima. Sem máscara e sem deslocamento
-          // nas faixas (o Safari do iPhone erra os dois); só a opacidade do conjunto anima.
-          WEB_BANDS.map((b) => {
-            const f = `blur(${b.blur}px) saturate(${b.sat}%)`;
-            return (
-              <View
-                key={b.h}
-                style={[
-                  styles.hband,
-                  { height: `${b.h * 100}%`, backdropFilter: f, WebkitBackdropFilter: f } as object,
-                ]}
-              />
-            );
-          })
-        : PHONE_BANDS.map((b) => (
-            <BlurView
-              key={b.h}
-              tint={dark ? 'dark' : 'light'}
-              intensity={b.intensity}
-              blurTarget={target ?? undefined}
-              blurMethod={target ? 'dimezisBlurView' : 'none'}
-              style={[styles.hband, { height: `${b.h * 100}%` }]}
-            />
-          ))}
+      {PHONE_BANDS.map((b) => (
+        <BlurView
+          key={b.h}
+          tint={dark ? 'dark' : 'light'}
+          intensity={b.intensity}
+          blurTarget={target ?? undefined}
+          blurMethod={target ? 'dimezisBlurView' : 'none'}
+          style={[styles.hband, { height: `${b.h * 100}%` }]}
+        />
+      ))}
       {/* Escurece mais embaixo, onde ficam o círculo e a legenda. */}
       <LinearGradient
         colors={['rgba(0,0,0,0)', shade]}
