@@ -441,7 +441,7 @@ export function Segmented<T extends string>({
               style={
                 segmentWidth < 150
                   ? { fontSize: 21, lineHeight: 26 }
-                  : { fontSize: 24, lineHeight: 30 }
+                  : { fontSize: 27, lineHeight: 33 }
               }
             >
               {o.label}
@@ -456,15 +456,23 @@ export function Segmented<T extends string>({
 /** Interruptor do iOS com o botão deslizando por mola. */
 export function Switch({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
   const c = useColors();
-  const x = useSpring(value ? 44 : 0);
+  const phone = usePhone();
+  // Multimídia: interruptor maior (132 × 80).
+  const x = useSpring(value ? (phone ? 44 : 52) : 0);
   return (
     <Pressable
       accessibilityRole="switch"
       accessibilityState={{ checked: value }}
       onPress={() => onChange(!value)}
-      style={[styles.switch, { backgroundColor: value ? c.success : c.fillStrong }]}
+      style={[
+        styles.switch,
+        !phone && styles.switchCar,
+        { backgroundColor: value ? c.success : c.fillStrong },
+      ]}
     >
-      <Animated.View style={[styles.knob, { transform: [{ translateX: x }] }]} />
+      <Animated.View
+        style={[styles.knob, !phone && styles.knobCar, { transform: [{ translateX: x }] }]}
+      />
     </Pressable>
   );
 }
@@ -548,19 +556,20 @@ export function Row({
         </Text>
       )}
       {trailing}
-      {chevron && <Icon name="chevron-forward" size={32} color={c.textTertiary} />}
+      {chevron && <Icon name="chevron-forward" size={phone ? 32 : 40} color={c.textTertiary} />}
     </>
   );
   // Sem ação, a linha é só um contêiner: controles dentro dela (interruptor, seletor)
   // continuam recebendo toques normalmente.
-  if (!onPress) return <View style={styles.row}>{content}</View>;
+  const rowStyle = [styles.row, !phone && styles.rowCar];
+  if (!onPress) return <View style={rowStyle}>{content}</View>;
   return (
     <Pressable
       accessibilityRole="button"
       onPress={onPress}
       onPressIn={() => setPressed(true)}
       onPressOut={() => setPressed(false)}
-      style={[styles.row, pressed && { backgroundColor: c.fill }]}
+      style={[rowStyle, pressed && { backgroundColor: c.fill }]}
     >
       {content}
     </Pressable>
@@ -574,7 +583,7 @@ export function SectionHeader({ title, action }: { title: string; action?: React
       <Text
         variant="subhead"
         tone="secondary"
-        style={phone ? { fontSize: 25, lineHeight: 31 } : undefined}
+        style={phone ? { fontSize: 25, lineHeight: 31 } : { fontSize: 28, lineHeight: 34 }}
       >
         {title}
       </Text>
@@ -709,8 +718,8 @@ function lighten(hex: string, amount: number): string {
 
 /** Textos das linhas de lista, maiores para tocar e ler no carro. */
 const rowText = StyleSheet.create({
-  title: { fontSize: 28, lineHeight: 34 },
-  subtitle: { fontSize: 21, lineHeight: 27 },
+  title: { fontSize: 34, lineHeight: 42 },
+  subtitle: { fontSize: 26, lineHeight: 32 },
 });
 /** Celular em pé: medidas do iOS (corpo 17 pt, legenda 15 pt) na tela de 720. */
 const rowTextPhone = StyleSheet.create({
@@ -763,6 +772,8 @@ const styles = StyleSheet.create({
     gap: spacing[2],
   },
   switch: { width: 112, height: 68, borderRadius: 34, padding: 4 },
+  switchCar: { width: 132, height: 80, borderRadius: 40 },
+  knobCar: { width: 72, height: 72, borderRadius: 36 },
   knob: {
     width: 60,
     height: 60,
@@ -781,6 +792,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[6],
     paddingVertical: spacing[4],
   },
+  // Multimídia: linhas mais altas (Ajustes e listas).
+  rowCar: { minHeight: 144, paddingHorizontal: spacing[8] },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',

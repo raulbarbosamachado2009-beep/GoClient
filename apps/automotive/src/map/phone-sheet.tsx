@@ -1030,9 +1030,14 @@ export function RouteSheet({
   onPrevious,
   onNavigate,
   onEnd,
+  navigating = false,
+  onStopNavigation,
 }: {
   client: MockClient;
   stopLabel?: string;
+  /** Navegando: o botão vira "Encerrar navegação" e as setas somem. */
+  navigating?: boolean;
+  onStopNavigation?: () => void;
   /** Chegada/tempo/km: no celular aparecem no cartão da manobra, no topo. */
   trip?: TripInfo;
   /** Clientes escolhidos para visitar, na ordem da visita (lista "Rota"). */
@@ -1093,21 +1098,39 @@ export function RouteSheet({
           </View>
 
           <View style={styles.actions}>
-            {onPrevious && (
+            {!navigating && onPrevious && (
               <SquareButton icon="chevron-back" label="Cliente anterior" onPress={onPrevious} />
             )}
-            <Tap
-              accessibilityRole="button"
-              onPress={onNavigate}
-              scaleTo={0.97}
-              style={[styles.go, { backgroundColor: c.accent }]}
-            >
-              <Icon name="navigate" size={34} color="#FFFFFF" />
-              <Text variant="headline" color="#FFFFFF">
-                Navegar
-              </Text>
-            </Tap>
-            {onNext && (
+            {navigating ? (
+              <Tap
+                accessibilityRole="button"
+                onPress={onStopNavigation}
+                scaleTo={0.97}
+                style={[styles.go, { backgroundColor: c.danger }]}
+              >
+                <Icon name="stop-circle" size={34} color="#FFFFFF" />
+                <Text variant="headline" color="#FFFFFF">
+                  Encerrar navegação
+                </Text>
+              </Tap>
+            ) : (
+              <Tap
+                accessibilityRole="button"
+                onPress={() => {
+                  // Começou a navegar: a aba recolhe e deixa o mapa livre.
+                  sheet.current?.snap(0);
+                  onNavigate();
+                }}
+                scaleTo={0.97}
+                style={[styles.go, { backgroundColor: c.accent }]}
+              >
+                <Icon name="navigate" size={34} color="#FFFFFF" />
+                <Text variant="headline" color="#FFFFFF">
+                  Navegar
+                </Text>
+              </Tap>
+            )}
+            {!navigating && onNext && (
               <SquareButton icon="chevron-forward" label="Próximo cliente" onPress={onNext} />
             )}
           </View>

@@ -5,7 +5,7 @@ Leia este arquivo antes de começar qualquer trabalho.
 
 ## Estado atual do app
 
-_Última atualização: 2026-11-24 10:45 — logo nova com abertura animada, barra lateral em painel flutuante, permissões refeitas e Kyte com linhas maiores._
+_Última atualização: 2026-11-24 11:09 — navegação que funciona no Preview, cartão da música com a capa desfocada, cartão "Para onde vamos?" no estilo Apple e Ajustes maiores na multimídia._
 
 - **Automotive (`apps/automotive`)** é onde está quase todo o produto: Mapa (OSM + OpenRouteService,
   navegação com voz), Kyte (telas próprias sobre a janela do Kyte), Música (Spotify App Remote) e
@@ -14,6 +14,30 @@ _Última atualização: 2026-11-24 10:45 — logo nova com abertura animada, bar
 - Regras de negócio em `packages/core` (com testes); visual só com `@goclient/design-tokens`.
 
 ## Mudanças
+
+### 2026-11-24 11:09 — 4ª rodada: navegar, cartão da música, "Para onde vamos?", ícone do Mapa, barra lateral e Ajustes
+
+Pedido do usuário (thread "Melhorar o design e o onboarding do app", 4ª rodada). Vale para o
+celular e a multimídia.
+
+- **Destino único sem setas:** "anterior/próximo" só aparecem na rota do dia com mais de uma
+  parada (na multimídia apareciam também para um cliente só).
+- **Navegar funciona:** tocar em "Navegar" começa a navegação (também no Preview, com a rota de
+  exemplo). O botão vira **Encerrar navegação**, as setas somem e, no celular, a aba recolhe.
+  Na multimídia o botão fica no cartão do cliente.
+- **Cartão da música (multimídia):** ganhou o botão de voltar (volta ao início da música; nos
+  primeiros 3 s, vai para a anterior) e o fundo agora é a capa da música desfocada.
+- **"Para onde vamos?" no estilo Apple:** título curto e uma lista agrupada com ícones
+  redondos coloridos e seta: Escolher cliente, Montar rota do dia e Rota de hoje (quando há
+  paradas). Mesmo espaço de antes.
+- **Ícone do Mapa:** novo ícone no estilo dos ícones de app da Apple (desenho próprio: parque,
+  avenida, rua, rota azul e marcador), com versão clara e escura.
+- **Barra lateral:** o painel é vidro fosco na cor da página aberta — sobre o mapa desfocado no
+  Mapa, sobre a capa desfocada no Spotify, claro no Kyte.
+- **Ajustes na multimídia maiores:** linhas de 144, textos de 34, ícones de 88, interruptor de
+  132 × 80, seletor de tema mais largo e títulos de seção maiores.
+- Arquivos: `app/(main)/mapa.tsx`, `map/phone-sheet.tsx`, `shell/sidebar.tsx`,
+  `shell/app-icons.tsx`, `ui/primitives.tsx`, `app/(main)/configuracoes.tsx`.
 
 ### 2026-11-24 10:45 — 3ª rodada: logo nova, barra lateral, permissões, login, mapa e Kyte
 

@@ -2,16 +2,16 @@ import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { type Href, usePathname, useRouter } from 'expo-router';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
-import { Animated, Easing, StyleSheet, View } from 'react-native';
+import { Animated, Easing, Image, StyleSheet, View } from 'react-native';
 import { HavenaOrb } from '../havena/orb';
 import { HavenaPanel } from '../havena/panel';
+import { SP_BG } from '../music/phone';
 import { usePrototype } from '../prototype/state';
 import { concentric, layout, nativeDriver, spacing, useColors } from '../theme';
-import { LIVE_BLUR } from '../ui/blur-target';
 import { KyteLogo } from '../ui/brand';
 import { useSpring } from '../ui/motion';
 import { Blur, Text, Touchable } from '../ui/primitives';
-import { type AppGlyph, OutlineGlyph } from './app-icons';
+import { type AppGlyph, MapAppIcon, OutlineGlyph } from './app-icons';
 import { NowPlayingTile } from './now-playing-tile';
 
 interface Item {
@@ -21,6 +21,9 @@ interface Item {
   /** Ícone de contorno; sem ele, o item usa o logo do Spotify. */
   glyph?: AppGlyph;
 }
+
+const MAP_LIGHT = require('../../assets/map/map-light.jpg');
+const MAP_DARK = require('../../assets/map/map-dark.jpg');
 
 const ITEMS: Item[] = [
   { href: '/mapa', match: '/mapa', label: 'Mapa', glyph: 'mapa' },
@@ -59,23 +62,44 @@ export function Sidebar() {
   const onKyte = pathname.startsWith('/kyte') && kyteOpen;
   const dark = c.mode === 'dark' && !onKyte;
   const ink = dark ? '#F2F2F7' : '#1C1C1E';
-  const panelBg = onKyte
-    ? 'rgba(255,255,255,0.92)'
-    : LIVE_BLUR
+  // Fundo do painel: a cor da página aberta, translúcida, sobre uma imagem desfocada do que
+  // a página mostra (o mapa no Mapa, a capa da música no Spotify). O painel parece vidro
+  // fosco na cor de cada página.
+  const onMap = pathname.startsWith('/mapa');
+  const onMusic = pathname.startsWith('/musica');
+  const pageBg = onKyte ? '#EEF1F5' : onMusic ? SP_BG : c.background;
+  const backdrop = onMap
+    ? dark
+      ? MAP_DARK
+      : MAP_LIGHT
+    : onMusic && nowPlaying
+      ? nowPlaying.backdrop
+      : null;
+  const veil = onKyte
+    ? 'rgba(255,255,255,0.72)'
+    : backdrop
       ? dark
-        ? 'rgba(28,28,30,0.62)'
-        : 'rgba(255,255,255,0.6)'
+        ? 'rgba(18,18,20,0.5)'
+        : 'rgba(255,255,255,0.5)'
       : dark
-        ? 'rgba(28,28,30,0.96)'
-        : 'rgba(255,255,255,0.94)';
+        ? 'rgba(255,255,255,0.07)'
+        : 'rgba(0,0,0,0.04)';
 
   return (
-    <View style={[styles.bar, { backgroundColor: onKyte ? '#EEF1F5' : c.background }]}>
+    <View style={[styles.bar, { backgroundColor: pageBg }]}>
       <View
         style={[styles.panel, { borderColor: onKyte ? 'rgba(0,0,0,0.06)' : c.material.border }]}
       >
+        {backdrop && (
+          <Image
+            source={backdrop}
+            blurRadius={40}
+            resizeMode="cover"
+            style={[StyleSheet.absoluteFill, { transform: [{ scale: 1.4 }] }]}
+          />
+        )}
         <Blur radius={40} tint={c.material.tint} />
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: panelBg }]} />
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: veil }]} />
 
         <View style={styles.status}>
           <Clock color={ink} />
@@ -105,8 +129,8 @@ export function Sidebar() {
               {item.glyph === 'kyte' ? (
                 <KyteLogo size={ICON} />
               ) : item.glyph ? (
-                <View style={[styles.icon, { backgroundColor: c.accent }]}>
-                  <OutlineGlyph glyph={item.glyph} size={60} color="#FFFFFF" />
+                <View style={[styles.icon, { overflow: 'hidden' }]}>
+                  <MapAppIcon size={ICON} dark={dark} />
                 </View>
               ) : (
                 <MusicSwap

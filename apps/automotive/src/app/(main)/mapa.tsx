@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { type ComponentRef, useCallback, useEffect, useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Image, StyleSheet, View } from 'react-native';
 import { callPhone, openWhatsApp } from '../../integrations/contact';
 import { MAPS_ENABLED } from '../../integrations/env';
 import { usePhone, useSystemInsets } from '../../layout/form-factor';
@@ -248,10 +248,10 @@ export default function MapScreen() {
                       pathname: '/mapa',
                       params: { rota: 'cliente', id: client.id },
                     })
-                  : live
-                    ? navigate()
-                    : undefined
+                  : navigate()
               }
+              navigating={navigating}
+              onStopNavigation={() => setNavigating(false)}
               onEnd={() => router.replace('/mapa')}
             />
           ) : (
@@ -289,13 +289,7 @@ export default function MapScreen() {
           {mode === 'explore' ? (
             <SearchPill />
           ) : live ? (
-            <LiveGuidance
-              to={client?.tradeName ?? ''}
-              status={liveStatus}
-              guidance={guidance}
-              onNavigate={!navigating && located.length > 0 ? navigate : undefined}
-              onStop={navigating ? () => setNavigating(false) : undefined}
-            />
+            <LiveGuidance to={client?.tradeName ?? ''} status={liveStatus} guidance={guidance} />
           ) : (
             <Guidance />
           )}
@@ -326,8 +320,16 @@ export default function MapScreen() {
               client={client}
               mode={mode}
               stopLabel={stopLabel}
-              onNext={routeClients.length > 1 ? () => setStop((s) => s + 1) : undefined}
-              onPrevious={routeClients.length > 1 ? () => setStop((s) => s - 1) : undefined}
+              // Setas só na rota do dia com mais de uma parada (destino único não tem).
+              onNext={
+                mode === 'day' && routeClients.length > 1 ? () => setStop((s) => s + 1) : undefined
+              }
+              onPrevious={
+                mode === 'day' && routeClients.length > 1 ? () => setStop((s) => s - 1) : undefined
+              }
+              navigating={navigating}
+              onNavigate={navigate}
+              onStopNavigation={() => setNavigating(false)}
             />
           ) : (
             <WelcomeCard />
@@ -339,38 +341,63 @@ export default function MapScreen() {
 }
 
 /**
- * Cartão da música tocando (painel de bordo): capa, nome, artista, progresso e os controles
- * anterior / tocar-pausar / próxima. Tocar na capa ou no nome abre o player.
+ * Cartão da música tocando (painel de bordo): o fundo é a própria capa, ampliada e
+ * desfocada, com um véu escuro. Capa, nome e artista em cima (tocar abre o player), barra de
+ * progresso e os controles anterior / tocar-pausar / próxima embaixo. "Anterior" volta ao
+ * início da música se ela já passou dos 3 s (como no Spotify e no iPhone).
  */
 function NowPlayingCard() {
-  const c = useColors();
   const router = useRouter();
-  const { togglePlaying, next } = usePrototype();
+  const { togglePlaying, next, previous } = usePrototype();
   const np = useNowPlaying();
   const { track, playing } = np;
+  const back = () => (np.positionMs() > 3000 ? np.seek(0) : previous());
   return (
-    <Material style={styles.now}>
-      <View style={styles.nowHead}>
-        <Touchable
-          accessibilityRole="button"
-          accessibilityLabel={`Abrir o player: ${track.title}`}
-          onPress={() => router.push('/player')}
-          style={styles.nowOpen}
-        >
-          <Cover color={track.cover} image={track.image} size={88} radius={NOW_INNER} />
-          <View style={{ flex: 1, gap: 2 }}>
-            <Text variant="headline" numberOfLines={1}>
-              {track.title}
-            </Text>
-            <Text variant="callout" tone="secondary" numberOfLines={1}>
-              {track.artists}
-            </Text>
-          </View>
-        </Touchable>
+    <View style={styles.now}>
+      <Image
+        source={track.backdrop}
+        blurRadius={track.backdropBlur}
+        resizeMode="cover"
+        style={[styles.nowBackdrop, { transform: [{ scale: 1.3 }] }]}
+      />
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.42)' }]} />
+      <Touchable
+        accessibilityRole="button"
+        accessibilityLabel={`Abrir o player: ${track.title}`}
+        onPress={() => router.push('/player')}
+        style={styles.nowHead}
+      >
+        <Cover color={track.cover} image={track.image} size={80} radius={NOW_INNER} />
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text variant="headline" color="#FFFFFF" numberOfLines={1}>
+            {track.title}
+          </Text>
+          <Text variant="callout" color="rgba(255,255,255,0.72)" numberOfLines={1}>
+            {track.artists}
+          </Text>
+        </View>
+      </Touchable>
+      <ProgressBar
+        np={np}
+        height={6}
+        thumb={0}
+        labelColor="rgba(255,255,255,0.72)"
+        showLabels={false}
+      />
+      <View style={styles.nowControls}>
+        <IconButton
+          icon="play-back"
+          size={76}
+          iconSize={42}
+          color="#FFFFFF"
+          accessibilityLabel="Voltar ao início ou música anterior"
+          onPress={back}
+        />
         <IconButton
           icon={playing ? 'pause' : 'play'}
           size={76}
-          iconSize={46}
+          iconSize={48}
+          color="#FFFFFF"
           accessibilityLabel={playing ? 'Pausar' : 'Tocar'}
           onPress={togglePlaying}
         />
@@ -378,12 +405,12 @@ function NowPlayingCard() {
           icon="play-forward"
           size={76}
           iconSize={42}
+          color="#FFFFFF"
           accessibilityLabel="Próxima"
           onPress={next}
         />
       </View>
-      <ProgressBar np={np} height={6} thumb={0} labelColor={c.textSecondary} showLabels={false} />
-    </Material>
+    </View>
   );
 }
 
@@ -634,12 +661,18 @@ function ClientCard({
   stopLabel,
   onNext,
   onPrevious,
+  navigating,
+  onNavigate,
+  onStopNavigation,
 }: {
   client: MockClient;
   mode: MapMode;
   stopLabel?: string;
   onNext?: () => void;
   onPrevious?: () => void;
+  navigating: boolean;
+  onNavigate: () => void;
+  onStopNavigation: () => void;
 }) {
   const c = useColors();
   const router = useRouter();
@@ -712,6 +745,23 @@ function ClientCard({
             {onPrevious ? square('chevron-back', 'Cliente anterior', onPrevious) : null}
             {onNext ? square('chevron-forward', 'Próximo cliente', onNext) : null}
           </View>
+          {mode !== 'explore' &&
+            (navigating ? (
+              <Button
+                label="Encerrar navegação"
+                icon="stop-circle"
+                variant="destructive"
+                style={{ borderRadius: COMPACT_INNER }}
+                onPress={onStopNavigation}
+              />
+            ) : (
+              <Button
+                label="Navegar"
+                icon="navigate"
+                style={{ borderRadius: COMPACT_INNER }}
+                onPress={onNavigate}
+              />
+            ))}
           {mode === 'explore' && (
             <Button
               label="IR"
@@ -730,6 +780,10 @@ function ClientCard({
 
 /** Cartão inicial: nenhum cliente selecionado ainda. */
 function WelcomeCard() {
+  const c = useColors();
+  const router = useRouter();
+  const stops = useStops();
+  const tile = c.mode === 'dark' ? 'rgba(255,255,255,0.08)' : '#FFFFFF';
   // "Escolher cliente" abre a lista dentro do próprio cartão (sem trocar de tela).
   const [picking, setPicking] = useState(false);
   const [planning, setPlanning] = useState(false);
@@ -745,34 +799,78 @@ function WelcomeCard() {
         <ClientPicker onClose={() => setPicking(false)} />
       </Material>
     );
-  // Ocupa a altura toda do espaço do cartão, com botões grandes para tocar dirigindo.
+  // Estilo dos cartões do Apple Maps: título e, embaixo, uma lista agrupada com ícones
+  // redondos coloridos, linhas altas (fáceis de tocar dirigindo) e seta à direita.
+  const options: {
+    icon: IconName;
+    color: string;
+    title: string;
+    sub: string;
+    onPress: () => void;
+  }[] = [
+    {
+      icon: 'storefront',
+      color: '#0A84FF',
+      title: 'Escolher cliente',
+      sub: 'Traçar o caminho até um cliente',
+      onPress: () => setPicking(true),
+    },
+    {
+      icon: 'trail-sign',
+      color: '#30D158',
+      title: 'Montar rota do dia',
+      sub: 'O GoClient organiza a ordem',
+      onPress: () => setPlanning(true),
+    },
+    ...(stops.dayIds.length > 0
+      ? [
+          {
+            icon: 'map' as IconName,
+            color: '#FF9F0A',
+            title: 'Rota de hoje',
+            sub: stops.dayIds.length === 1 ? '1 parada' : `${stops.dayIds.length} paradas`,
+            onPress: () => router.replace({ pathname: '/mapa', params: { rota: 'dia' } }),
+          },
+        ]
+      : []),
+  ];
   return (
     <Material style={styles.welcome}>
-      <View style={{ gap: spacing[3] }}>
-        <Text variant="largeTitle" style={{ fontSize: 42, lineHeight: 50 }}>
+      <View style={{ gap: spacing[1] }}>
+        <Text variant="largeTitle" style={{ fontSize: 40, lineHeight: 48 }}>
           Para onde vamos?
         </Text>
         <Text variant="body" tone="secondary">
-          Escolha um cliente para traçar o caminho até ele, ou monte as visitas de hoje e o GoClient
-          organiza a rota.
+          Escolha um destino ou monte o dia.
         </Text>
       </View>
-      <View style={{ gap: spacing[4] }}>
-        <Button
-          label="Escolher cliente"
-          icon="storefront"
-          size="xl"
-          style={styles.welcomeButton}
-          onPress={() => setPicking(true)}
-        />
-        <Button
-          label="Montar rota do dia"
-          icon="trail-sign"
-          variant="tinted"
-          size="xl"
-          style={styles.welcomeButton}
-          onPress={() => setPlanning(true)}
-        />
+      <View style={[styles.optionGroup, { backgroundColor: tile }]}>
+        {options.map((o, i) => (
+          <Touchable
+            key={o.title}
+            accessibilityRole="button"
+            accessibilityLabel={o.title}
+            onPress={o.onPress}
+            scaleTo={0.98}
+            style={[
+              styles.option,
+              i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.separator },
+            ]}
+          >
+            <View style={[styles.optionIcon, { backgroundColor: o.color }]}>
+              <Icon name={o.icon} size={36} color="#FFFFFF" />
+            </View>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text variant="headline" numberOfLines={1} style={{ fontSize: 28, lineHeight: 34 }}>
+                {o.title}
+              </Text>
+              <Text variant="callout" tone="secondary" numberOfLines={1}>
+                {o.sub}
+              </Text>
+            </View>
+            <Icon name="chevron-forward" size={30} color={c.textTertiary} />
+          </Touchable>
+        ))}
       </View>
     </Material>
   );
@@ -793,7 +891,7 @@ const TRIP_INNER = concentric(TRIP_R, spacing[4]);
 const LEFT = layout.sidebarWidth + layout.gutter;
 /** Coluna de cartões à direita do mapa e o cartão da música (painel de bordo). */
 const SIDE_W = 480;
-const NOW_H = 176;
+const NOW_H = 232;
 const NOW_R = 48;
 const NOW_INNER = concentric(NOW_R, spacing[6]);
 const MAP_R = 48;
@@ -834,12 +932,16 @@ const styles = StyleSheet.create({
   now: {
     flex: 1,
     borderRadius: NOW_R,
-    padding: spacing[6],
-    gap: spacing[4],
+    overflow: 'hidden',
+    backgroundColor: '#1C1C1E',
+    paddingHorizontal: spacing[6],
+    paddingVertical: spacing[5],
+    gap: spacing[3],
     justifyContent: 'center',
   },
-  nowOpen: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
-  nowHead: { flexDirection: 'row', alignItems: 'center', gap: spacing[1] },
+  nowBackdrop: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' },
+  nowControls: { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center' },
+  nowHead: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
   search: {
     height: 80,
     width: 500,
@@ -898,16 +1000,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: spacing[3],
-    paddingVertical: spacing[3],
+    paddingVertical: spacing[2],
   },
   compactBody: { flex: 1, gap: spacing[5], justifyContent: 'space-between' },
   welcome: {
     flex: 1,
     borderRadius: WELCOME_R,
     padding: spacing[8],
-    justifyContent: 'space-between',
+    gap: spacing[6],
   },
-  welcomeButton: { height: 128, borderRadius: WELCOME_INNER },
+  optionGroup: { borderRadius: WELCOME_INNER, paddingLeft: spacing[5] },
+  option: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[4],
+    minHeight: 116,
+    paddingRight: spacing[5],
+  },
+  optionIcon: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   avatarTile: {
     width: 112,
     height: 112,
