@@ -435,9 +435,7 @@ export function DragSheet({
                 {/* Fundo de vidro: desfoca o mapa atrás da aba (no Android sem desfoque ao
                     vivo, vira a cor quase opaca do material). */}
                 <Blur radius={40} tint={c.material.tint} />
-                <View
-                  style={[StyleSheet.absoluteFill, { backgroundColor: c.material.fallback }]}
-                />
+                <View style={[StyleSheet.absoluteFill, { backgroundColor: c.material.fallback }]} />
               </Animated.View>
               <Animated.View
                 ref={bodyRef}
