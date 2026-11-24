@@ -88,7 +88,17 @@ export function useContinuousListener(
         // Outras formas de entender a mesma fala (nomes e ruas costumam sair errados).
         maxAlternatives: 3,
         // Ativação e nome do assistente: ajudam o reconhecimento a escrever certo (iOS).
-        contextualStrings: ['Lucas', 'olá Lucas', 'oh IA', 'inteligência artificial', 'Kyte'],
+        contextualStrings: [
+          'Lucas',
+          'olá Lucas',
+          'oi Lucas',
+          'boa tarde Lucas',
+          'boa noite Lucas',
+          'bom dia Lucas',
+          'oh IA',
+          'inteligência artificial',
+          'Kyte',
+        ],
       });
     } catch {
       running.current = false;

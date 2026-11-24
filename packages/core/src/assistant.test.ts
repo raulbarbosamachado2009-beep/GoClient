@@ -29,6 +29,15 @@ describe('Lucas: palavras de ativação', () => {
     'Oia',
     'Olá, inteligência artificial',
     'é, olá Lucas',
+    'Boa tarde, Lucas',
+    'boa noite Lucas',
+    'Salve, Lucas',
+    'Opa, Lucas',
+    'E aí, Lucas',
+    'Oi, boa tarde, Lucas',
+    'Olá, tudo bem, Lucas?',
+    'Lucas, boa noite',
+    'Fala aí, Lucas',
   ])('reconhece "%s"', (t) => {
     expect(matchWakePhrase(t)).not.toBeNull();
   });
@@ -50,8 +59,14 @@ describe('Lucas: palavras de ativação', () => {
     expect(stripWakePhrase('pula a música')).toBe('pula a música');
   });
 
-  it('responde ao "bom dia" com bom dia', () => {
+  it('responde no tom do cumprimento', () => {
     expect(matchWakePhrase('bom dia')).toEqual({ rest: '', greeting: 'Bom dia!' });
+    expect(matchWakePhrase('Boa tarde, Lucas')).toEqual({ rest: '', greeting: 'Boa tarde!' });
+    expect(matchWakePhrase('oi, boa noite, Lucas')?.greeting).toBe('Boa noite!');
+    expect(matchWakePhrase('Salve Lucas, que horas são')).toEqual({
+      rest: 'que horas sao',
+      greeting: 'Oi!',
+    });
   });
 });
 

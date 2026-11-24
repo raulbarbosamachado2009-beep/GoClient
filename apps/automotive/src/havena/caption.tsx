@@ -95,8 +95,14 @@ function LiveCaption({
   return (
     <Animated.View style={[styles.line, { width }]} pointerEvents="none">
       {words.map((w, i) => (
-        // biome-ignore lint/suspicious/noArrayIndexKey: a posição na frase é a identidade da palavra.
-        <Word key={`${phrase}-${i}`} text={w} color={c.text} visible={instant || i < count} />
+        <Word
+          // biome-ignore lint/suspicious/noArrayIndexKey: a posição na frase é a identidade da palavra.
+          key={`${phrase}-${i}`}
+          text={w}
+          color={c.text}
+          visible={instant || i < count}
+          fast={instant}
+        />
       ))}
     </Animated.View>
   );
@@ -158,19 +164,32 @@ function DemoCaption({
   );
 }
 
-function Word({ text, color, visible }: { text: string; color: string; visible: boolean }) {
+/** Fala da pessoa: a palavra entra rápido, sem desfoque, para acompanhar quem está falando. */
+const FAST_MS = 140;
+
+function Word({
+  text,
+  color,
+  visible,
+  fast,
+}: {
+  text: string;
+  color: string;
+  visible: boolean;
+  fast?: boolean;
+}) {
   const v = useRef(new Animated.Value(0)).current;
-  const [blur, setBlur] = useState(Platform.OS === 'web' ? 6 : 0);
+  const [blur, setBlur] = useState(Platform.OS === 'web' && !fast ? 6 : 0);
 
   useEffect(() => {
     if (!visible) return;
     Animated.timing(v, {
       toValue: 1,
-      duration: 420,
+      duration: fast ? FAST_MS : 420,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: nativeDriver,
     }).start();
-    if (Platform.OS !== 'web') return;
+    if (Platform.OS !== 'web' || fast) return;
     // Desfoque da palavra saindo de 6 px para 0 (só Web; no Android fica só o fade).
     const t0 = Date.now();
     let frame = 0;
@@ -181,7 +200,7 @@ function Word({ text, color, visible }: { text: string; color: string; visible: 
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [v, visible]);
+  }, [v, visible, fast]);
 
   return (
     <Animated.Text

@@ -24,20 +24,38 @@ export function normalizeSpeech(text: string): string {
  * ("oh IA" vira "ó ia", "oi ia" ou até "oia"), por isso cada frase aceita variações.
  */
 const NAME = '(?:lucas|lukas|lucaz|luca)';
-const CALL = '(?:ola|oi|ei|ey|hey|e ai|oh|fala)';
+/**
+ * Cumprimentos que podem vir antes do nome, sozinhos ou em sequência ("oi, boa tarde,
+ * Lucas", "olá, tudo bem, Lucas"). Uma palavra qualquer antes do nome ("o Lucas comprou")
+ * não chama: só cumprimentos.
+ */
+const HELLO =
+  '(?:ola|oi|oie|ei|ey|hey|e ai|ai|eai|eae|iae|oh|o|fala|fala ai|salve|opa|alo|coe|bom dia|boa tarde|boa noite|tudo bem|tudo bom|beleza|blz)';
+const HELLOS = `${HELLO}(?: ${HELLO}){0,2}`;
 /** "ô IA" sai como "o ia" ou "ou ia"; com o nome, "o Lucas" seria comum demais numa conversa. */
 const CALL_IA = '(?:ola|oi|ei|ey|hey|e ai|o|oh|ou)';
 const IA = '(?:ia|i a|inteligencia artificial)';
-const WAKE_PATTERNS: { re: RegExp; greeting: string }[] = [
+const WAKE_PATTERNS: { re: RegExp }[] = [
   // "bom dia" (sozinho ou com o nome): responde no mesmo tom.
-  { re: new RegExp(`^bom dia(?: ${NAME})?\\b`), greeting: 'Bom dia!' },
-  // "olá Lucas", "oi Lucas", "ei Lucas", "ô Lucas"…
-  { re: new RegExp(`^${CALL} ${NAME}\\b`), greeting: 'Oi!' },
+  { re: new RegExp(`^bom dia(?: ${NAME})?\\b`) },
+  // Qualquer cumprimento + nome: "olá Lucas", "oi Lucas", "boa tarde Lucas", "salve Lucas",
+  // "oi, boa noite, Lucas"…  Só "o Lucas" (sem outro cumprimento) fica de fora.
+  { re: new RegExp(`^(?!o ${NAME}\\b)${HELLOS} ${NAME}\\b`) },
+  // Nome e depois o cumprimento: "Lucas, boa tarde", "Lucas, tudo bem?".
+  { re: new RegExp(`^${NAME} (?:bom dia|boa tarde|boa noite|tudo bem|tudo bom|oi|ola)\\b`) },
   // "oh IA", "ó IA", "oi IA", "olá inteligência artificial"…
-  { re: new RegExp(`^${CALL_IA} ${IA}\\b`), greeting: 'Oi!' },
+  { re: new RegExp(`^${CALL_IA} ${IA}\\b`) },
   // "oia" (como o reconhecimento costuma escrever "oi IA" rápido).
-  { re: /^oia\b/, greeting: 'Oi!' },
+  { re: /^oia\b/ },
 ];
+
+/** Resposta no tom do cumprimento: "boa noite, Lucas" → "Boa noite!". */
+function greetingFor(called: string): string {
+  if (/\bbom dia\b/.test(called)) return 'Bom dia!';
+  if (/\bboa tarde\b/.test(called)) return 'Boa tarde!';
+  if (/\bboa noite\b/.test(called)) return 'Boa noite!';
+  return 'Oi!';
+}
 
 /** Palavras soltas que o reconhecimento costuma pôr antes da frase ("é", "ah"). */
 const FILLER = /^(?:e|ah|ahn|eh|hum|hm|tipo)\s+/;
@@ -52,9 +70,9 @@ export interface WakeMatch {
 /** A fala começa com uma das formas de chamar o Lucas? */
 export function matchWakePhrase(text: string): WakeMatch | null {
   const t = normalizeSpeech(text).replace(FILLER, '');
-  for (const { re, greeting } of WAKE_PATTERNS) {
+  for (const { re } of WAKE_PATTERNS) {
     const m = re.exec(t);
-    if (m) return { rest: t.slice(m[0].length).trim(), greeting };
+    if (m) return { rest: t.slice(m[0].length).trim(), greeting: greetingFor(m[0]) };
   }
   return null;
 }

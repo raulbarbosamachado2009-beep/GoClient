@@ -9,7 +9,7 @@ import { useWakeEnabled } from './settings';
 
 /**
  * Ativação por voz: com o app aberto e o Lucas fechado, o microfone fica ouvindo só para
- * reconhecer uma das chamadas ("olá Lucas", "oi Lucas", "bom dia", "oh IA", "olá
+ * reconhecer uma das chamadas (qualquer cumprimento + "Lucas": "olá Lucas", "boa tarde Lucas", "salve Lucas"; "bom dia", "oh IA", "olá
  * inteligência artificial"; regras em `matchWakePhrase`, @goclient/core). Ao ouvir, abre o
  * Lucas, que já responde ao que veio junto ("olá Lucas, que horas são").
  *
