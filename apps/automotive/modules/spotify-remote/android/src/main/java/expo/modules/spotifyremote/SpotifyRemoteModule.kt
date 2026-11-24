@@ -151,22 +151,28 @@ class SpotifyRemoteModule : Module() {
 
   private fun stateMap(s: PlayerState): Map<String, Any?> {
     val t = s.track
-    return mapOf(
-      "isPaused" to s.isPaused,
-      "position" to s.playbackPosition.toDouble(),
-      "shuffle" to (s.playbackOptions?.isShuffling ?: false),
-      "repeat" to (s.playbackOptions?.repeatMode ?: 0),
-      "track" to if (t == null) null else mapOf(
+    // Tipos explícitos: a inferência do Kotlin falha com mapas aninhados de tipos diferentes.
+    val track: Map<String, Any?>? = if (t == null) null else {
+      val artists: List<Map<String, Any?>> =
+        t.artists?.map { a -> mapOf<String, Any?>("name" to a.name, "uri" to a.uri) } ?: emptyList()
+      mapOf<String, Any?>(
         "uri" to t.uri,
         "name" to t.name,
         "artist" to (t.artist?.name ?: ""),
-        "artists" to (t.artists?.map { mapOf("name" to it.name, "uri" to it.uri) } ?: emptyList()),
+        "artists" to artists,
         "album" to (t.album?.name ?: ""),
         "albumUri" to (t.album?.uri ?: ""),
         "duration" to t.duration.toDouble(),
         "imageUri" to (t.imageUri?.raw ?: ""),
         "isEpisode" to t.isEpisode
       )
+    }
+    return mapOf<String, Any?>(
+      "isPaused" to s.isPaused,
+      "position" to s.playbackPosition.toDouble(),
+      "shuffle" to (s.playbackOptions?.isShuffling ?: false),
+      "repeat" to (s.playbackOptions?.repeatMode ?: 0),
+      "track" to track
     )
   }
 }
