@@ -208,9 +208,10 @@ export default function MapScreen() {
                 status={liveStatus}
                 guidance={guidance}
                 onStop={navigating ? () => setNavigating(false) : undefined}
+                trip={client ? trip : undefined}
               />
             ) : (
-              <Guidance />
+              <Guidance trip={client ? trip : undefined} />
             ))}
           {client ? (
             <RouteSheet
@@ -360,7 +361,7 @@ function SearchPill() {
   );
 }
 
-function Guidance() {
+function Guidance({ trip }: { trip?: TripInfo }) {
   const phone = usePhone();
   const system = useSystemInsets();
   const c = useColors();
@@ -370,18 +371,59 @@ function Guidance() {
       fade={false}
       style={phone ? [PHONE.top, { top: layout.gutter + system.top }] : styles.topLeft}
     >
-      <Material style={styles.guidance}>
-        <Icon name="return-up-forward" size={64} color={c.text} />
-        <View>
-          <Text variant="largeTitle" style={{ fontSize: 48, lineHeight: 54 }}>
-            350 m
-          </Text>
-          <Text variant="headline" tone="secondary">
-            Av. das Palmeiras
-          </Text>
+      <Material style={phone && trip ? styles.guidanceStack : styles.guidance}>
+        <View style={styles.maneuver}>
+          <Icon name="return-up-forward" size={64} color={c.text} />
+          <View style={{ flex: phone ? 1 : undefined }}>
+            <Text variant="largeTitle" style={{ fontSize: 48, lineHeight: 54 }}>
+              350 m
+            </Text>
+            <Text variant="headline" tone="secondary" numberOfLines={1}>
+              Av. das Palmeiras
+            </Text>
+          </View>
         </View>
+        {phone && trip && <TripStrip trip={trip} />}
       </Material>
     </Appear>
+  );
+}
+
+/**
+ * Celular: chegada, tempo e distância dentro do cartão da manobra (no topo), em três colunas
+ * iguais separadas por traços finos — cabem em qualquer largura sem quebrar.
+ */
+function TripStrip({ trip }: { trip: TripInfo }) {
+  const c = useColors();
+  const items = [
+    { value: trip.arrival, label: 'chegada' },
+    { value: trip.duration.value, label: trip.duration.unit },
+    { value: trip.km, label: 'km' },
+  ];
+  return (
+    <View style={[styles.strip, { borderTopColor: c.separator }]}>
+      {items.map((it, i) => (
+        <View
+          key={it.label}
+          style={[
+            styles.stripItem,
+            i > 0 && { borderLeftWidth: StyleSheet.hairlineWidth, borderLeftColor: c.separator },
+          ]}
+        >
+          <Text
+            variant="title2"
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            style={{ fontSize: 36, lineHeight: 42 }}
+          >
+            {it.value}
+          </Text>
+          <Text variant="callout" tone="secondary" numberOfLines={1} style={{ fontSize: 24 }}>
+            {it.label}
+          </Text>
+        </View>
+      ))}
+    </View>
   );
 }
 
@@ -395,12 +437,14 @@ function LiveGuidance({
   guidance,
   onNavigate,
   onStop,
+  trip,
 }: {
   to: string;
   status: string;
   guidance: TurnGuidance | null;
   onNavigate?: () => void;
   onStop?: () => void;
+  trip?: TripInfo;
 }) {
   const phone = usePhone();
   const system = useSystemInsets();
@@ -412,34 +456,37 @@ function LiveGuidance({
       fade={false}
       style={phone ? [PHONE.top, { top: layout.gutter + system.top }] : styles.topLeft}
     >
-      <Material style={[styles.guidance, { maxWidth: 820 }]}>
-        {next ? (
-          <>
-            <Icon name={maneuverIcon(next.type)} size={64} color={c.text} />
-            <View style={{ flexShrink: 1, flex: phone ? 1 : undefined }}>
-              <Text variant="largeTitle" style={{ fontSize: 48, lineHeight: 54 }}>
-                {formatStepDistance(guidance.toNext)}
-              </Text>
-              <Text variant="headline" tone="secondary" numberOfLines={2}>
-                {next.name || next.instruction}
-              </Text>
-            </View>
-          </>
-        ) : (
-          <>
-            <Icon name="navigate" size={56} color={c.accent} />
-            <View style={{ flexShrink: 1, flex: phone ? 1 : undefined }}>
-              <Text variant="title2" numberOfLines={1}>
-                {to}
-              </Text>
-              <Text variant="headline" tone="secondary" numberOfLines={2}>
-                {status}
-              </Text>
-            </View>
-          </>
-        )}
-        {onNavigate && <Button label="Navegar" icon="navigate" size="md" onPress={onNavigate} />}
-        {onStop && <Button label="Parar" variant="destructive" size="md" onPress={onStop} />}
+      <Material style={phone && trip ? styles.guidanceStack : [styles.guidance, { maxWidth: 820 }]}>
+        <View style={styles.maneuver}>
+          {next ? (
+            <>
+              <Icon name={maneuverIcon(next.type)} size={64} color={c.text} />
+              <View style={{ flexShrink: 1, flex: phone ? 1 : undefined }}>
+                <Text variant="largeTitle" style={{ fontSize: 48, lineHeight: 54 }}>
+                  {formatStepDistance(guidance.toNext)}
+                </Text>
+                <Text variant="headline" tone="secondary" numberOfLines={2}>
+                  {next.name || next.instruction}
+                </Text>
+              </View>
+            </>
+          ) : (
+            <>
+              <Icon name="navigate" size={56} color={c.accent} />
+              <View style={{ flexShrink: 1, flex: phone ? 1 : undefined }}>
+                <Text variant="title2" numberOfLines={1}>
+                  {to}
+                </Text>
+                <Text variant="headline" tone="secondary" numberOfLines={2}>
+                  {status}
+                </Text>
+              </View>
+            </>
+          )}
+          {onNavigate && <Button label="Navegar" icon="navigate" size="md" onPress={onNavigate} />}
+          {onStop && <Button label="Parar" variant="destructive" size="md" onPress={onStop} />}
+        </View>
+        {phone && trip && <TripStrip trip={trip} />}
       </Material>
     </Appear>
   );
@@ -695,6 +742,19 @@ const styles = StyleSheet.create({
     gap: spacing[3],
     paddingHorizontal: spacing[6],
   },
+  maneuver: { flexDirection: 'row', alignItems: 'center', gap: spacing[6] },
+  // Celular: manobra em cima e a faixa de chegada/tempo/distância embaixo.
+  guidanceStack: {
+    paddingTop: spacing[5],
+    paddingHorizontal: spacing[6],
+    borderRadius: layout.radius.xl,
+  },
+  strip: {
+    flexDirection: 'row',
+    marginTop: spacing[4],
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  stripItem: { flex: 1, alignItems: 'center', paddingVertical: spacing[3], minWidth: 0 },
   guidance: {
     flexDirection: 'row',
     alignItems: 'center',

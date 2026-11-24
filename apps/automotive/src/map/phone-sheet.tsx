@@ -511,16 +511,23 @@ export function ExploreSheet() {
   const [notice, setNotice] = useState<string | null>(null);
   // Montar a rota do dia dentro da própria aba (sem página separada).
   const [planning, setPlanning] = useState(false);
+  // Trocar de conteúdo (atalhos → rota do dia / clientes) tem transição: o atual sai
+  // deslizando e o novo entra pelo outro lado.
+  const swap = useSwap();
   const openPlanner = () => {
-    setMode(null);
-    setPlanning(true);
     sheet.current?.snap(2);
+    swap.run(1, () => {
+      setMode(null);
+      setPlanning(true);
+    });
   };
   const openClients = () => {
-    setPlanning(false);
-    setMode('clients');
-    setNotice(null);
     sheet.current?.snap(2);
+    swap.run(1, () => {
+      setPlanning(false);
+      setMode('clients');
+      setNotice(null);
+    });
   };
   // Cliente do Kyte: a janela invisível abre a ficha, lê o endereço e traça a rota.
   const pickKyte = (name: string) => {
@@ -649,112 +656,118 @@ export function ExploreSheet() {
         </View>
       }
     >
-      {planning ? (
-        <View style={{ height: 1150 }}>
+      <Animated.View style={swap.style}>
+        {planning ? (
           <RoutePlanner
+            embedded
             onClose={() => {
-              setPlanning(false);
+              swap.run(-1, () => setPlanning(false));
               sheet.current?.snap(1);
             }}
           />
-        </View>
-      ) : searching ? (
-        <SearchBody
-          clientsMode={mode === 'clients'}
-          kyteNames={mode === 'clients' ? kyte.names : null}
-          kyteLoading={kyte.loading}
-          notice={notice}
-          onPickKyte={pickKyte}
-          onMore={() => router.replace({ pathname: '/kyte', params: { secao: 'clientes' } })}
-          query={query}
-          region={region}
-          onRegion={(r) => setRegion(region === r ? null : r)}
-          results={results}
-          recent={recent}
-          onPick={(id) => {
-            Keyboard.dismiss();
-            goTo(id);
-          }}
-          onDayRoute={() => router.replace({ pathname: '/mapa', params: { rota: 'dia' } })}
-        />
-      ) : (
-        <>
-          <Section title="Atalhos" />
-          <View style={styles.shortcuts}>
-            <Shortcut
-              label="Clientes"
-              sub="no Kyte"
-              color="#0A84FF"
-              icon={<Icon name="people" size={56} color="#FFFFFF" />}
-              onPress={openClients}
-            />
-            <Shortcut
-              label="Produtos"
-              sub="no Kyte"
-              color="#FF9F0A"
-              icon={<Icon name="pricetag" size={52} color="#FFFFFF" />}
-              onPress={() => router.replace({ pathname: '/kyte', params: { secao: 'produtos' } })}
-            />
-            <Shortcut
-              label="Rotas"
-              sub="Montar"
-              subTone="accent"
-              color="#30D158"
-              icon={<Icon name="trail-sign" size={52} color="#FFFFFF" />}
-              onPress={openPlanner}
-            />
-          </View>
-
-          <Section title="Recentes" onPress={openClients} />
-          <View style={[styles.card, { backgroundColor: c.fill }]}>
-            {recent.map((x, i) => (
-              <View key={x.id}>
-                {i > 0 && <View style={[styles.sep, { backgroundColor: c.separator }]} />}
-                <Tap
-                  accessibilityRole="button"
-                  onPress={() => goTo(x.id)}
-                  scaleTo={0.98}
-                  style={styles.recent}
-                >
-                  <View style={[styles.pin, { backgroundColor: '#FF375F' }]}>
-                    <Icon name="location-sharp" size={34} color="#FFFFFF" />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text variant="headline" style={TYPE.rowTitle} numberOfLines={1}>
-                      {x.tradeName}
-                    </Text>
-                    <Text variant="callout" tone="secondary" style={TYPE.rowSub} numberOfLines={1}>
-                      {x.address} · {x.district.split(' · ').slice(1).join(' · ')}
-                    </Text>
-                  </View>
-                  <Icon name="ellipsis-horizontal" size={40} color={c.textSecondary} />
-                </Tap>
-              </View>
-            ))}
-          </View>
-
-          <Section title="Rota de hoje" onPress={openPlanner} />
-          <Tap
-            accessibilityRole="button"
-            onPress={() => router.replace({ pathname: '/mapa', params: { rota: 'dia' } })}
-            scaleTo={0.98}
-            style={[styles.guide, { backgroundColor: c.fill }]}
-          >
-            <View style={[styles.guideArt, { backgroundColor: '#0A84FF' }]}>
-              <Icon name="map" size={72} color="#FFFFFF" />
+        ) : searching ? (
+          <SearchBody
+            clientsMode={mode === 'clients'}
+            kyteNames={mode === 'clients' ? kyte.names : null}
+            kyteLoading={kyte.loading}
+            notice={notice}
+            onPickKyte={pickKyte}
+            onMore={() => router.replace({ pathname: '/kyte', params: { secao: 'clientes' } })}
+            query={query}
+            region={region}
+            onRegion={(r) => setRegion(region === r ? null : r)}
+            results={results}
+            recent={recent}
+            onPick={(id) => {
+              Keyboard.dismiss();
+              goTo(id);
+            }}
+            onDayRoute={() => router.replace({ pathname: '/mapa', params: { rota: 'dia' } })}
+          />
+        ) : (
+          <>
+            <Section title="Atalhos" />
+            <View style={styles.shortcuts}>
+              <Shortcut
+                label="Clientes"
+                sub="no Kyte"
+                color="#0A84FF"
+                icon={<Icon name="people" size={56} color="#FFFFFF" />}
+                onPress={openClients}
+              />
+              <Shortcut
+                label="Produtos"
+                sub="no Kyte"
+                color="#FF9F0A"
+                icon={<Icon name="pricetag" size={52} color="#FFFFFF" />}
+                onPress={() => router.replace({ pathname: '/kyte', params: { secao: 'produtos' } })}
+              />
+              <Shortcut
+                label="Rotas"
+                sub="Montar"
+                subTone="accent"
+                color="#30D158"
+                icon={<Icon name="trail-sign" size={52} color="#FFFFFF" />}
+                onPress={openPlanner}
+              />
             </View>
-            <Text variant="headline" style={TYPE.rowTitle}>
-              Visitas de hoje
-            </Text>
-            <Text variant="callout" tone="secondary" style={TYPE.rowSub}>
-              {stops.dayIds.length} clientes
-            </Text>
-          </Tap>
 
-          <WideAction icon="trail-sign" label="Montar rota do dia" onPress={openPlanner} />
-          <WideAction icon="share-outline" label="Compartilhar localização" />
-        </>
-      )}
+            <Section title="Recentes" onPress={openClients} />
+            <View style={[styles.card, { backgroundColor: c.fill }]}>
+              {recent.map((x, i) => (
+                <View key={x.id}>
+                  {i > 0 && <View style={[styles.sep, { backgroundColor: c.separator }]} />}
+                  <Tap
+                    accessibilityRole="button"
+                    onPress={() => goTo(x.id)}
+                    scaleTo={0.98}
+                    style={styles.recent}
+                  >
+                    <View style={[styles.pin, { backgroundColor: '#FF375F' }]}>
+                      <Icon name="location-sharp" size={34} color="#FFFFFF" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text variant="headline" style={TYPE.rowTitle} numberOfLines={1}>
+                        {x.tradeName}
+                      </Text>
+                      <Text
+                        variant="callout"
+                        tone="secondary"
+                        style={TYPE.rowSub}
+                        numberOfLines={1}
+                      >
+                        {x.address} · {x.district.split(' · ').slice(1).join(' · ')}
+                      </Text>
+                    </View>
+                    <Icon name="ellipsis-horizontal" size={40} color={c.textSecondary} />
+                  </Tap>
+                </View>
+              ))}
+            </View>
+
+            <Section title="Rota de hoje" onPress={openPlanner} />
+            <Tap
+              accessibilityRole="button"
+              onPress={() => router.replace({ pathname: '/mapa', params: { rota: 'dia' } })}
+              scaleTo={0.98}
+              style={[styles.guide, { backgroundColor: c.fill }]}
+            >
+              <View style={[styles.guideArt, { backgroundColor: '#0A84FF' }]}>
+                <Icon name="map" size={72} color="#FFFFFF" />
+              </View>
+              <Text variant="headline" style={TYPE.rowTitle}>
+                Visitas de hoje
+              </Text>
+              <Text variant="callout" tone="secondary" style={TYPE.rowSub}>
+                {stops.dayIds.length} clientes
+              </Text>
+            </Tap>
+
+            <WideAction icon="trail-sign" label="Montar rota do dia" onPress={openPlanner} />
+            <WideAction icon="share-outline" label="Compartilhar localização" />
+          </>
+        )}
+      </Animated.View>
     </DragSheet>
   );
 }
@@ -1010,7 +1023,6 @@ export interface TripInfo {
 export function RouteSheet({
   client,
   stopLabel,
-  trip,
   queue,
   onReorder,
   onPick,
@@ -1021,7 +1033,8 @@ export function RouteSheet({
 }: {
   client: MockClient;
   stopLabel?: string;
-  trip: TripInfo;
+  /** Chegada/tempo/km: no celular aparecem no cartão da manobra, no topo. */
+  trip?: TripInfo;
   /** Clientes escolhidos para visitar, na ordem da visita (lista "Rota"). */
   queue: MockClient[];
   onReorder: (ids: string[]) => void;
@@ -1047,8 +1060,9 @@ export function RouteSheet({
   return (
     <DragSheet
       key={client.id}
-      initial={1}
-      collapsed={338}
+      // Abre recolhida (nome + Navegar): o mapa fica livre; puxar mostra o resto.
+      initial={0}
+      collapsed={240}
       controller={sheet}
       header={
         <View style={{ gap: spacing[5] }}>
@@ -1076,12 +1090,6 @@ export function RouteSheet({
             >
               <Icon name="close" size={30} color={c.textSecondary} />
             </Tap>
-          </View>
-
-          <View style={styles.stats}>
-            <Stat value={trip.arrival} label="chegada" />
-            <Stat value={trip.duration.value} label={trip.duration.unit} />
-            <Stat value={trip.km} label="km" />
           </View>
 
           <View style={styles.actions}>
@@ -1251,19 +1259,6 @@ function WideAction({
       </Text>
       <View style={{ width: 44 }} />
     </Tap>
-  );
-}
-
-function Stat({ value, label }: { value: string; label: string }) {
-  return (
-    <View>
-      <Text variant="largeTitle" style={{ fontSize: 40, lineHeight: 46 }}>
-        {value}
-      </Text>
-      <Text variant="callout" tone="secondary">
-        {label}
-      </Text>
-    </View>
   );
 }
 
@@ -1512,7 +1507,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  stats: { flexDirection: 'row', gap: spacing[10] },
   actions: { flexDirection: 'row', gap: spacing[3] },
   go: {
     flex: 1,

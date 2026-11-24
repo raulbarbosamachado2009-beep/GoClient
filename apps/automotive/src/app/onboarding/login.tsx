@@ -4,7 +4,6 @@ import { Platform, StyleSheet, TextInput, View } from 'react-native';
 import Svg, { Rect } from 'react-native-svg';
 import { usePhone } from '../../layout/form-factor';
 import { OnboardingLayout, PillButton } from '../../onboarding/layout';
-import { ClientsScene } from '../../onboarding/scenes';
 import { concentric, spacing, type, useColors } from '../../theme';
 import { Appear } from '../../ui/motion';
 import { Icon, Text, Touchable } from '../../ui/primitives';
@@ -27,7 +26,8 @@ export default function Login() {
     return (
       <OnboardingLayout
         sceneKey="email"
-        scene={<ClientsScene />}
+        scene={null}
+        centered
         title="Entre com seu e-mail"
         text="Use a mesma conta do GoClient no celular e no carro."
         actions={
@@ -80,7 +80,7 @@ export default function Login() {
   return (
     <OnboardingLayout
       sceneKey="start"
-      scene={<ClientsScene />}
+      scene={null}
       title="Venda mais em cada visita"
       text="Entre para ver seus clientes, produtos e rotas no carro e no celular."
       actions={

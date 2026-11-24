@@ -23,8 +23,10 @@ export function OnboardingLayout({
   actions,
   onSkip,
   footer,
+  centered = false,
 }: {
-  scene: ReactNode;
+  /** Ilustração; `null` = tela só com marca, texto e ações (ex.: login). */
+  scene: ReactNode | null;
   /** Muda a cada página, para a cena e os textos entrarem de novo com animação. */
   sceneKey: string;
   badge?: string;
@@ -34,14 +36,18 @@ export function OnboardingLayout({
   actions: ReactNode;
   onSkip?: () => void;
   footer?: ReactNode;
+  /** Sem ilustração: texto e ações juntos no meio da tela (formulários). */
+  centered?: boolean;
 }) {
   const c = useColors();
   const phone = usePhone();
   const insets = useSystemInsets();
 
+  // Texto centrado no celular e nas telas sem ilustração.
+  const mid = phone || scene === null;
   const copy = (
-    <View style={[styles.copy, phone ? styles.copyPhone : styles.copyCar]}>
-      <Appear key={`b-${sceneKey}`} distance={12} style={phone ? styles.centerSelf : undefined}>
+    <View style={[styles.copy, mid ? styles.copyPhone : styles.copyCar]}>
+      <Appear key={`b-${sceneKey}`} distance={12} style={mid ? styles.centerSelf : undefined}>
         {badge ? (
           <View style={[styles.badge, { backgroundColor: c.fill }]}>
             <Text variant="subhead" tone="accent" style={{ fontSize: 26, lineHeight: 32 }}>
@@ -49,13 +55,13 @@ export function OnboardingLayout({
             </Text>
           </View>
         ) : (
-          <LogoMark size={phone ? 72 : 84} />
+          <LogoMark size={scene === null ? 112 : phone ? 72 : 84} />
         )}
       </Appear>
       <Appear key={`t-${sceneKey}`} delay={60} distance={14}>
         <Text
           variant="largeTitle"
-          style={[phone ? styles.titlePhone : styles.titleCar, phone && styles.center]}
+          style={[phone ? styles.titlePhone : styles.titleCar, mid && styles.center]}
         >
           {title}
         </Text>
@@ -65,7 +71,7 @@ export function OnboardingLayout({
           <Text
             variant="body"
             tone="secondary"
-            style={[phone ? styles.textPhone : styles.textCar, phone && styles.center]}
+            style={[phone ? styles.textPhone : styles.textCar, mid && styles.center, mid && { alignSelf: "center" }]}
           >
             {text}
           </Text>
@@ -97,10 +103,24 @@ export function OnboardingLayout({
         phone
           ? // O topo (câmera) já é afastado pela pilha de telas; aqui só a área de gestos.
             { paddingTop: spacing[4], paddingBottom: insets.bottom + spacing[8] }
-          : styles.pageCar,
+          : scene === null
+            ? { alignItems: 'center' }
+            : styles.pageCar,
       ]}
     >
-      {phone ? (
+      {scene === null ? (
+        // Sem ilustração: tudo numa coluna centrada, com espaço para os campos respirarem.
+        <View
+          style={[
+            styles.plain,
+            phone ? styles.plainPhone : styles.plainCar,
+            centered && { justifyContent: 'center' },
+          ]}
+        >
+          <View style={centered ? undefined : { flex: 1, justifyContent: 'center' }}>{copy}</View>
+          {bottom}
+        </View>
+      ) : phone ? (
         <>
           <View style={styles.topBar}>{onSkip && <SkipButton onPress={onSkip} />}</View>
           <View style={styles.scenePhone}>
@@ -226,6 +246,9 @@ export function PillButton({
 
 const styles = StyleSheet.create({
   page: { flex: 1 },
+  plain: { flex: 1, alignSelf: 'center', width: '100%', gap: spacing[10] },
+  plainPhone: { paddingHorizontal: 48, paddingTop: spacing[8] },
+  plainCar: { maxWidth: 760, paddingVertical: spacing[8] },
   pageCar: { flexDirection: 'row', padding: spacing[8], gap: spacing[16] },
   topBar: { height: 72, flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: 32 },
   scenePhone: { flex: 1, paddingHorizontal: 24 },
