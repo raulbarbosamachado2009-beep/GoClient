@@ -6,7 +6,7 @@ import { usePhone } from '../../layout/form-factor';
 import { OnboardingLayout, PillButton } from '../../onboarding/layout';
 import { concentric, spacing, type, useColors } from '../../theme';
 import { Appear } from '../../ui/motion';
-import { Icon, Text, Touchable } from '../../ui/primitives';
+import { Icon, type IconName, Text, Touchable } from '../../ui/primitives';
 
 /**
  * Onboarding — login, depois das permissões e antes do mapa (referência: telas de entrada
@@ -32,15 +32,16 @@ export default function Login() {
         text="Use a mesma conta do GoClient no celular e no carro."
         actions={
           <>
-            <Appear delay={140} distance={14}>
-              <View
-                style={[styles.group, { backgroundColor: c.grouped, borderColor: c.separator }]}
-              >
-                <Field label="E-mail" placeholder="nome@empresa.com.br" keyboard="email-address" />
-                <View style={[styles.separator, { backgroundColor: c.separator }]} />
-                <Field label="Senha" placeholder="Obrigatória" secure />
-              </View>
+            <Appear delay={140} distance={14} style={styles.fields}>
+              <Field
+                label="E-mail"
+                icon="mail-outline"
+                placeholder="nome@empresa.com.br"
+                keyboard="email-address"
+              />
+              <Field label="Senha" icon="lock-closed-outline" placeholder="Sua senha" secure />
             </Appear>
+            <View style={{ height: spacing[3] }} />
             <PillButton label="Entrar" onPress={enter} />
             <View style={styles.links}>
               <LinkButton label="Voltar" onPress={() => setStage('start')} />
@@ -125,37 +126,70 @@ function LinkButton({ label, onPress }: { label: string; onPress: () => void }) 
   );
 }
 
-/** Linha de formulário no estilo dos Ajustes do iOS: rótulo à esquerda, campo à direita. */
+/**
+ * Campo de login: rótulo visível em cima e a caixa embaixo, com ícone à esquerda. A borda fica
+ * azul enquanto o campo está em foco; a senha tem o olho para mostrar/esconder.
+ */
 function Field({
   label,
+  icon,
   placeholder,
   secure,
   keyboard,
 }: {
   label: string;
+  icon: IconName;
   placeholder: string;
   secure?: boolean;
   keyboard?: 'email-address';
 }) {
   const c = useColors();
+  const [focused, setFocused] = useState(false);
+  const [hidden, setHidden] = useState(!!secure);
   return (
-    <View style={styles.field}>
-      <Text variant="body" style={{ width: 120, fontSize: 28 }}>
+    <View style={{ gap: spacing[2] }}>
+      <Text variant="subhead" tone="secondary" style={styles.label}>
         {label}
       </Text>
-      <TextInput
-        placeholder={placeholder}
-        placeholderTextColor={c.textTertiary}
-        secureTextEntry={secure}
-        keyboardType={keyboard}
-        autoCapitalize="none"
-        autoCorrect={false}
+      <View
         style={[
-          type.body,
-          { flex: 1, minWidth: 0, color: c.text, height: '100%', fontSize: 28 },
-          (Platform.OS === 'web' ? { outlineStyle: 'none' } : null) as object,
+          styles.field,
+          { backgroundColor: c.grouped, borderColor: focused ? c.accent : c.separator },
         ]}
-      />
+      >
+        <Icon name={icon} size={36} color={focused ? c.accent : c.textSecondary} />
+        <TextInput
+          accessibilityLabel={label}
+          placeholder={placeholder}
+          placeholderTextColor={c.textTertiary}
+          secureTextEntry={hidden}
+          keyboardType={keyboard}
+          autoCapitalize="none"
+          autoCorrect={false}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          style={[
+            type.body,
+            styles.input,
+            { color: c.text },
+            (Platform.OS === 'web' ? { outlineStyle: 'none' } : null) as object,
+          ]}
+        />
+        {secure && (
+          <Touchable
+            accessibilityRole="button"
+            accessibilityLabel={hidden ? 'Mostrar senha' : 'Esconder senha'}
+            onPress={() => setHidden((h) => !h)}
+            style={styles.eye}
+          >
+            <Icon
+              name={hidden ? 'eye-outline' : 'eye-off-outline'}
+              size={36}
+              color={c.textSecondary}
+            />
+          </Touchable>
+        )}
+      </View>
     </View>
   );
 }
@@ -205,19 +239,25 @@ function MockQr({ size }: { size: number }) {
   );
 }
 
-/** Grupo dos campos: mesma curva da pílula (raio = metade da altura do campo). */
+/** Campos com a mesma altura da pílula "Entrar"; cantos de 28 (arredondados, sem virar pílula). */
 const FIELD_H = 100;
-const GROUP_R = 34;
+const FIELD_R = 28;
 
 const styles = StyleSheet.create({
-  group: { borderRadius: GROUP_R, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth },
+  fields: { gap: spacing[5] },
+  label: { fontSize: 24, lineHeight: 30, paddingLeft: spacing[2] },
   field: {
     height: FIELD_H,
+    borderRadius: FIELD_R,
+    borderWidth: 2,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing[8],
+    gap: spacing[4],
+    paddingLeft: spacing[6],
+    paddingRight: spacing[3],
   },
-  separator: { height: StyleSheet.hairlineWidth, marginLeft: spacing[8] },
+  input: { flex: 1, minWidth: 0, height: '100%', fontSize: 30 },
+  eye: { width: 76, height: 76, alignItems: 'center', justifyContent: 'center' },
   links: { flexDirection: 'row', justifyContent: 'space-between' },
   link: { height: 72, justifyContent: 'center', paddingHorizontal: spacing[2] },
   legalText: { fontSize: 24, lineHeight: 30 },

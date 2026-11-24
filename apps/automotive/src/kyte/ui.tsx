@@ -51,6 +51,7 @@ export function useKySize() {
         small: 16,
         icon: 30,
         rowH: 92,
+        thumb: 76,
         pad: 22,
         radius: 16,
       }
@@ -58,13 +59,15 @@ export function useKySize() {
       {
         phone,
         title: 50,
-        big: 40,
-        body: 31,
-        row: 34,
-        sub: 27,
-        small: 23,
-        icon: 44,
-        rowH: 116,
+        big: 42,
+        body: 33,
+        row: 40,
+        sub: 29,
+        small: 24,
+        icon: 46,
+        // Linhas de lista (produtos, clientes, venda) bem altas: alvo de toque de 148.
+        rowH: 148,
+        thumb: 116,
         pad: 32,
         radius: 24,
       };
@@ -352,12 +355,23 @@ export function Tabs<K extends string>({
 }
 
 /** Miniatura do produto: a foto, ou o começo do nome num quadrado escuro (como no Kyte). */
-export function Thumb({ image, name, size }: { image: string; name: string; size: number }) {
+export function Thumb({
+  image,
+  name,
+  size,
+  radius = 10,
+}: {
+  image: string;
+  name: string;
+  size: number;
+  /** Raio concêntrico com a linha que contém a miniatura. */
+  radius?: number;
+}) {
   if (image)
     return (
       <Image
         source={{ uri: image }}
-        style={{ width: size, height: size, borderRadius: 10, backgroundColor: KY.line }}
+        style={{ width: size, height: size, borderRadius: radius, backgroundColor: KY.line }}
       />
     );
   return (
@@ -365,7 +379,7 @@ export function Thumb({ image, name, size }: { image: string; name: string; size
       style={{
         width: size,
         height: size,
-        borderRadius: 10,
+        borderRadius: radius,
         backgroundColor: '#525D6E',
         alignItems: 'center',
         justifyContent: 'center',

@@ -1455,11 +1455,14 @@ const styles = StyleSheet.create({
     gap: spacing[3],
     paddingHorizontal: spacing[5],
   },
+  // Título de seção: mais espaço em cima (separa do bloco anterior) que embaixo (fica junto
+  // do que ele nomeia), como nos títulos de seção do iOS.
   section: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[2],
-    marginTop: spacing[6],
+    marginTop: spacing[8],
+    marginBottom: spacing[4],
     alignSelf: 'flex-start',
   },
   shortcuts: { flexDirection: 'row', gap: spacing[4] },

@@ -24,6 +24,8 @@ export function OnboardingLayout({
   onSkip,
   footer,
   centered = false,
+  hero,
+  body,
 }: {
   /** Ilustração; `null` = tela só com marca, texto e ações (ex.: login). */
   scene: ReactNode | null;
@@ -38,6 +40,10 @@ export function OnboardingLayout({
   footer?: ReactNode;
   /** Sem ilustração: texto e ações juntos no meio da tela (formulários). */
   centered?: boolean;
+  /** No lugar do selo/logo, acima do título (ex.: ícone da permissão). */
+  hero?: ReactNode;
+  /** Conteúdo logo abaixo do texto (ex.: lista do que a permissão libera). */
+  body?: ReactNode;
 }) {
   const c = useColors();
   const phone = usePhone();
@@ -48,7 +54,9 @@ export function OnboardingLayout({
   const copy = (
     <View style={[styles.copy, mid ? styles.copyPhone : styles.copyCar]}>
       <Appear key={`b-${sceneKey}`} distance={12} style={mid ? styles.centerSelf : undefined}>
-        {badge ? (
+        {hero ? (
+          hero
+        ) : badge ? (
           <View style={[styles.badge, { backgroundColor: c.fill }]}>
             <Text variant="subhead" tone="accent" style={{ fontSize: 26, lineHeight: 32 }}>
               {badge}
@@ -79,6 +87,11 @@ export function OnboardingLayout({
           >
             {text}
           </Text>
+        </Appear>
+      ) : null}
+      {body ? (
+        <Appear key={`y-${sceneKey}`} delay={180} distance={14}>
+          {body}
         </Appear>
       ) : null}
     </View>

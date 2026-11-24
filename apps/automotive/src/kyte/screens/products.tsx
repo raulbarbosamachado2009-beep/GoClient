@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { FlatList, ScrollView, Share, View } from 'react-native';
 import { useTabBarSpace } from '../../layout/form-factor';
+import { concentric } from '../../theme';
 import { Touchable } from '../../ui/primitives';
 import { brl, fmtQty, type KyteProduct, norm } from '../model';
 import { useKyteList } from '../store';
@@ -87,7 +88,8 @@ export function ProductsScreen() {
 
 function ProductRow({ p, stock, onOpen }: { p: KyteProduct; stock: boolean; onOpen: () => void }) {
   const s = useKySize();
-  const thumb = s.phone ? 76 : 88;
+  // Miniatura concêntrica com a linha: raio da linha − (altura da linha − miniatura) / 2.
+  const inset = (s.rowH - s.thumb) / 2;
   return (
     <Touchable
       onPress={onOpen}
@@ -97,12 +99,13 @@ function ProductRow({ p, stock, onOpen }: { p: KyteProduct; stock: boolean; onOp
         alignItems: 'center',
         gap: 24,
         backgroundColor: KY.card,
-        borderRadius: 14,
-        paddingHorizontal: 22,
+        borderRadius: s.radius,
+        paddingLeft: inset,
+        paddingRight: s.pad,
         height: s.rowH,
       }}
     >
-      <Thumb image={p.image} name={p.name} size={thumb} />
+      <Thumb image={p.image} name={p.name} size={s.thumb} radius={concentric(s.radius, inset, 6)} />
       <Text size={s.row} weight="medium" lines={1} style={{ flex: 1 }}>
         {p.name}
       </Text>

@@ -5,7 +5,7 @@ Leia este arquivo antes de começar qualquer trabalho.
 
 ## Estado atual do app
 
-_Última atualização: 2026-11-24 10:11 — Mapa da multimídia em painel (mapa, destino e música lado a lado) e novo player do Spotify na multimídia._
+_Última atualização: 2026-11-24 10:45 — logo nova com abertura animada, barra lateral em painel flutuante, permissões refeitas e Kyte com linhas maiores._
 
 - **Automotive (`apps/automotive`)** é onde está quase todo o produto: Mapa (OSM + OpenRouteService,
   navegação com voz), Kyte (telas próprias sobre a janela do Kyte), Música (Spotify App Remote) e
@@ -14,6 +14,36 @@ _Última atualização: 2026-11-24 10:11 — Mapa da multimídia em painel (mapa
 - Regras de negócio em `packages/core` (com testes); visual só com `@goclient/design-tokens`.
 
 ## Mudanças
+
+### 2026-11-24 10:45 — 3ª rodada: logo nova, barra lateral, permissões, login, mapa e Kyte
+
+Pedido do usuário (thread "Melhorar o design e o onboarding do app", 3ª rodada).
+
+- **Logo nova** (imagem enviada pelo usuário): `assets/logo.png`, ícone do app, favicon,
+  tela de abertura e ícone adaptativo do Android.
+- **Abertura animada:** a logo aparece sozinha no centro, desliza para a esquerda e o nome
+  "GoClient" surge ao lado; depois tudo some e começa o onboarding.
+- **Barra lateral (multimídia) no estilo de painel de carro:** painel arredondado e flutuante
+  com hora e sinal em cima, os apps como ícones de app empilhados (Mapa, Spotify, Kyte, Lucas)
+  e Ajustes no pé; ícones com borda concêntrica ao painel. **Spotify e Kyte trocaram de lugar**
+  na barra lateral e na barra de abas do celular.
+- **Permissões refeitas:** saiu o quadro grande vazio. Agora: ícone com anéis pulsando,
+  título, uma frase sobre privacidade e uma lista do que a permissão libera (celular: tudo numa
+  coluna; multimídia: lista no quadro da esquerda).
+- **Login:** campos separados com rótulo em cima, ícone, borda azul em foco e olho para mostrar
+  a senha; mais espaço até o botão Entrar.
+- **Mapa na multimídia:** o cartão da música ficou baixo e foi para cima; o cartão do cliente
+  foi para baixo e é o maior, com última visita, última compra e pedido em aberto no meio.
+- **Mapa no celular:** o cartão da manobra no topo ficou menor (seta, distância e faixa de
+  chegada/tempo/km com valor e rótulo na mesma linha).
+- **Aba puxável:** títulos de seção ("Atalhos", "Recentes"…) com mais espaço em cima que
+  embaixo, junto do que nomeiam.
+- **Kyte na multimídia:** linhas de produtos, clientes e venda com 148 de altura, miniaturas de
+  116 e textos maiores; miniatura com borda concêntrica à linha.
+- Arquivos: `assets/*` (logo e ícones), `app/onboarding/index.tsx`, `app/onboarding/permissoes.tsx`,
+  `app/onboarding/login.tsx`, `onboarding/layout.tsx`, `onboarding/scenes.tsx`,
+  `shell/sidebar.tsx`, `shell/tab-bar.tsx`, `app/(main)/mapa.tsx`, `map/phone-sheet.tsx`,
+  `kyte/ui.tsx`, `kyte/screens/products.tsx`, `kyte/screens/sell.tsx`, `kyte/screens/clients.tsx`.
 
 ### 2026-11-24 10:11 — Ajustes pedidos depois do Preview: login, Rota, manobra, mapa e player
 

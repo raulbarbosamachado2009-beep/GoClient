@@ -167,8 +167,8 @@ function ClientRow({ c, onOpen }: { c: KyteCustomer; onOpen: () => void }) {
         alignItems: 'center',
         gap: 18,
         backgroundColor: KY.card,
-        borderRadius: 14,
-        paddingLeft: 26,
+        borderRadius: s.radius,
+        paddingLeft: s.pad,
         paddingRight: 14,
         height: s.rowH,
       }}

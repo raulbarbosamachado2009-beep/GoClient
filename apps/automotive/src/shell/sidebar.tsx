@@ -1,11 +1,12 @@
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { type Href, usePathname, useRouter } from 'expo-router';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { Animated, Easing, StyleSheet, View } from 'react-native';
 import { HavenaOrb } from '../havena/orb';
 import { HavenaPanel } from '../havena/panel';
 import { usePrototype } from '../prototype/state';
-import { layout, nativeDriver, spacing, useColors } from '../theme';
+import { concentric, layout, nativeDriver, spacing, useColors } from '../theme';
 import { LIVE_BLUR } from '../ui/blur-target';
 import { KyteLogo } from '../ui/brand';
 import { useSpring } from '../ui/motion';
@@ -23,116 +24,97 @@ interface Item {
 
 const ITEMS: Item[] = [
   { href: '/mapa', match: '/mapa', label: 'Mapa', glyph: 'mapa' },
-  { href: '/kyte', match: '/kyte', label: 'Kyte', glyph: 'kyte' },
   { href: '/musica', match: '/musica', label: 'Música' },
+  { href: '/kyte', match: '/kyte', label: 'Kyte', glyph: 'kyte' },
 ];
 
-// Barra ~50% mais larga que a primeira versão (pedidos do usuário): blocos e ícones maiores.
-const TILE_W = 168;
-const TILE_H = 124;
-const GAP = 12;
-const SLOT = TILE_H + GAP;
-
 /**
- * Barra lateral (referência enviada): cada app num bloco cinza arredondado com ícone de
- * contorno. O app ativo fica azul, com uma barra azul na borda esquerda; o destaque desliza
- * por mola até o item selecionado.
+ * Painel flutuante (referência: barra lateral do painel do carro): um bloco arredondado
+ * afastado das bordas, com a hora em cima, os apps como ícones de app empilhados e os
+ * Ajustes no pé. Bordas concêntricas: raio do painel − espaçamento = raio dos ícones.
  */
+const INSET = 16;
+const PANEL_W = layout.sidebarWidth - INSET * 2;
+const PANEL_R = 52;
+const PANEL_PAD = 22;
+const ICON = PANEL_W - PANEL_PAD * 2;
+const ICON_R = concentric(PANEL_R, PANEL_PAD);
+const GAP = 18;
+const SLOT = ICON + GAP;
+
 export function Sidebar() {
   const c = useColors();
   const pathname = usePathname();
   const router = useRouter();
-  const { setOverlay, nowPlaying, playing } = usePrototype();
-  // Fora da Música, o bloco do Spotify mostra a música tocando.
+  const { setOverlay, nowPlaying, playing, kyteOpen } = usePrototype();
+  // Fora da Música, o ícone do Spotify mostra a música tocando.
   const showPlaying = nowPlaying !== null && !pathname.startsWith('/musica');
   const activeIndex = ITEMS.findIndex((i) => pathname.startsWith(i.match));
   const settingsActive = pathname.startsWith('/configuracoes');
   const y = useSpring(Math.max(activeIndex, 0) * SLOT);
   const openHavena = () => setOverlay(<HavenaPanel onClose={() => setOverlay(null)} />);
 
-  // A barra acompanha a página aberta: clara no Kyte (fundo cinza-claro), preta no Spotify.
-  const onKyte = pathname.startsWith('/kyte');
-  const onMusic = pathname.startsWith('/musica');
+  // O painel acompanha a página aberta: claro no Kyte (fundo cinza-claro), escuro no resto.
+  // (Só depois de conectado: a tela de conexão do Kyte é escura.)
+  const onKyte = pathname.startsWith('/kyte') && kyteOpen;
   const dark = c.mode === 'dark' && !onKyte;
-  const tile = dark ? '#1C1C1F' : 'rgba(0,0,0,0.05)';
-  const selected = dark ? 'rgba(10,132,255,0.16)' : 'rgba(0,122,255,0.12)';
   const ink = dark ? '#F2F2F7' : '#1C1C1E';
+  const panelBg = onKyte
+    ? 'rgba(255,255,255,0.92)'
+    : LIVE_BLUR
+      ? dark
+        ? 'rgba(28,28,30,0.62)'
+        : 'rgba(255,255,255,0.6)'
+      : dark
+        ? 'rgba(28,28,30,0.96)'
+        : 'rgba(255,255,255,0.94)';
 
   return (
-    <View
-      style={[styles.bar, { borderRightColor: onKyte ? 'rgba(0,0,0,0.06)' : c.material.border }]}
-    >
-      <Blur radius={40} tint={c.material.tint} />
+    <View style={[styles.bar, { backgroundColor: onKyte ? '#EEF1F5' : c.background }]}>
       <View
-        style={[
-          StyleSheet.absoluteFill,
-          {
-            backgroundColor: onKyte
-              ? '#E4E8EE'
-              : onMusic && dark
-                ? '#0A0A0A'
-                : LIVE_BLUR
-                  ? dark
-                    ? 'rgba(10,10,12,0.62)'
-                    : 'rgba(240,240,244,0.6)'
-                  : dark
-                    ? 'rgba(14,14,16,0.94)'
-                    : 'rgba(244,244,247,0.94)',
-          },
-        ]}
-      />
+        style={[styles.panel, { borderColor: onKyte ? 'rgba(0,0,0,0.06)' : c.material.border }]}
+      >
+        <Blur radius={40} tint={c.material.tint} />
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: panelBg }]} />
 
-      <View style={styles.status}>
-        <Clock color={dark ? '#F2F2F7' : '#1C1C1E'} />
-      </View>
+        <View style={styles.status}>
+          <Clock color={ink} />
+          <View style={styles.signal}>
+            <Ionicons name="cellular" size={22} color={ink} />
+            <Ionicons name="battery-full" size={26} color={ink} />
+          </View>
+        </View>
 
-      <View style={{ height: ITEMS.length * SLOT + TILE_H }}>
-        {/* Fundo dos blocos, destaque deslizante e barra azul ficam atrás dos ícones. */}
-        {ITEMS.map((item, i) => (
-          <View
-            key={item.label}
-            style={[styles.tileBg, { top: i * SLOT, backgroundColor: tile }]}
-          />
-        ))}
-        <View style={[styles.tileBg, { top: ITEMS.length * SLOT, backgroundColor: tile }]} />
-        {activeIndex >= 0 && (
-          <>
-            <Animated.View
-              style={[styles.tileBg, { backgroundColor: selected, transform: [{ translateY: y }] }]}
-            />
+        <View style={{ height: (ITEMS.length + 1) * SLOT }}>
+          {activeIndex >= 0 && (
             <Animated.View
               style={[
                 styles.indicator,
                 { backgroundColor: c.accent, transform: [{ translateY: y }] },
               ]}
             />
-          </>
-        )}
-
-        {ITEMS.map((item, i) => {
-          const active = i === activeIndex;
-          const color = active ? c.accent : ink;
-          return (
+          )}
+          {ITEMS.map((item, i) => (
             <Tile
               key={item.label}
               top={i * SLOT}
               label={item.label}
-              selected={active}
+              selected={i === activeIndex}
               onPress={() => router.replace(item.href)}
             >
               {item.glyph === 'kyte' ? (
-                <KyteLogo size={70} />
+                <KyteLogo size={ICON} />
               ) : item.glyph ? (
-                <OutlineGlyph glyph={item.glyph} size={66} color={color} />
+                <View style={[styles.icon, { backgroundColor: c.accent }]}>
+                  <OutlineGlyph glyph={item.glyph} size={60} color="#FFFFFF" />
+                </View>
               ) : (
                 <MusicSwap
                   show={showPlaying}
                   logo={
-                    <FontAwesome5
-                      name="spotify"
-                      size={66}
-                      color={active ? c.accent : dark ? '#C7C7CC' : '#3A3A3C'}
-                    />
+                    <View style={[styles.icon, styles.spotify]}>
+                      <FontAwesome5 name="spotify" size={64} color="#1ED760" />
+                    </View>
                   }
                   playingTile={
                     nowPlaying && (
@@ -140,37 +122,36 @@ export function Sidebar() {
                         cover={nowPlaying.image}
                         tint={nowPlaying.tint}
                         playing={playing}
-                        width={TILE_W}
-                        height={TILE_H}
-                        radius={28}
+                        width={ICON}
+                        height={ICON}
+                        radius={ICON_R}
                       />
                     )
                   }
                 />
               )}
             </Tile>
-          );
-        })}
-        <Tile top={ITEMS.length * SLOT} label="Falar com o Lucas" onPress={openHavena}>
-          <HavenaOrb size={96} ambient />
-        </Tile>
-      </View>
+          ))}
+          <Tile top={ITEMS.length * SLOT} label="Falar com o Lucas" onPress={openHavena}>
+            <HavenaOrb size={ICON - 8} ambient />
+          </Tile>
+        </View>
 
-      <View style={{ flex: 1 }} />
+        <View style={{ flex: 1 }} />
 
-      <View style={{ height: TILE_H }}>
-        <View
-          style={[styles.tileBg, { top: 0, backgroundColor: settingsActive ? selected : tile }]}
-        />
-        {settingsActive && <View style={[styles.indicator, { backgroundColor: c.accent }]} />}
-        <Tile
-          top={0}
-          label="Ajustes"
-          selected={settingsActive}
-          onPress={() => router.replace('/configuracoes')}
-        >
-          <OutlineGlyph glyph="ajustes" size={66} color={settingsActive ? c.accent : ink} />
-        </Tile>
+        <View style={{ height: ICON }}>
+          {settingsActive && <View style={[styles.indicator, { backgroundColor: c.accent }]} />}
+          <Tile
+            top={0}
+            label="Ajustes"
+            selected={settingsActive}
+            onPress={() => router.replace('/configuracoes')}
+          >
+            <View style={[styles.icon, { backgroundColor: dark ? '#3A3A3C' : '#8E8E93' }]}>
+              <OutlineGlyph glyph="ajustes" size={60} color="#FFFFFF" />
+            </View>
+          </Tile>
+        </View>
       </View>
     </View>
   );
@@ -248,7 +229,7 @@ function Tile({
       accessibilityLabel={label}
       accessibilityState={{ selected }}
       onPress={onPress}
-      scaleTo={0.92}
+      scaleTo={0.9}
       style={[styles.tile, { top }]}
     >
       {children}
@@ -256,37 +237,43 @@ function Tile({
   );
 }
 
-const LEFT = (layout.sidebarWidth - TILE_W) / 2;
-
 const styles = StyleSheet.create({
-  bar: {
+  bar: { position: 'absolute', left: 0, top: 0, bottom: 0, width: layout.sidebarWidth },
+  panel: {
     position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: layout.sidebarWidth,
-    paddingTop: spacing[5],
-    paddingBottom: spacing[4],
+    left: INSET,
+    top: INSET,
+    bottom: INSET,
+    width: PANEL_W,
+    borderRadius: PANEL_R,
+    borderWidth: StyleSheet.hairlineWidth,
     overflow: 'hidden',
-    borderRightWidth: StyleSheet.hairlineWidth,
+    paddingTop: spacing[5],
+    paddingBottom: PANEL_PAD,
   },
-  status: { alignItems: 'center', gap: 2, marginBottom: spacing[5] },
-  tileBg: {
-    position: 'absolute',
-    left: LEFT,
-    width: TILE_W,
-    height: TILE_H,
-    borderRadius: 24,
-  },
+  status: { alignItems: 'center', gap: 4, marginBottom: spacing[5] },
+  signal: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   tile: {
     position: 'absolute',
-    left: LEFT,
-    width: TILE_W,
-    height: TILE_H,
+    left: PANEL_PAD,
+    width: ICON,
+    height: ICON,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  swap: { width: TILE_W, height: TILE_H },
+  icon: {
+    width: ICON,
+    height: ICON,
+    borderRadius: ICON_R,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  spotify: {
+    backgroundColor: '#000000',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.14)',
+  },
+  swap: { width: ICON, height: ICON },
   swapLayer: {
     position: 'absolute',
     top: 0,
@@ -296,14 +283,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // Marca do app aberto: traço curto na borda esquerda do painel, que desliza por mola.
   indicator: {
     position: 'absolute',
     left: 0,
-    top: 0,
+    top: ICON / 2 - 22,
     width: 6,
-    height: TILE_H,
-    borderTopRightRadius: 4,
-    borderBottomRightRadius: 4,
+    height: 44,
+    borderTopRightRadius: 3,
+    borderBottomRightRadius: 3,
   },
 });
 

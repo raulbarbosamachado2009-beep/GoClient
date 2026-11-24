@@ -30,9 +30,9 @@ interface TabDef {
 
 const TABS: TabDef[] = [
   { key: 'mapa', label: 'Mapa', href: '/mapa' },
-  { key: 'musica', label: 'Spotify', href: '/musica' },
-  { key: 'havena', label: 'Falar com o Lucas' },
   { key: 'kyte', label: 'Kyte', href: '/kyte' },
+  { key: 'havena', label: 'Falar com o Lucas' },
+  { key: 'musica', label: 'Spotify', href: '/musica' },
   { key: 'ajustes', label: 'Ajustes', href: '/configuracoes' },
 ];
 
@@ -55,9 +55,9 @@ export function TabBar() {
   const is = (p: string) => pathname.startsWith(p);
   const active = MAP_ROUTES.some(is)
     ? 0
-    : is('/musica')
+    : is('/kyte')
       ? 1
-      : is('/kyte')
+      : is('/musica')
         ? 3
         : is('/configuracoes')
           ? 4

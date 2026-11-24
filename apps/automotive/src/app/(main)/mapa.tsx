@@ -305,9 +305,12 @@ export default function MapScreen() {
         </BlurTargetProvider>
       </View>
 
-      {/* Coluna da direita: o cartão do destino em cima e a música embaixo, que ocupa o resto
-          (com um cliente escolhido o cartão de cima é baixo e a música ganha capa maior). */}
+      {/* Coluna da direita: a música num cartão baixo em cima e o destino (cliente ou "Para
+          onde vamos?") embaixo, ocupando o resto — o cartão do cliente é o maior. */}
       <View style={styles.side}>
+        <Appear delay={160} distance={40} fade={false} style={{ height: NOW_H }}>
+          <NowPlayingCard />
+        </Appear>
         <Appear
           key={`${mode}:${client?.id ?? ''}`}
           axis="x"
@@ -315,7 +318,7 @@ export default function MapScreen() {
           delay={80}
           duration={520}
           fade={false}
-          style={client ? undefined : { flex: 1 }}
+          style={{ flex: 1 }}
         >
           {client ? (
             <ClientCard
@@ -330,14 +333,6 @@ export default function MapScreen() {
             <WelcomeCard />
           )}
         </Appear>
-        <Appear
-          delay={160}
-          distance={40}
-          fade={false}
-          style={client ? { flex: 1 } : { height: NOW_H }}
-        >
-          <NowPlayingCard tall={!!client} />
-        </Appear>
       </View>
     </View>
   );
@@ -347,61 +342,47 @@ export default function MapScreen() {
  * Cartão da música tocando (painel de bordo): capa, nome, artista, progresso e os controles
  * anterior / tocar-pausar / próxima. Tocar na capa ou no nome abre o player.
  */
-function NowPlayingCard({ tall }: { tall: boolean }) {
+function NowPlayingCard() {
   const c = useColors();
   const router = useRouter();
-  const { togglePlaying, next, previous } = usePrototype();
+  const { togglePlaying, next } = usePrototype();
   const np = useNowPlaying();
   const { track, playing } = np;
   return (
-    <Material style={[styles.now, tall && { justifyContent: 'space-between' }]}>
-      <Touchable
-        accessibilityRole="button"
-        accessibilityLabel={`Abrir o player: ${track.title}`}
-        onPress={() => router.push('/player')}
-        style={styles.nowHead}
-      >
-        <Cover color={track.cover} image={track.image} size={tall ? 208 : 96} radius={NOW_INNER} />
-        <View style={{ flex: 1, gap: 2 }}>
-          <Text variant={tall ? 'title2' : 'headline'} numberOfLines={tall ? 2 : 1}>
-            {track.title}
-          </Text>
-          <Text variant="callout" tone="secondary" numberOfLines={1}>
-            {track.artists}
-          </Text>
-        </View>
-      </Touchable>
-      <ProgressBar
-        np={np}
-        height={6}
-        thumb={0}
-        labelColor={c.textSecondary}
-        labelVariant="caption"
-        showLabels={tall}
-      />
-      <View style={styles.nowControls}>
-        <IconButton
-          icon="play-back"
-          size={88}
-          iconSize={48}
-          accessibilityLabel="Anterior"
-          onPress={previous}
-        />
+    <Material style={styles.now}>
+      <View style={styles.nowHead}>
+        <Touchable
+          accessibilityRole="button"
+          accessibilityLabel={`Abrir o player: ${track.title}`}
+          onPress={() => router.push('/player')}
+          style={styles.nowOpen}
+        >
+          <Cover color={track.cover} image={track.image} size={88} radius={NOW_INNER} />
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text variant="headline" numberOfLines={1}>
+              {track.title}
+            </Text>
+            <Text variant="callout" tone="secondary" numberOfLines={1}>
+              {track.artists}
+            </Text>
+          </View>
+        </Touchable>
         <IconButton
           icon={playing ? 'pause' : 'play'}
-          size={88}
-          iconSize={52}
+          size={76}
+          iconSize={46}
           accessibilityLabel={playing ? 'Pausar' : 'Tocar'}
           onPress={togglePlaying}
         />
         <IconButton
           icon="play-forward"
-          size={88}
-          iconSize={48}
+          size={76}
+          iconSize={42}
           accessibilityLabel="Próxima"
           onPress={next}
         />
       </View>
+      <ProgressBar np={np} height={6} thumb={0} labelColor={c.textSecondary} showLabels={false} />
     </Material>
   );
 }
@@ -438,9 +419,12 @@ function Guidance({ trip }: { trip?: TripInfo }) {
     >
       <Material style={phone && trip ? styles.guidanceStack : styles.guidance}>
         <View style={styles.maneuver}>
-          <Icon name="return-up-forward" size={64} color={c.text} />
+          <Icon name="return-up-forward" size={phone ? 48 : 64} color={c.text} />
           <View style={{ flex: phone ? 1 : undefined }}>
-            <Text variant="largeTitle" style={{ fontSize: 48, lineHeight: 54 }}>
+            <Text
+              variant="largeTitle"
+              style={phone ? { fontSize: 40, lineHeight: 46 } : { fontSize: 48, lineHeight: 54 }}
+            >
               350 m
             </Text>
             <Text variant="headline" tone="secondary" numberOfLines={1}>
@@ -479,11 +463,11 @@ function TripStrip({ trip }: { trip: TripInfo }) {
             variant="title2"
             numberOfLines={1}
             adjustsFontSizeToFit
-            style={{ fontSize: 36, lineHeight: 42 }}
+            style={{ fontSize: 30, lineHeight: 36 }}
           >
             {it.value}
           </Text>
-          <Text variant="callout" tone="secondary" numberOfLines={1} style={{ fontSize: 24 }}>
+          <Text variant="callout" tone="secondary" numberOfLines={1} style={{ fontSize: 21 }}>
             {it.label}
           </Text>
         </View>
@@ -525,9 +509,14 @@ function LiveGuidance({
         <View style={styles.maneuver}>
           {next ? (
             <>
-              <Icon name={maneuverIcon(next.type)} size={64} color={c.text} />
+              <Icon name={maneuverIcon(next.type)} size={phone ? 48 : 64} color={c.text} />
               <View style={{ flexShrink: 1, flex: phone ? 1 : undefined }}>
-                <Text variant="largeTitle" style={{ fontSize: 48, lineHeight: 54 }}>
+                <Text
+                  variant="largeTitle"
+                  style={
+                    phone ? { fontSize: 40, lineHeight: 46 } : { fontSize: 48, lineHeight: 54 }
+                  }
+                >
                   {formatStepDistance(guidance.toNext)}
                 </Text>
                 <Text variant="headline" tone="secondary" numberOfLines={2}>
@@ -669,42 +658,71 @@ function ClientCard({
 
   return (
     <Material style={styles.compact}>
-      <Appear distance={10} style={{ gap: spacing[5] }}>
-        {stopLabel && (
-          <Text variant="footnote" tone="secondary">
-            {stopLabel}
-          </Text>
-        )}
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[4] }}>
-          <Avatar name={client.name} size={72} radius={COMPACT_INNER} />
-          <View style={{ flex: 1, gap: 2 }}>
-            <Text variant="title2" numberOfLines={2}>
-              {client.tradeName || client.name}
+      <Appear distance={10} style={styles.compactBody}>
+        <View style={{ gap: spacing[4] }}>
+          {stopLabel && (
+            <Text variant="footnote" tone="secondary">
+              {stopLabel}
             </Text>
-            <Text variant="subhead" tone="secondary" numberOfLines={2}>
-              {[client.address, district].filter(Boolean).join(' · ')}
-            </Text>
+          )}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[4] }}>
+            <Avatar name={client.name} size={104} radius={COMPACT_INNER} />
+            <View style={{ flex: 1, gap: 4 }}>
+              <Text variant="title" numberOfLines={2}>
+                {client.tradeName || client.name}
+              </Text>
+              <Text variant="subhead" tone="secondary" numberOfLines={2}>
+                {[client.address, district].filter(Boolean).join(' · ')}
+              </Text>
+            </View>
           </View>
         </View>
-        <View style={{ flexDirection: 'row', gap: spacing[3] }}>
-          {client.phone ? square('call', 'Ligar', () => callPhone(client.phone)) : null}
-          {client.phone
-            ? square('logo-whatsapp', 'WhatsApp', () => openWhatsApp(client.phone))
-            : null}
-          <View style={{ flex: 1 }} />
-          {onPrevious ? square('chevron-back', 'Cliente anterior', onPrevious) : null}
-          {onNext ? square('chevron-forward', 'Próximo cliente', onNext) : null}
+        {/* Resumo do cliente no meio do cartão (dados do Kyte). */}
+        <View style={[styles.facts, { backgroundColor: tile }]}>
+          {[
+            { label: 'Última visita', value: client.lastVisit },
+            { label: 'Última compra', value: client.lastPurchaseTotal },
+            ...(client.order.length > 0
+              ? [{ label: 'Pedido em aberto', value: `${client.order.length} itens` }]
+              : []),
+          ].map((f, i) => (
+            <View
+              key={f.label}
+              style={[
+                styles.fact,
+                i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.separator },
+              ]}
+            >
+              <Text variant="callout" tone="secondary" numberOfLines={1}>
+                {f.label}
+              </Text>
+              <Text variant="headline" numberOfLines={1}>
+                {f.value}
+              </Text>
+            </View>
+          ))}
         </View>
-        {mode === 'explore' && (
-          <Button
-            label="IR"
-            icon="navigate"
-            style={{ borderRadius: COMPACT_INNER }}
-            onPress={() =>
-              router.replace({ pathname: '/mapa', params: { rota: 'cliente', id: client.id } })
-            }
-          />
-        )}
+        <View style={{ gap: spacing[4] }}>
+          <View style={{ flexDirection: 'row', gap: spacing[3] }}>
+            {client.phone ? square('call', 'Ligar', () => callPhone(client.phone)) : null}
+            {client.phone
+              ? square('logo-whatsapp', 'WhatsApp', () => openWhatsApp(client.phone))
+              : null}
+            <View style={{ flex: 1 }} />
+            {onPrevious ? square('chevron-back', 'Cliente anterior', onPrevious) : null}
+            {onNext ? square('chevron-forward', 'Próximo cliente', onNext) : null}
+          </View>
+          {mode === 'explore' && (
+            <Button
+              label="IR"
+              icon="navigate"
+              style={{ borderRadius: COMPACT_INNER }}
+              onPress={() =>
+                router.replace({ pathname: '/mapa', params: { rota: 'cliente', id: client.id } })
+              }
+            />
+          )}
+        </View>
       </Appear>
     </Material>
   );
@@ -775,7 +793,7 @@ const TRIP_INNER = concentric(TRIP_R, spacing[4]);
 const LEFT = layout.sidebarWidth + layout.gutter;
 /** Coluna de cartões à direita do mapa e o cartão da música (painel de bordo). */
 const SIDE_W = 480;
-const NOW_H = 288;
+const NOW_H = 176;
 const NOW_R = 48;
 const NOW_INNER = concentric(NOW_R, spacing[6]);
 const MAP_R = 48;
@@ -813,9 +831,15 @@ const styles = StyleSheet.create({
     width: SIDE_W,
     gap: layout.gutter,
   },
-  now: { flex: 1, borderRadius: NOW_R, padding: spacing[6], gap: spacing[5] },
-  nowHead: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
-  nowControls: { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center' },
+  now: {
+    flex: 1,
+    borderRadius: NOW_R,
+    padding: spacing[6],
+    gap: spacing[4],
+    justifyContent: 'center',
+  },
+  nowOpen: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
+  nowHead: { flexDirection: 'row', alignItems: 'center', gap: spacing[1] },
   search: {
     height: 80,
     width: 500,
@@ -828,16 +852,25 @@ const styles = StyleSheet.create({
   maneuver: { flexDirection: 'row', alignItems: 'center', gap: spacing[6] },
   // Celular: manobra em cima e a faixa de chegada/tempo/distância embaixo.
   guidanceStack: {
-    paddingTop: spacing[5],
-    paddingHorizontal: spacing[6],
+    paddingTop: spacing[4],
+    paddingHorizontal: spacing[5],
     borderRadius: layout.radius.xl,
   },
   strip: {
     flexDirection: 'row',
-    marginTop: spacing[4],
+    marginTop: spacing[3],
     borderTopWidth: StyleSheet.hairlineWidth,
   },
-  stripItem: { flex: 1, alignItems: 'center', paddingVertical: spacing[3], minWidth: 0 },
+  // Valor e rótulo na mesma linha ("11:58 chegada"): a faixa fica com uma linha só de altura.
+  stripItem: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'center',
+    gap: spacing[2],
+    paddingVertical: spacing[3],
+    minWidth: 0,
+  },
   guidance: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -857,7 +890,17 @@ const styles = StyleSheet.create({
     borderRadius: TRIP_R,
   },
   card: { flex: 1, borderRadius: 40, padding: spacing[8] },
-  compact: { borderRadius: COMPACT_R, padding: spacing[6] },
+  compact: { flex: 1, borderRadius: COMPACT_R, padding: spacing[6] },
+  // Cabeçalho em cima e os botões no pé do cartão (que ocupa a coluna até embaixo).
+  facts: { borderRadius: COMPACT_INNER, paddingHorizontal: spacing[5] },
+  fact: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing[3],
+    paddingVertical: spacing[3],
+  },
+  compactBody: { flex: 1, gap: spacing[5], justifyContent: 'space-between' },
   welcome: {
     flex: 1,
     borderRadius: WELCOME_R,

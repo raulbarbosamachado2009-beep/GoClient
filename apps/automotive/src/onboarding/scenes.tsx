@@ -377,14 +377,18 @@ function Bubble({
 
 // ─── Permissão (ícone grande com anel pulsando) ─────────────────────────────────────────
 
-export function PermissionScene({ icon }: { icon: IconName }) {
+/**
+ * Ícone da permissão (sem quadro): bloco arredondado como um ícone de app, com dois anéis
+ * pulsando em volta. Fica acima do título nas telas de permissão.
+ */
+export function PermissionHero({ icon }: { icon: IconName }) {
   const c = useColors();
   const pulse = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     const loop = Animated.loop(
       Animated.timing(pulse, {
         toValue: 1,
-        duration: 2200,
+        duration: 2400,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: nativeDriver,
       }),
@@ -392,20 +396,23 @@ export function PermissionScene({ icon }: { icon: IconName }) {
     loop.start();
     return () => loop.stop();
   }, [pulse]);
-  const enter = useEnter(120);
+  const enter = useEnter(80);
   return (
-    <View style={[styles.box, { alignItems: 'center', justifyContent: 'center' }]}>
+    <View style={styles.hero}>
       {[0, 1].map((k) => (
         <Animated.View
           key={k}
           style={[
-            styles.ring,
+            styles.heroRing,
             {
               borderColor: c.accent,
-              opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.5 - k * 0.2, 0] }),
+              opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.45 - k * 0.15, 0] }),
               transform: [
                 {
-                  scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.9 + k * 0.4] }),
+                  scale: pulse.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [1, 1.45 + k * 0.25],
+                  }),
                 },
               ],
             },
@@ -414,7 +421,7 @@ export function PermissionScene({ icon }: { icon: IconName }) {
       ))}
       <Animated.View
         style={[
-          styles.permIcon,
+          styles.heroIcon,
           {
             backgroundColor: c.accent,
             opacity: enter,
@@ -424,7 +431,7 @@ export function PermissionScene({ icon }: { icon: IconName }) {
           },
         ]}
       >
-        <Icon name={icon} size={88} color="#FFFFFF" />
+        <Icon name={icon} size={72} color="#FFFFFF" />
       </Animated.View>
     </View>
   );
@@ -528,18 +535,13 @@ const styles = StyleSheet.create({
   },
   bubbles: { alignSelf: 'stretch', paddingHorizontal: 24, marginTop: 28, gap: 14 },
   bubble: { maxWidth: 420, paddingHorizontal: 22, paddingVertical: 14, borderRadius: 26 },
-  ring: {
-    position: 'absolute',
-    width: 176,
-    height: 176,
-    borderRadius: 88,
-    borderWidth: 3,
-  },
-  permIcon: {
-    width: 176,
-    height: 176,
-    borderRadius: 88,
+  hero: { width: 200, height: 200, alignItems: 'center', justifyContent: 'center' },
+  heroIcon: {
+    width: 132,
+    height: 132,
+    borderRadius: 34,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  heroRing: { position: 'absolute', width: 132, height: 132, borderRadius: 34, borderWidth: 2 },
 });
