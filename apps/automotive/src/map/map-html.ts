@@ -115,6 +115,9 @@ export function mapHtml(dark: boolean): string {
 <html><head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<link rel="preconnect" href="https://tiles.openfreemap.org" crossorigin />
+<link rel="preconnect" href="https://unpkg.com" crossorigin />
+<link rel="preload" as="script" href="https://unpkg.com/maplibre-gl@${VERSION}/dist/maplibre-gl.js" crossorigin />
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@${VERSION}/dist/maplibre-gl.css"
   onerror="this.href='https://cdn.jsdelivr.net/npm/maplibre-gl@${VERSION}/dist/maplibre-gl.css'" />
 <style>
@@ -163,14 +166,27 @@ export function mapHtml(dark: boolean): string {
   var state = null, map = null, me = null, markers = {}, lastRoute = '', centered = false, wasFollow = false;
   // Navegando: zoom escolhido pela pessoa (pinça ou botões) e pausa quando ela arrasta o mapa.
   var followZoom = 17, paused = false;
-  window.__gc = function (s) { state = s; if (map && map.loaded()) apply(); };
+  var styled = false;
+  window.__gc = function (s) { state = s; if (map && styled) apply(); };
+  // Carregamento rápido: o estilo é pedido junto com a biblioteca (não depois dela) e fica
+  // guardado no aparelho; da segunda vez em diante o mapa abre com o estilo salvo na hora e
+  // a cópia é atualizada por trás.
+  var STYLE_KEY = 'gc-style-v1';
+  var styleJson = null, libReady = false;
+  try { styleJson = JSON.parse(localStorage.getItem(STYLE_KEY) || 'null'); } catch (e) {}
+  fetch('${style}').then(function (r) { return r.json(); })
+    .then(function (st) {
+      try { localStorage.setItem(STYLE_KEY, JSON.stringify(st)); } catch (e) {}
+      if (!styleJson) { styleJson = st; start(); }
+    })
+    .catch(function () { if (!styleJson) { styleJson = '${style}'; start(); } });
   load('https://unpkg.com/maplibre-gl@${VERSION}/dist/maplibre-gl.js',
-       'https://cdn.jsdelivr.net/npm/maplibre-gl@${VERSION}/dist/maplibre-gl.js', start);
+       'https://cdn.jsdelivr.net/npm/maplibre-gl@${VERSION}/dist/maplibre-gl.js',
+       function () { libReady = true; start(); });
 
   function start() {
-    fetch('${style}').then(function (r) { return r.json(); })
-      .then(function (st) { create(styleFor(st, ${dark})); })
-      .catch(function () { create('${style}'); });
+    if (!libReady || !styleJson || map) return;
+    create(typeof styleJson === 'string' ? styleJson : styleFor(JSON.parse(JSON.stringify(styleJson)), ${dark}));
   }
 ${NIGHT_STYLE}
   // Abre onde a pessoa estava da última vez (até o GPS responder), nunca numa cidade fixa.
@@ -180,13 +196,19 @@ ${NIGHT_STYLE}
     map = new maplibregl.Map({
       container: 'map', style: st, center: saved ? saved.c : [-46.6333, -23.5505], zoom: saved ? saved.z : 11,
       attributionControl: { compact: true }, pitchWithRotate: false, dragRotate: false,
+      // Sem esmaecer os blocos ao chegar (aparecem na hora) e sem checar colisão de rótulos
+      // entre fontes diferentes (menos trabalho no primeiro desenho).
+      fadeDuration: 0, crossSourceCollisions: false, refreshExpiredTiles: false,
     });
     // Bolinhas coloridas dos lugares (desenhadas aqui, sem depender de imagens de fora).
     map.on('styleimagemissing', function (e) {
       var c = POI_COLORS[e.id.replace('gc-', '')];
       if (c) map.addImage(e.id, dot(c), { pixelRatio: 2 });
     });
-    map.on('load', function () {
+    // 'style.load' chega antes de 'load' (que espera todos os blocos): a rota e os pinos já
+    // entram enquanto o resto do mapa termina de chegar.
+    map.once('style.load', function () {
+      styled = true;
       map.addSource('route', { type: 'geojson', data: line([]) });
       map.addLayer({ id: 'route-case', type: 'line', source: 'route',
         layout: { 'line-join': 'round', 'line-cap': 'round' },
@@ -285,4 +307,26 @@ ${NIGHT_STYLE}
   }
 </script>
 </body></html>`;
+}
+
+/**
+ * Página invisível que só baixa a biblioteca e o estilo do mapa (para o cache das WebViews)
+ * e guarda o estilo no aparelho, com a mesma chave que a página do mapa usa.
+ */
+export function warmupHtml(): string {
+  const style = 'https://tiles.openfreemap.org/styles/liberty';
+  return `<!DOCTYPE html><html><head><meta charset="utf-8" /></head><body><script>
+  function done() { try { window.ReactNativeWebView.postMessage('warm'); } catch (e) {} }
+  var left = 2;
+  function one() { left -= 1; if (left <= 0) done(); }
+  fetch('${style}').then(function (r) { return r.json(); }).then(function (st) {
+    try { localStorage.setItem('gc-style-v1', JSON.stringify(st)); } catch (e) {}
+    // Sprite dos ícones também (é o próximo pedido do mapa).
+    if (st.sprite) { var s = Array.isArray(st.sprite) ? st.sprite[0].url : st.sprite;
+      fetch(s + '.json').catch(function () {}); fetch(s + '.png').catch(function () {}); }
+  }).catch(function () {}).then(one);
+  var sc = document.createElement('script');
+  sc.src = 'https://unpkg.com/maplibre-gl@${VERSION}/dist/maplibre-gl.js';
+  sc.onload = one; sc.onerror = one; document.head.appendChild(sc);
+</script></body></html>`;
 }

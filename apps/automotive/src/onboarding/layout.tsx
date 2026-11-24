@@ -95,7 +95,8 @@ export function OnboardingLayout({
         styles.page,
         { backgroundColor: c.background },
         phone
-          ? { paddingTop: insets.top + spacing[4], paddingBottom: insets.bottom + spacing[8] }
+          ? // O topo (câmera) já é afastado pela pilha de telas; aqui só a área de gestos.
+            { paddingTop: spacing[4], paddingBottom: insets.bottom + spacing[8] }
           : styles.pageCar,
       ]}
     >

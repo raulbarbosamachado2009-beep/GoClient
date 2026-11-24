@@ -18,3 +18,8 @@ export function LiveMap(_props: {
 }) {
   return null;
 }
+
+/** No Preview (web) não há mapa real para aquecer. */
+export function MapWarmup() {
+  return null;
+}
