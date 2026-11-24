@@ -79,7 +79,10 @@ Código: `apps/automotive/src/kyte/bridge.ts` (rotas e script injetado) e `src/a
   o Diagnóstico. Listas muito longas dependem do Kyte entregá-las à página (a janela rola a
   lista para trazer as páginas seguintes). Só no app Android; no Preview, dados de exemplo.
 
-## Havena (IA)
+## Lucas (IA, antes "Havena")
+
+O assistente se chama **Lucas** (voz masculina). No código, a pasta `havena/` e o canal
+`havena` das permissões mantêm o nome antigo, para não quebrar API e testes.
 
 - **Com internet:** modelo da NVIDIA (plano gratuito, ~40 pedidos/min; termos: uso de
   desenvolvimento). Escolhido por teste real com a chave: `nvidia/nemotron-3.5-super-vl-120b-a12b`
@@ -90,9 +93,21 @@ Código: `apps/automotive/src/kyte/bridge.ts` (rotas e script injetado) e `src/a
   o envio é um toque da pessoa), cadastrar cliente/produto no Kyte, resumo de vendas, abrir
   telas. **Rota, WhatsApp e cadastros sempre pedem confirmação** ("sim"/"não" ou botões).
 - **Voz:** reconhecimento do próprio Android (`expo-speech-recognition`, serviço do Google) e
-  fala do aparelho (`expo-speech`). Sem custo.
-- **Sem internet / sem chave:** comandos fixos (`havena/offline.ts`): passar, voltar, pausar,
-  continuar música; rota do dia; abrir telas.
+  fala do aparelho (`expo-speech`). Sem custo. A voz escolhida é pt-BR **masculina** instalada
+  no aparelho (`pickAssistantVoice`, @goclient/core); o sistema não informa o gênero, então a
+  escolha é pelos nomes conhecidos (Google `pt-br-x-ptd`, Samsung `SMTm`, Apple Felipe/Reed…).
+  Sem voz masculina instalada, usa a padrão com tom mais grave. Voz gerada por IA: fase futura.
+- **Escuta contínua** (`havena/listener.ts`): depois de ativado, o Lucas ouve até a pessoa
+  fechar; só desliga o microfone enquanto pensa e fala. A frase é entregue depois de ~1 s de
+  silêncio, juntando os trechos que o Android manda separados (antes chegava só "bom" de
+  "bom dia"). Modo contínuo exige Android 13+; abaixo disso, o microfone reabre sozinho.
+- **Ativação por voz** (`havena/wake.tsx`, ligada em Ajustes): com o app aberto, "olá/oi/ei
+  Lucas", "bom dia", "oh IA" e "olá, inteligência artificial" (`matchWakePhrase`, @goclient/core).
+  O que vem junto ("olá Lucas, que horas são") já é respondido. Só funciona com o app aberto e
+  na tela (o Android não deixa ouvir com o app fechado sem um serviço próprio).
+- **Sem internet / sem chave:** hora e data (`answerClock`), comandos fixos
+  (`havena/offline.ts`): passar, voltar, pausar, continuar música; rota do dia; abrir telas.
+  Com o modelo, a data e a hora de agora também vão no contexto.
 - **Próxima fase:** modelo local (llama.cpp) em multimídias com 6 GB ou mais de RAM.
 
 ## Spotify

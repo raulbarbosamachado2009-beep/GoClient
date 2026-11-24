@@ -1,24 +1,29 @@
+import { answerClock, matchWakePhrase, nowContext, stripWakePhrase } from '@goclient/core';
 import { useRouter } from 'expo-router';
-import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 import { useStops } from '../map/stops';
 import { usePrototype } from '../prototype/state';
 import { useSpotify } from '../spotify/provider';
 import { ask, BRAIN_ENABLED, type Message } from './brain';
+import { useContinuousListener } from './listener';
 import { fixedCommand, yesNo } from './offline';
 import { type HavenaDeps, runTool, TOOL_SPECS } from './tools';
 import { say, stopVoice, warmVoice } from './voice';
 
 /**
- * Uma conversa com a Havena: ouvir (reconhecimento de voz do aparelho), entender (comandos
+ * Uma conversa com o Lucas: ouvir (reconhecimento de voz do aparelho), entender (comandos
  * fixos ou modelo na nuvem), agir (ferramentas, com confirmação para o que muda algo) e
  * responder (voz do aparelho + legenda).
+ *
+ * A conversa não tem fim: depois de ativado, o Lucas fica ouvindo até a pessoa fechar. Ele só
+ * desliga o microfone enquanto pensa e fala (para não ouvir a própria voz) e volta a ouvir
+ * logo depois. Tocar no círculo enquanto ele fala interrompe e já abre o microfone.
  */
 export type Phase = 'listening' | 'thinking' | 'speaking' | 'idle';
 
-const SYSTEM = `Você é a Havena, assistente de voz e agente do app GoClient, usado dirigindo por uma família de vendedores de cosméticos que visita barbearias.
-Fale em português do Brasil, em no máximo duas frases curtas (a resposta é falada em voz alta). Nada de listas nem markdown.
+const SYSTEM = `Você é o Lucas, assistente de voz e agente do app GoClient, usado dirigindo por uma família de vendedores de cosméticos que visita barbearias.
+Você é homem; fale de si no masculino. Fale em português do Brasil, em no máximo duas frases curtas (a resposta é falada em voz alta). Nada de listas nem markdown.
 
 Seja um agente: entenda a intenção mesmo com palavras erradas, nomes mal ouvidos pelo reconhecimento de voz, frases incompletas ou gírias, e resolva usando as ferramentas em sequência, sem pedir à pessoa o que você mesmo pode descobrir. Só pergunte quando houver dúvida real entre opções, e então ofereça as opções em uma frase.
 
@@ -34,7 +39,17 @@ Para pôr um cliente na rota ou mandar WhatsApp, use o endereço/telefone que cl
 
 type Pending = { summary: string; run: () => Promise<string> };
 
-export function useHavenaSession(open: boolean) {
+/** Primeiras palavras quando o Lucas é chamado pela voz (ex.: "olá Lucas, que horas são"). */
+export interface WakeStart {
+  rest: string;
+  greeting: string;
+}
+
+/** Resposta quando a pessoa só chamou o Lucas ("bom dia" ganha bom dia de volta). */
+const greet = (greeting?: string) =>
+  greeting === 'Bom dia!' ? 'Bom dia! Pode falar.' : 'Oi! Pode falar.';
+
+export function useHavenaSession(open: boolean, wakeStart?: WakeStart) {
   const spotify = useSpotify();
   const proto = usePrototype();
   const stops = useStops();
@@ -49,117 +64,139 @@ export function useHavenaSession(open: boolean) {
   const [awaiting, setAwaiting] = useState(false);
   const history = useRef<Message[]>([]);
   const alive = useRef(true);
+  const busy = useRef(false);
+  const answerRef = useRef<(text: string, alternatives?: string[]) => Promise<void>>(
+    async () => {},
+  );
 
-  const speak = useCallback((text: string, then?: () => void) => {
-    setPhase('speaking');
-    // O texto aparece quando a voz começa (ou em 500 ms, se o aparelho não avisar), para
-    // as palavras e a fala andarem juntas.
-    let shown = false;
-    const show = () => {
-      if (shown || !alive.current) return;
-      shown = true;
-      setCaption(text);
-    };
-    const fallback = setTimeout(show, 500);
-    const finish = () => {
-      clearTimeout(fallback);
-      show();
+  const mic = useContinuousListener('session', {
+    onPartial: (t) => {
+      if (busy.current) return;
+      setHeard(t);
+    },
+    onUtterance: (t, alts) => {
+      if (busy.current) return;
+      void answerRef.current(t, alts);
+    },
+    onProblem: (p) => {
       if (!alive.current) return;
-      if (then) then();
-      else setPhase('idle');
-    };
-    say(text, {
-      onStart: () => {
-        clearTimeout(fallback);
-        show();
-      },
-      onDone: finish,
-      onStopped: () => {
-        clearTimeout(fallback);
-        if (alive.current) setPhase('idle');
-      },
-    });
-  }, []);
-
-  const listen = useCallback(async () => {
-    if (Platform.OS === 'web' && !('webkitSpeechRecognition' in globalThis)) {
-      setCaption('No Preview a Havena não ouve. No app instalado, é só falar.');
       setPhase('idle');
-      return;
-    }
-    const perm = await ExpoSpeechRecognitionModule.requestPermissionsAsync().catch(() => null);
-    if (!perm?.granted) {
-      setCaption('Preciso do microfone para ouvir você. Libere em Ajustes do aparelho.');
+      setCaption(
+        p === 'permission'
+          ? 'Preciso do microfone para ouvir você. Libere em Ajustes do aparelho.'
+          : 'Não consegui ouvir agora. Toque no círculo para tentar de novo.',
+      );
+    },
+  });
+
+  /** Volta a ouvir (a conversa continua até a pessoa fechar). */
+  const listen = useCallback(() => {
+    if (!alive.current) return;
+    busy.current = false;
+    if (Platform.OS === 'web' && !('webkitSpeechRecognition' in globalThis)) {
+      setCaption('No Preview o Lucas não ouve. No app instalado, é só falar.');
       setPhase('idle');
       return;
     }
     setHeard('');
-    setCaption('Ouvindo…');
     setPhase('listening');
-    ExpoSpeechRecognitionModule.start({
-      lang: 'pt-BR',
-      interimResults: true,
-      continuous: false,
-      addsPunctuation: true,
-      // Outras formas de entender a mesma fala (nomes e ruas costumam sair errados).
-      maxAlternatives: 3,
-    });
-  }, []);
+    mic.start();
+  }, [mic]);
 
-  // Ouve logo depois de falar (um instante para o alto-falante liberar o áudio).
-  const autoListen = useRef(false);
-  const listenSoon = useCallback(() => {
-    autoListen.current = true;
-    setTimeout(() => {
-      if (alive.current) void listen();
-    }, 350);
-  }, [listen]);
+  const speak = useCallback(
+    (text: string) => {
+      // Enquanto fala, o microfone fica desligado para não ouvir a própria voz.
+      busy.current = true;
+      mic.pause();
+      setPhase('speaking');
+      // O texto aparece quando a voz começa (ou em 500 ms, se o aparelho não avisar), para
+      // as palavras e a fala andarem juntas.
+      let shown = false;
+      const show = () => {
+        if (shown || !alive.current) return;
+        shown = true;
+        setCaption(text);
+      };
+      const fallback = setTimeout(show, 500);
+      // Depois de falar, volta a ouvir (um instante para o alto-falante liberar o áudio).
+      const after = () => setTimeout(listen, 350);
+      say(text, {
+        onStart: () => {
+          clearTimeout(fallback);
+          show();
+        },
+        onDone: () => {
+          clearTimeout(fallback);
+          show();
+          if (alive.current) after();
+        },
+        // Interrompido (toque no círculo): quem interrompeu já reabre o microfone.
+        onStopped: () => clearTimeout(fallback),
+      });
+    },
+    [mic, listen],
+  );
+
+  const think = useCallback(
+    (label: string) => {
+      busy.current = true;
+      mic.pause();
+      setPhase('thinking');
+      setCaption(label);
+    },
+    [mic],
+  );
 
   const confirmFlow = useCallback(
     (p: Pending) => {
       pending.current = p;
       setAwaiting(true);
-      speak(p.summary, () => listenSoon());
+      speak(p.summary);
     },
-    [speak, listenSoon],
+    [speak],
   );
 
   const answer = useCallback(
-    async (text: string, alternatives: string[] = []) => {
-      setHeard(text);
+    async (said: string, alternatives: string[] = []) => {
+      // "Olá Lucas, ..." no meio da conversa: só o pedido importa.
+      const wake = matchWakePhrase(said);
+      const text = wake ? wake.rest : said.trim();
+      setHeard(said);
+      if (!text) return speak(greet(wake?.greeting));
       // Resposta a uma confirmação pendente.
       if (pending.current) {
         const yn = yesNo(text);
         const p = pending.current;
-        if (yn === null) return speak('Não entendi. Diga sim ou não.', () => listenSoon());
+        if (yn === null) return speak('Não entendi. Diga sim ou não.');
         pending.current = null;
         setAwaiting(false);
         if (!yn) return speak('Tudo bem, cancelei.');
-        setPhase('thinking');
-        setCaption('Fazendo…');
+        think('Fazendo…');
         try {
           return speak(await p.run());
         } catch (e) {
           return speak(e instanceof Error ? e.message : 'Não consegui fazer isso agora.');
         }
       }
+      // Hora e data: na hora, sem internet.
+      const clock = answerClock(text, new Date());
+      if (clock) return speak(clock);
       // Comandos fixos (instantâneos e sem internet).
       const quick = fixedCommand(text, deps.current);
       if (quick) return speak(quick);
       if (!BRAIN_ENABLED)
         return speak(
-          'Sem a inteligência na nuvem, eu só entendo comandos simples, como passar a música.',
+          'Sem a inteligência na nuvem, eu só entendo comandos simples, como passar a música ou dizer as horas.',
         );
 
-      setPhase('thinking');
-      setCaption('Pensando…');
+      think('Pensando…');
       const msgs: Message[] = [
-        { role: 'system', content: SYSTEM },
+        { role: 'system', content: `${SYSTEM}\n\n${nowContext(new Date())}` },
         ...history.current.slice(-8),
         {
           role: 'user',
           content: alternatives.length
-            ? `${text}\n(o reconhecimento de voz também entendeu: ${alternatives.map((a) => `"${a}"`).join(', ')})`
+            ? `${text}\n(o reconhecimento de voz também entendeu: ${alternatives.map((a) => `"${stripWakePhrase(a)}"`).join(', ')})`
             : text,
         },
       ];
@@ -168,9 +205,7 @@ export function useHavenaSession(open: boolean) {
           const r = await ask(msgs, TOOL_SPECS);
           if (!r.calls.length) {
             history.current = [...msgs.slice(1), r.raw];
-            // Depois de responder, já escuta de novo: a pessoa pode responder a uma pergunta
-            // dela ou continuar a conversa (se ficar em silêncio, ela só para de ouvir).
-            return speak(r.text || 'Pronto.', () => listenSoon());
+            return speak(r.text || 'Pronto.');
           }
           msgs.push(r.raw);
           for (const call of r.calls) {
@@ -194,52 +229,30 @@ export function useHavenaSession(open: boolean) {
         return speak('Estou sem conexão com a inteligência agora. Tente um comando simples.');
       }
     },
-    [speak, confirmFlow, listenSoon],
+    [speak, think, confirmFlow],
   );
+  answerRef.current = answer;
 
-  useSpeechRecognitionEvent('result', (e) => {
-    const t = e.results[0]?.transcript ?? '';
-    setHeard(t);
-    if (e.isFinal && t.trim()) {
-      autoListen.current = false;
-      ExpoSpeechRecognitionModule.stop();
-      const alts = e.results
-        .slice(1)
-        .map((r) => r.transcript.trim())
-        .filter((a) => a && a !== t.trim());
-      void answer(t, alts);
-    }
-  });
-  useSpeechRecognitionEvent('error', (e) => {
-    if (!alive.current) return;
-    setPhase('idle');
-    // Escuta automática depois da fala dela: silêncio não é erro, mantém a última frase.
-    if (autoListen.current && (e.error === 'no-speech' || e.error === 'speech-timeout')) {
-      autoListen.current = false;
-      return;
-    }
-    setCaption(
-      e.error === 'no-speech' || e.error === 'speech-timeout'
-        ? 'Não ouvi nada. Toque no círculo para falar.'
-        : 'Não consegui ouvir agora. Toque no círculo para tentar de novo.',
-    );
-  });
-
-  // Abriu: já começa ouvindo. Fechou: para tudo.
+  // Abriu: já começa ouvindo (ou já responde, se foi chamado pela voz). Fechou: para tudo.
   // biome-ignore lint/correctness/useExhaustiveDependencies: só na abertura/fechamento
   useEffect(() => {
     alive.current = open;
     if (open) {
       warmVoice();
-      void listen();
+      if (wakeStart) {
+        // Toma o microfone já (a escuta da ativação para) e responde ao que veio junto.
+        mic.start();
+        if (wakeStart.rest) void answer(wakeStart.rest);
+        else speak(greet(wakeStart.greeting));
+      } else listen();
     } else {
       stopVoice();
-      ExpoSpeechRecognitionModule.abort?.();
+      mic.release();
     }
     return () => {
       alive.current = false;
       stopVoice();
-      ExpoSpeechRecognitionModule.abort?.();
+      mic.release();
     };
   }, [open]);
 
@@ -248,10 +261,10 @@ export function useHavenaSession(open: boolean) {
     caption,
     heard,
     awaiting,
-    /** Toque no círculo: fala de novo (ou interrompe a fala). */
+    /** Toque no círculo: interrompe a fala e ouve na hora. */
     talk: () => {
       if (phase === 'speaking') stopVoice();
-      void listen();
+      listen();
     },
     /** Botões Sim/Não da confirmação. */
     reply: (yes: boolean) => void answer(yes ? 'sim' : 'não'),

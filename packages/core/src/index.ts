@@ -1,3 +1,4 @@
+export * from './assistant';
 export * from './entities';
 export * from './havena';
 export * from './permissions';
