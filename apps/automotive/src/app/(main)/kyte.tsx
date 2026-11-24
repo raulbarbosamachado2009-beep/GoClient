@@ -7,6 +7,7 @@ import { AGENT_HELPERS, JOBS } from '../../kyte/agent-page';
 import type { KyteMessage } from '../../kyte/bridge';
 import { KyteConnect } from '../../kyte/connect';
 import { ClientDetail, ClientsScreen } from '../../kyte/screens/clients';
+import { NewClient, NewProduct } from '../../kyte/screens/create';
 import { DiagnosticScreen } from '../../kyte/screens/diagnostic';
 import { HistoryScreen } from '../../kyte/screens/history';
 import { HomeScreen } from '../../kyte/screens/home';
@@ -162,6 +163,8 @@ export default function KyteScreen() {
   else if (top?.type === 'sale') body = <SaleDetail id={top.id} />;
   else if (top?.type === 'receipt') body = <Receipt id={top.id} />;
   else if (top?.type === 'diagnostico') body = <DiagnosticScreen />;
+  else if (top?.type === 'newProduct') body = <NewProduct />;
+  else if (top?.type === 'newClient') body = <NewClient />;
   else if (top?.type === 'product') body = <ProductDetail id={top.id} />;
   else if (section === 'vender')
     body = (

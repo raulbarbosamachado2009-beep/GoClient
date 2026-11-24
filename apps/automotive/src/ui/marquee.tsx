@@ -15,10 +15,13 @@ export function Marquee({
   text,
   lineHeight,
   style,
+  center,
 }: {
   text: string;
   lineHeight: number;
   style?: StyleProp<TextStyle>;
+  /** Centraliza o texto quando ele cabe (sem carrossel). */
+  center?: boolean;
 }) {
   const [box, setBox] = useState(0);
   const [w, setW] = useState(0);
@@ -56,7 +59,10 @@ export function Marquee({
           transform: [{ translateX: x }],
         }}
       >
-        <View onLayout={(e) => setW(e.nativeEvent.layout.width)}>
+        <View
+          onLayout={(e) => setW(e.nativeEvent.layout.width)}
+          style={center && !moves ? { opacity: 0 } : undefined}
+        >
           <Text variant="subhead" tone="secondary" style={[style, { lineHeight }]}>
             {text}
           </Text>
@@ -67,6 +73,16 @@ export function Marquee({
           </Text>
         )}
       </Animated.View>
+      {center && !moves && (
+        <Text
+          variant="subhead"
+          tone="secondary"
+          numberOfLines={1}
+          style={[style, { lineHeight, textAlign: 'center' }]}
+        >
+          {text}
+        </Text>
+      )}
     </View>
   );
 }

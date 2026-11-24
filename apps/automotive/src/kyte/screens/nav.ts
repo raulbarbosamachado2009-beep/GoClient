@@ -17,7 +17,10 @@ export type Detail =
   | { type: 'sale'; id: string }
   | { type: 'product'; id: string }
   | { type: 'receipt'; id: string }
-  | { type: 'diagnostico' };
+  | { type: 'diagnostico' }
+  /** Cadastros manuais (só no celular, Regra 1). */
+  | { type: 'newProduct' }
+  | { type: 'newClient' };
 
 export interface KyteNav {
   section: Section;

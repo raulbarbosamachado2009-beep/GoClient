@@ -22,6 +22,7 @@ import {
   Text,
   useKySize,
 } from '../ui';
+import { useCanCreate } from './create';
 import { SaleRow } from './history';
 import { useKyteNav } from './nav';
 
@@ -31,6 +32,7 @@ type Filter = 'todos' | 'primeira' | 'negativo' | 'positivo';
 export function ClientsScreen() {
   const s = useKySize();
   const nav = useKyteNav();
+  const canCreate = useCanCreate('customer');
   const data = useKyteList('customer');
   const sales = useKyteList('sale');
   const [q, setQ] = useState('');
@@ -92,7 +94,14 @@ export function ClientsScreen() {
       <Header
         title={`Clientes${data.list ? ` (${data.list.length})` : ''}`}
         onMenu={nav.menu}
-        right={<PlusButton label="Cadastrar cliente com o Lucas" onPress={nav.havena} />}
+        right={
+          // Celular: abre o cadastro. Multimídia (Regra 1): cadastro só pelo Lucas.
+          canCreate ? (
+            <PlusButton label="Novo cliente" onPress={() => nav.open({ type: 'newClient' })} />
+          ) : (
+            <PlusButton label="Cadastrar cliente com o Lucas" onPress={nav.havena} />
+          )
+        }
       />
       <View style={{ paddingHorizontal: s.pad, gap: 14, paddingBottom: 14 }}>
         <SearchField value={q} onChange={setQ} placeholder="Procure por nome, email ou telefone" />

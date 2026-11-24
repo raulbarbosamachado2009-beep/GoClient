@@ -18,12 +18,14 @@ import {
   Thumb,
   useKySize,
 } from '../ui';
+import { useCanCreate } from './create';
 import { useKyteNav } from './nav';
 
 /** Produtos (print 6): abas Itens/Estoque, busca e a lista com foto, nome e preço. */
 export function ProductsScreen() {
   const s = useKySize();
   const nav = useKyteNav();
+  const canCreate = useCanCreate('product');
   const data = useKyteList('product');
   const [tab, setTab] = useState<'itens' | 'estoque'>('itens');
   const [q, setQ] = useState('');
@@ -40,7 +42,14 @@ export function ProductsScreen() {
       <Header
         title={`Produtos${data.list ? ` (${data.list.length})` : ''}`}
         onMenu={nav.menu}
-        right={<PlusButton label="Cadastrar produto com o Lucas" onPress={nav.havena} />}
+        right={
+          // Celular: abre o cadastro. Multimídia (Regra 1): cadastro só pelo Lucas.
+          canCreate ? (
+            <PlusButton label="Novo produto" onPress={() => nav.open({ type: 'newProduct' })} />
+          ) : (
+            <PlusButton label="Cadastrar produto com o Lucas" onPress={nav.havena} />
+          )
+        }
       />
       <View style={{ paddingHorizontal: s.pad, gap: 14, paddingBottom: 14 }}>
         <Tabs

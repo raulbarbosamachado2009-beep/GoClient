@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { type ComponentRef, useCallback, useEffect, useRef, useState } from 'react';
+import { type ComponentRef, type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, Image, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { callPhone, openWhatsApp } from '../../integrations/contact';
 import { MAPS_ENABLED } from '../../integrations/env';
@@ -69,6 +69,9 @@ export default function MapScreen() {
   // Navegação dentro do GoClient (voz e câmera seguindo o carro).
   const [navigating, setNavigating] = useState(false);
   const [arrivedAt, setArrivedAt] = useState<string | null>(null);
+  // Cartão da direita (multimídia): baixo no início do "Para onde vamos?".
+  const [welcomeCompact, setWelcomeCompact] = useState(true);
+  const [homeH, setHomeH] = useState(0);
   // biome-ignore lint/correctness/useExhaustiveDependencies: troca de destino encerra a navegação
   useEffect(() => {
     setNavigating(false);
@@ -323,36 +326,47 @@ export default function MapScreen() {
         <Appear delay={160} distance={40} fade={false} style={{ height: NOW_H }}>
           <NowPlayingCard />
         </Appear>
-        {/* Trocar de cartão (entrar ou sair de uma rota, ir para outra parada) desliza: o
-            atual sai e o novo entra, sem corte seco. */}
-        <Swap
-          id={client ? `${mode}:${client.id}` : 'welcome'}
-          index={client ? (mode === 'day' ? wrap(stop, routeClients.length) + 1 : 1) : 0}
-          style={{ flex: 1 }}
+        {/* O cartão muda de forma: baixo no "Para onde vamos?" e da altura da coluna com um
+            destino escolhido (ou numa lista). A forma cresce/encolhe com desfoque. */}
+        <MorphCard
+          compact={!client && welcomeCompact}
+          compactHeight={homeH > 0 ? homeH + spacing[6] * 2 : 0}
         >
-          {client ? (
-            <ClientCard
-              key={client.id}
-              client={client}
-              mode={mode}
-              stopLabel={stopLabel}
-              queue={mode === 'day' ? routeClients : []}
-              current={wrap(stop, routeClients.length)}
-              onPick={setStop}
-              // Setas só na rota do dia com mais de uma parada (destino único não tem).
-              onNext={
-                mode === 'day' && routeClients.length > 1 ? () => setStop((s) => s + 1) : undefined
-              }
-              onPrevious={
-                mode === 'day' && routeClients.length > 1 ? () => setStop((s) => s - 1) : undefined
-              }
-              trip={trip}
-              onClose={() => mapNav()}
-            />
-          ) : (
-            <WelcomeCard />
-          )}
-        </Swap>
+          {/* Trocar de cartão (entrar ou sair de uma rota, ir para outra parada) desliza: o
+            atual sai e o novo entra, sem corte seco. */}
+          <Swap
+            id={client ? `${mode}:${client.id}` : 'welcome'}
+            index={client ? (mode === 'day' ? wrap(stop, routeClients.length) + 1 : 1) : 0}
+            style={{ flex: 1 }}
+          >
+            {client ? (
+              <ClientCard
+                key={client.id}
+                client={client}
+                mode={mode}
+                stopLabel={stopLabel}
+                queue={mode === 'day' ? routeClients : []}
+                current={wrap(stop, routeClients.length)}
+                onPick={setStop}
+                // Setas só na rota do dia com mais de uma parada (destino único não tem).
+                onNext={
+                  mode === 'day' && routeClients.length > 1
+                    ? () => setStop((s) => s + 1)
+                    : undefined
+                }
+                onPrevious={
+                  mode === 'day' && routeClients.length > 1
+                    ? () => setStop((s) => s - 1)
+                    : undefined
+                }
+                trip={trip}
+                onClose={() => mapNav()}
+              />
+            ) : (
+              <WelcomeCard onCompact={setWelcomeCompact} onHomeHeight={setHomeH} />
+            )}
+          </Swap>
+        </MorphCard>
       </View>
     </View>
   );
@@ -714,6 +728,75 @@ function StopButton({ onPress }: { onPress: () => void }) {
   );
 }
 
+/**
+ * Casca de vidro do cartão da direita, com a forma animada: altura e cantos andam juntos (como
+ * a busca) e um desfoque de movimento passa pelo cartão no meio da troca. O conteúdo é
+ * montado já no tamanho final e a casca recorta, para nada se espremer durante a animação.
+ */
+function MorphCard({
+  compact,
+  compactHeight,
+  children,
+}: {
+  compact: boolean;
+  compactHeight: number;
+  children: ReactNode;
+}) {
+  const c = useColors();
+  const [full, setFull] = useState(0);
+  const target =
+    compact && compactHeight > 0 ? Math.min(compactHeight, full || compactHeight) : full;
+  const h = useRef(new Animated.Value(0)).current;
+  const m = useRef(new Animated.Value(0)).current;
+  const first = useRef(true);
+  useEffect(() => {
+    if (!target) return;
+    if (first.current) {
+      first.current = false;
+      h.setValue(target);
+      return;
+    }
+    m.setValue(0);
+    Animated.parallel([
+      Animated.timing(h, {
+        toValue: target,
+        duration: 560,
+        easing: appleEase,
+        useNativeDriver: false,
+      }),
+      Animated.timing(m, { toValue: 1, duration: 560, useNativeDriver: false }),
+    ]).start();
+  }, [target, h, m]);
+  const blurO = m.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 1, 0] });
+  const webBlur =
+    Platform.OS === 'web'
+      ? {
+          filter: m.interpolate({
+            inputRange: [0, 0.5, 1],
+            outputRange: ['blur(0px)', 'blur(6px)', 'blur(0px)'],
+          }),
+        }
+      : null;
+  return (
+    <View style={{ flex: 1 }} onLayout={(e) => setFull(e.nativeEvent.layout.height)}>
+      {full > 0 && (
+        <Animated.View style={[styles.morph, { height: h, borderColor: c.material.border }]}>
+          <Blur radius={44} tint={c.material.tint} />
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: c.material.fallback }]} />
+          <Animated.View
+            style={[{ height: compact ? Math.max(target, 1) : full }, webBlur as object]}
+          >
+            {children}
+          </Animated.View>
+          <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { opacity: blurO }]}>
+            <Blur radius={18} tint={c.material.tint} />
+          </Animated.View>
+        </Animated.View>
+      )}
+    </View>
+  );
+}
+
 function Stat({ value, label }: { value: string; label: string }) {
   return (
     <View style={{ alignItems: 'center' }}>
@@ -777,7 +860,7 @@ function ClientCard({
   );
 
   return (
-    <Material style={styles.compact}>
+    <View style={styles.compact}>
       <View style={styles.compactTop}>
         {hasQueue ? (
           <Touchable
@@ -794,7 +877,14 @@ function ClientCard({
             )}
           </Touchable>
         ) : (
-          <View />
+          <IconButton
+            icon="close"
+            size={56}
+            iconSize={30}
+            variant="gray"
+            accessibilityLabel="Fechar destino"
+            onPress={onClose}
+          />
         )}
         <Text variant="headline" tone="secondary" style={{ fontSize: 24, lineHeight: 30 }}>
           {stopLabel ?? 'Destino'}
@@ -854,6 +944,59 @@ function ClientCard({
               })}
             </View>
           </ScrollView>
+        ) : !hasQueue ? (
+          // Destino único: tudo centrado e distribuído pelo cartão inteiro.
+          <View style={styles.compactBody}>
+            <View style={{ alignItems: 'center', gap: spacing[3], paddingTop: spacing[2] }}>
+              <Avatar name={client.name} size={136} radius={COMPACT_INNER} />
+              <Text
+                variant="title"
+                numberOfLines={2}
+                style={{ fontSize: 40, lineHeight: 46, textAlign: 'center' }}
+              >
+                {client.tradeName || client.name}
+              </Text>
+              <View style={{ alignSelf: 'stretch' }}>
+                <Marquee
+                  center
+                  text={[client.address, district].filter(Boolean).join(' · ')}
+                  lineHeight={30}
+                  style={{ fontSize: 24 }}
+                />
+              </View>
+            </View>
+            <View style={{ gap: spacing[4] }}>
+              {client.phone ? (
+                <View style={{ flexDirection: 'row', gap: spacing[3] }}>
+                  <Touchable
+                    accessibilityRole="button"
+                    onPress={() => callPhone(client.phone)}
+                    style={[styles.wideAction, { backgroundColor: tile }]}
+                  >
+                    <Icon name="call" size={34} />
+                    <Text variant="headline" style={{ fontSize: 26 }}>
+                      Ligar
+                    </Text>
+                  </Touchable>
+                  <Touchable
+                    accessibilityRole="button"
+                    onPress={() => openWhatsApp(client.phone)}
+                    style={[styles.wideAction, { backgroundColor: tile }]}
+                  >
+                    <Icon name="logo-whatsapp" size={34} />
+                    <Text variant="headline" style={{ fontSize: 26 }}>
+                      WhatsApp
+                    </Text>
+                  </Touchable>
+                </View>
+              ) : null}
+              <View style={[styles.tripStats, { backgroundColor: tile }]}>
+                <Stat value={trip.arrival} label="chegada" />
+                <Stat value={trip.duration.value} label={trip.duration.unit} />
+                <Stat value={trip.km} label="km" />
+              </View>
+            </View>
+          </View>
         ) : (
           <View style={styles.compactBody}>
             <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: spacing[4] }}>
@@ -927,7 +1070,7 @@ function ClientCard({
           </View>
         )}
       </Swap>
-    </Material>
+    </View>
   );
 }
 
@@ -936,13 +1079,23 @@ function ClientCard({
  * agrupada com linhas grandes, todas no azul do app. Regra 3: a multimídia não monta rotas —
  * só escolhe um cliente ou começa uma rota montada no celular.
  */
-function WelcomeCard() {
+function WelcomeCard({
+  onCompact,
+  onHomeHeight,
+}: {
+  /** O cartão fica baixo (só o início) ou ocupa a coluna (listas). */
+  onCompact: (compact: boolean) => void;
+  /** Altura do conteúdo do início, para o cartão ter só esse tamanho. */
+  onHomeHeight: (h: number) => void;
+}) {
   const stops = useStops();
   const [view, setView] = useState<'home' | 'pick' | 'routes'>('home');
   const count = stops.saved.length;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: avisa só na troca de tela
+  useEffect(() => onCompact(view === 'home'), [view]);
   // Mesma transição da aba "Rotas" do celular: o atual sai deslizando e o novo entra.
   return (
-    <Material style={[styles.welcome, view !== 'home' && { justifyContent: 'flex-start' }]}>
+    <View style={[styles.welcome, view !== 'home' && { justifyContent: 'flex-start' }]}>
       <Swap
         id={view}
         dir={view === 'home' ? -1 : 1}
@@ -969,7 +1122,10 @@ function WelcomeCard() {
             </ScrollView>
           </>
         ) : (
-          <>
+          <View
+            style={{ gap: spacing[6] }}
+            onLayout={(e) => onHomeHeight(e.nativeEvent.layout.height)}
+          >
             <View style={{ gap: spacing[1] }}>
               <Text variant="largeTitle" style={{ fontSize: 42, lineHeight: 50 }}>
                 Para onde vamos?
@@ -1002,10 +1158,10 @@ function WelcomeCard() {
                 onPress={() => setView('routes')}
               />
             </OptionGroup>
-          </>
+          </View>
         )}
       </Swap>
-    </Material>
+    </View>
   );
 }
 
@@ -1014,7 +1170,7 @@ function WelcomeCard() {
  * Cartão grande ("Para onde vamos?"): 56 − 24 = 32. Cartão do cliente: 48 − 24 = 24.
  * Barra da viagem: 32 − 16 = 16.
  */
-const WELCOME_R = 56;
+const WELCOME_R = 48;
 const COMPACT_R = 48;
 const TRIP_R = layout.radius.xl;
 const COMPACT_INNER = concentric(COMPACT_R, spacing[6]);
@@ -1111,7 +1267,17 @@ const styles = StyleSheet.create({
   center: { alignItems: 'center', justifyContent: 'center' },
   tripButton: { borderRadius: TRIP_INNER, width: STOP_W },
   card: { flex: 1, borderRadius: 40, padding: spacing[8] },
-  compact: { flex: 1, borderRadius: COMPACT_R, padding: spacing[6] },
+  compact: { flex: 1, padding: spacing[6] },
+  morph: { borderRadius: COMPACT_R, overflow: 'hidden', borderWidth: 1 },
+  wideAction: {
+    flex: 1,
+    height: 96,
+    borderRadius: COMPACT_INNER,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing[3],
+  },
   tripStats: {
     flexDirection: 'row',
     justifyContent: 'space-around',
@@ -1153,7 +1319,6 @@ const styles = StyleSheet.create({
   compactBody: { flex: 1, gap: spacing[5], justifyContent: 'space-between' },
   welcome: {
     flex: 1,
-    borderRadius: WELCOME_R,
     padding: spacing[6],
     gap: spacing[6],
   },

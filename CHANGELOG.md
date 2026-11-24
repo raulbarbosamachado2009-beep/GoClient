@@ -5,7 +5,7 @@ Leia este arquivo antes de começar qualquer trabalho.
 
 ## Estado atual do app
 
-_Última atualização: 2026-11-24 13:51 — Encerrar que se recolhe em "×", endereço em carrossel, Ajustes maiores, nova transição entre páginas e logos flutuando no login._
+_Última atualização: 2026-11-24 14:35 — cartão da direita que muda de forma, destino único centralizado, cadastros do Kyte no celular e menos logos no login._
 
 - **Automotive (`apps/automotive`)** é onde está quase todo o produto: Mapa (OSM + OpenRouteService,
   navegação com voz), Kyte (telas próprias sobre a janela do Kyte), Música (Spotify App Remote) e
@@ -14,6 +14,26 @@ _Última atualização: 2026-11-24 13:51 — Encerrar que se recolhe em "×", en
 - Regras de negócio em `packages/core` (com testes); visual só com `@goclient/design-tokens`.
 
 ## Mudanças
+
+### 2026-11-24 14:35 — 9ª rodada: cartão que muda de forma, destino único, cadastros do Kyte
+
+Pedido do usuário (thread "Melhorar o design e o onboarding do app", 9ª rodada).
+
+- **Cartão da direita (multimídia) muda de forma:** no "Para onde vamos?" o cartão tem só a
+  altura do conteúdo; ao escolher um destino (ou abrir uma lista) ele cresce até a altura da
+  coluna, e volta ao fechar. Altura e cantos andam juntos, com desfoque de movimento no meio
+  da troca (`MorphCard` em `app/(main)/mapa.tsx`; uma casca de vidro só, o conteúdo troca
+  dentro dela).
+- **Destino único:** tudo centralizado no cartão (avatar, nome, endereço), botões largos
+  "Ligar" e "WhatsApp" e a faixa de chegada/tempo/km; o × fica no canto de cima.
+- **Kyte, botão "+":** no celular abre "Novo produto" (nome e preço, com a prévia do produto) e
+  "Adicionar cliente" (nome, celular e endereço); salvar preenche o cadastro no Kyte pela
+  janela invisível (no Preview nada é gravado). Na multimídia continua pelo Lucas (Regra 1 em
+  `can()`); pergunta feita ao usuário se isso deve mudar.
+- **Login por e-mail:** menos logos no fundo (4 na multimídia, 3 no celular).
+- Arquivos: `app/(main)/mapa.tsx`, `ui/marquee.tsx`, `kyte/screens/create.tsx` (novo),
+  `kyte/screens/nav.ts`, `kyte/screens/products.tsx`, `kyte/screens/clients.tsx`,
+  `app/(main)/kyte.tsx`, `onboarding/floating-logos.tsx`, `docs/integrations.md`.
 
 ### 2026-11-24 13:51 — 8ª rodada: Encerrar recolhível, endereço em carrossel, Ajustes e transição de páginas
 

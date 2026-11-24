@@ -13,21 +13,15 @@ const LOGO = require('../../assets/logo.png');
  * x e y em % da tela; `size` em unidades da tela; `depth` 0 (longe) a 1 (perto).
  */
 const CAR = [
-  { x: 6, y: 10, size: 260, depth: 1 },
-  { x: 84, y: 6, size: 120, depth: 0.35 },
-  { x: 88, y: 58, size: 300, depth: 0.95 },
-  { x: 16, y: 70, size: 110, depth: 0.25 },
-  { x: 70, y: 84, size: 150, depth: 0.5 },
-  { x: 30, y: 4, size: 80, depth: 0.1 },
-  { x: 2, y: 44, size: 140, depth: 0.55 },
-  { x: 93, y: 36, size: 70, depth: 0.05 },
+  { x: 6, y: 12, size: 260, depth: 1 },
+  { x: 86, y: 8, size: 110, depth: 0.3 },
+  { x: 86, y: 60, size: 280, depth: 0.9 },
+  { x: 14, y: 72, size: 100, depth: 0.2 },
 ];
 const PHONE = [
   { x: -8, y: 4, size: 220, depth: 1 },
-  { x: 74, y: 10, size: 100, depth: 0.3 },
-  { x: 70, y: 74, size: 240, depth: 0.9 },
-  { x: 6, y: 82, size: 110, depth: 0.4 },
-  { x: 40, y: 2, size: 64, depth: 0.05 },
+  { x: 74, y: 12, size: 96, depth: 0.3 },
+  { x: 70, y: 76, size: 220, depth: 0.9 },
 ];
 
 export function FloatingLogos() {
