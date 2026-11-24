@@ -1,3 +1,4 @@
+import { applyOrder } from '@goclient/core';
 import { useRouter } from 'expo-router';
 import { createContext, type ReactNode, useCallback, useContext, useMemo, useState } from 'react';
 import { Platform } from 'react-native';
@@ -29,6 +30,10 @@ interface StopsState {
   showDay: () => void;
   /** Troca a rota do dia pela lista escolhida (montar rota). */
   setDay: (list: ExternalStop[]) => void;
+  /** Grava a ordem escolhida pelo usuário (arrastando na lista "Rota"). */
+  reorder: (ids: string[]) => void;
+  /** `true` depois que o usuário reordenou: o Mapa segue essa ordem em vez da otimizada. */
+  manual: boolean;
 }
 
 const Ctx = createContext<StopsState | null>(null);
@@ -61,6 +66,8 @@ export function StopsProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [extra, setExtra] = useState<MockClient[]>([]);
   const [removed, setRemoved] = useState<string[]>([]);
+  // Ordem manual (null = ordem automática, a melhor calculada pelo roteamento).
+  const [order, setOrder] = useState<string[] | null>(null);
 
   const upsert = useCallback((s: ExternalStop) => {
     const c = toClient(s);
@@ -72,7 +79,10 @@ export function StopsProvider({ children }: { children: ReactNode }) {
   const value = useMemo<StopsState>(() => {
     // Visitas de exemplo só no Preview; no app, a rota é só de clientes reais (Kyte/Havena).
     const base = Platform.OS === 'web' ? TODAY_ROUTE : [];
-    const dayIds = [...base, ...extra.map((x) => x.id)].filter((id) => !removed.includes(id));
+    const dayIds = applyOrder(
+      [...base, ...extra.map((x) => x.id)].filter((id) => !removed.includes(id)),
+      order,
+    );
     return {
       extra,
       dayIds,
@@ -89,9 +99,12 @@ export function StopsProvider({ children }: { children: ReactNode }) {
       setDay: (list) => {
         setExtra(list.map(toClient));
         setRemoved(Platform.OS === 'web' ? [...TODAY_ROUTE] : []);
+        setOrder(null);
       },
+      reorder: (ids) => setOrder(ids),
+      manual: order !== null,
     };
-  }, [extra, removed, router, upsert]);
+  }, [extra, removed, order, router, upsert]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
