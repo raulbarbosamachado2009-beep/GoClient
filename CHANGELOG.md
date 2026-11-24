@@ -36,8 +36,11 @@ estão no manifesto e a assinatura bate com a SHA-1 documentada. Causas achadas 
 - **Lucas:** depois de seis erros seguidos do reconhecimento ("ocupado", rede) a escuta
   desligava de vez sem avisar. Agora ela nunca desiste sozinha (espera crescente de 0,4 s a 5 s)
   e reabre também quando o aparelho não manda o fim. Se o motor de voz não avisar que terminou
-  de falar, o Lucas volta a ouvir mesmo assim (antes ficava "falando" para sempre). Tempo máximo
-  de espera da IA por modelo: 25 s → 12 s.
+  de falar, o Lucas volta a ouvir mesmo assim (antes ficava "falando" para sempre).
+- **IA do Lucas:** a verificação real de hoje (workflow "NVIDIA check") mostrou o Nemotron
+  levando ~11 s por pedido, 20–50 s numa conversa com ferramentas, e erros 503 do filtro de
+  conteúdo. Por isso o Lucas parecia não responder. O Mistral Large 4 acertou 4/4 em ~5 s e
+  virou o modelo principal; o Nemotron fica de reserva. Espera máxima por modelo: 25 s → 15 s.
 - **Mapa:** quando a biblioteca do mapa não chegava na primeira abertura, ficava vazio. Agora
   recarrega sozinho (sem resposta em 15 s, erro de carga ou WebView caída, até 3 vezes) e depois
   mostra "Tentar de novo"; o estilo tem limite de 8 s.

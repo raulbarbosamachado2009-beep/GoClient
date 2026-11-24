@@ -6,6 +6,7 @@ import { ExpoSpeechRecognitionModule } from 'expo-speech-recognition';
 import { useCallback, useEffect, useState } from 'react';
 import { Platform, ScrollView, Share, StyleSheet, View } from 'react-native';
 import { SpotifyRemote } from '../../modules/spotify-remote';
+import { MODELS } from '../havena/brain';
 import { NVIDIA_API_KEY, ORS_API_KEY, SPOTIFY_CLIENT_ID } from '../integrations/env';
 import { kyteLogged } from '../kyte/agent';
 import { REDIRECT_URI } from '../spotify/auth';
@@ -122,7 +123,7 @@ export default function DiagnosticsScreen() {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'nvidia/nemotron-3.5-super-vl-120b-a12b',
+            model: MODELS[0],
             max_tokens: 5,
             messages: [{ role: 'user', content: 'diga ok' }],
           }),

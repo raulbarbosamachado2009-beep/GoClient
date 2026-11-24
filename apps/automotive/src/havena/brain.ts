@@ -10,7 +10,13 @@ import { NVIDIA_API_KEY } from '../integrations/env';
  * reserva. Sem internet ou sem chave, a Havena usa os comandos fixos (`offline.ts`).
  */
 const BASE = 'https://integrate.api.nvidia.com/v1';
-const MODELS = ['nvidia/nemotron-3.5-super-vl-120b-a12b', 'mistralai/mistral-large-4-1t-a52b'];
+// 24/11/2026 (NVIDIA check): o Nemotron passou a levar ~11 s por pedido (e 20–50 s numa
+// conversa com ferramentas), além de erros 503 do filtro de conteúdo — era por isso que o
+// Lucas "às vezes não respondia". O Mistral Large 4 acertou 4/4 em ~5 s: virou o principal.
+export const MODELS = [
+  'mistralai/mistral-large-4-1t-a52b',
+  'nvidia/nemotron-3.5-super-vl-120b-a12b',
+];
 
 export const BRAIN_ENABLED = NVIDIA_API_KEY.length > 0;
 
@@ -45,7 +51,7 @@ export async function ask(messages: Message[], tools: ToolSpec[]): Promise<Model
     try {
       const ctrl = new AbortController();
       // Dirigindo, esperar mais que isso parece que o Lucas não ouviu: tenta o modelo reserva.
-      const timer = setTimeout(() => ctrl.abort(), 12000);
+      const timer = setTimeout(() => ctrl.abort(), 15000);
       const res = await fetch(`${BASE}/chat/completions`, {
         method: 'POST',
         signal: ctrl.signal,

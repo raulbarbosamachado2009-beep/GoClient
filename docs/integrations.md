@@ -87,8 +87,9 @@ O assistente se chama **Lucas** (voz masculina). No código, a pasta `havena/` e
 `havena` das permissões mantêm o nome antigo, para não quebrar API e testes.
 
 - **Com internet:** modelo da NVIDIA (plano gratuito, ~40 pedidos/min; termos: uso de
-  desenvolvimento). Escolhido por teste real com a chave: `nvidia/nemotron-3.5-super-vl-120b-a12b`
-  (7/7 conversas certas, ~2 s); reserva `mistralai/mistral-large-4-1t-a52b` (certo, mas lento).
+  desenvolvimento). Desde 24/11/2026 o principal é `mistralai/mistral-large-4-1t-a52b` (4/4
+  certas, ~5 s no teste real); reserva `nvidia/nemotron-3.5-super-vl-120b-a12b` (ficou lento:
+  ~11 s por pedido e 503 do filtro de conteúdo no mesmo teste).
   Workflow "NVIDIA check" repete o teste.
 - **Ferramentas** (`havena/tools.ts`): música (controle, buscar e tocar/pôr na fila), buscar
   cliente no Kyte, pôr na rota / ir agora, rota do dia, WhatsApp (abre com a mensagem pronta;
