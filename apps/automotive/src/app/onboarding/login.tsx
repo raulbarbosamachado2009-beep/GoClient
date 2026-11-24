@@ -1,85 +1,127 @@
 import { useRouter } from 'expo-router';
+import { useState } from 'react';
 import { Platform, StyleSheet, TextInput, View } from 'react-native';
 import Svg, { Rect } from 'react-native-svg';
-import { NO_FLEX, usePhone } from '../../layout/form-factor';
-import { spacing, type, useColors } from '../../theme';
+import { usePhone } from '../../layout/form-factor';
+import { OnboardingLayout, PillButton } from '../../onboarding/layout';
+import { ClientsScene } from '../../onboarding/scenes';
+import { concentric, spacing, type, useColors } from '../../theme';
 import { Appear } from '../../ui/motion';
-import { Button, Icon, Text } from '../../ui/primitives';
+import { Icon, Text, Touchable } from '../../ui/primitives';
 
 /**
- * Onboarding — login, depois das permissões e antes do mapa.
- * Duas formas, como no Apple TV: digitar e-mail e senha, ou ler um código com o celular
- * (mais prático no carro). Protótipo de design: qualquer botão segue para o mapa; o
- * provedor de autenticação ainda não foi definido.
+ * Onboarding — login, depois das permissões e antes do mapa (referência: telas de entrada
+ * com ilustração em cima, marca, e botões em pílula embaixo).
+ * - Início: "Continuar com e-mail" e, na multimídia, "Entrar com o celular" (código QR).
+ * - E-mail: campos agrupados no estilo do iOS e o botão Entrar.
+ * Protótipo de design: entrar segue para o mapa; o provedor de login ainda não foi definido.
  */
 export default function Login() {
   const c = useColors();
   const router = useRouter();
-  const enter = () => router.replace('/mapa');
   const phone = usePhone();
+  const enter = () => router.replace('/mapa');
+  const [stage, setStage] = useState<'start' | 'email' | 'qr'>('start');
+
+  if (stage === 'email') {
+    return (
+      <OnboardingLayout
+        sceneKey="email"
+        scene={<ClientsScene />}
+        title="Entre com seu e-mail"
+        text="Use a mesma conta do GoClient no celular e no carro."
+        actions={
+          <>
+            <Appear delay={140} distance={14}>
+              <View
+                style={[styles.group, { backgroundColor: c.grouped, borderColor: c.separator }]}
+              >
+                <Field label="E-mail" placeholder="nome@empresa.com.br" keyboard="email-address" />
+                <View style={[styles.separator, { backgroundColor: c.separator }]} />
+                <Field label="Senha" placeholder="Obrigatória" secure />
+              </View>
+            </Appear>
+            <PillButton label="Entrar" onPress={enter} />
+            <View style={styles.links}>
+              <LinkButton label="Voltar" onPress={() => setStage('start')} />
+              <LinkButton label="Esqueci minha senha" onPress={() => {}} />
+            </View>
+          </>
+        }
+      />
+    );
+  }
+
+  if (stage === 'qr') {
+    return (
+      <OnboardingLayout
+        sceneKey="qr"
+        scene={
+          <View style={styles.qrScene}>
+            <View style={styles.qr}>
+              <MockQr size={300} />
+            </View>
+          </View>
+        }
+        title="Entre com o celular"
+        text="Aponte a câmera do celular para o código, ou abra o GoClient no celular e digite o código abaixo."
+        actions={
+          <>
+            <Text variant="largeTitle" style={{ letterSpacing: 8 }}>
+              GK7 · 42Q
+            </Text>
+            <PillButton label="Voltar" variant="secondary" onPress={() => setStage('start')} />
+          </>
+        }
+      />
+    );
+  }
 
   return (
-    <View style={[styles.page, { backgroundColor: c.background }]}>
-      <View style={[styles.column, phone && PHONE_COLUMN]}>
-        <Appear distance={20}>
-          <Icon name="person-circle" size={96} color={c.accent} />
-        </Appear>
-        <Appear delay={80} distance={20} style={{ alignItems: 'center', gap: spacing[3] }}>
-          <Text variant="largeTitle" style={{ textAlign: 'center' }}>
-            Entre na sua conta
-          </Text>
-          <Text variant="body" tone="secondary" style={{ textAlign: 'center', maxWidth: 820 }}>
-            Use a mesma conta do GoClient no celular e no computador. Seus clientes, produtos e
-            rotas aparecem aqui automaticamente.
-          </Text>
-        </Appear>
-
-        <View style={[styles.options, phone && { flexDirection: 'column', gap: spacing[6] }]}>
-          <Appear
-            delay={220}
-            distance={18}
-            style={[styles.side, phone && { alignSelf: 'stretch', ...NO_FLEX }]}
-          >
-            <View style={[styles.group, { backgroundColor: c.grouped }]}>
-              <Field label="E-mail" placeholder="nome@empresa.com.br" />
-              <View style={[styles.separator, { backgroundColor: c.separator }]} />
-              <Field label="Senha" placeholder="Obrigatória" secure />
-            </View>
-            <Button label="Entrar" onPress={enter} />
-            <Button label="Esqueci minha senha" variant="plain" size="md" onPress={() => {}} />
-          </Appear>
-
-          {/* "Entrar com o celular" (QR) só faz sentido na central multimídia: no celular,
-              o login é direto. */}
+    <OnboardingLayout
+      sceneKey="start"
+      scene={<ClientsScene />}
+      title="Venda mais em cada visita"
+      text="Entre para ver seus clientes, produtos e rotas no carro e no celular."
+      actions={
+        <>
+          <PillButton
+            label="Continuar com e-mail"
+            icon={<Icon name="mail" size={34} color={c.background} />}
+            onPress={() => setStage('email')}
+          />
+          {/* Código QR só faz sentido na central multimídia: no celular, o login é direto. */}
           {!phone && (
-            <Appear delay={300} distance={18} style={styles.divider}>
-              <View style={[styles.line, { backgroundColor: c.separator }]} />
-              <Text variant="subhead" tone="secondary">
-                ou
-              </Text>
-              <View style={[styles.line, { backgroundColor: c.separator }]} />
-            </Appear>
+            <PillButton
+              label="Entrar com o celular"
+              variant="secondary"
+              icon={<Icon name="qr-code" size={32} color={c.text} />}
+              onPress={() => setStage('qr')}
+            />
           )}
-
-          {!phone && (
-            <Appear delay={380} distance={18} style={[styles.side, { alignItems: 'center' }]}>
-              <View style={styles.qr}>
-                <MockQr size={196} />
-              </View>
-              <Text variant="headline" style={{ textAlign: 'center' }}>
-                Entrar com o celular
-              </Text>
-              <Text variant="callout" tone="secondary" style={{ textAlign: 'center' }}>
-                Aponte a câmera do celular para o código, ou abra o GoClient no celular e digite
-              </Text>
-              <Text variant="title2" style={{ letterSpacing: 6 }}>
-                GK7 · 42Q
-              </Text>
-            </Appear>
-          )}
+        </>
+      }
+      footer={
+        <View style={styles.legal}>
+          <Text variant="caption" tone="tertiary" style={styles.legalText}>
+            Política de privacidade
+          </Text>
+          <Text variant="caption" tone="tertiary" style={styles.legalText}>
+            Termos de uso
+          </Text>
         </View>
-      </View>
-    </View>
+      }
+    />
+  );
+}
+
+function LinkButton({ label, onPress }: { label: string; onPress: () => void }) {
+  return (
+    <Touchable accessibilityRole="button" onPress={onPress} style={styles.link}>
+      <Text variant="headline" tone="accent">
+        {label}
+      </Text>
+    </Touchable>
   );
 }
 
@@ -88,25 +130,29 @@ function Field({
   label,
   placeholder,
   secure,
+  keyboard,
 }: {
   label: string;
   placeholder: string;
   secure?: boolean;
+  keyboard?: 'email-address';
 }) {
   const c = useColors();
   return (
     <View style={styles.field}>
-      <Text variant="body" style={{ width: 120 }}>
+      <Text variant="body" style={{ width: 120, fontSize: 28 }}>
         {label}
       </Text>
       <TextInput
         placeholder={placeholder}
         placeholderTextColor={c.textTertiary}
         secureTextEntry={secure}
+        keyboardType={keyboard}
         autoCapitalize="none"
+        autoCorrect={false}
         style={[
           type.body,
-          { flex: 1, color: c.text, height: '100%' },
+          { flex: 1, minWidth: 0, color: c.text, height: '100%', fontSize: 28 },
           (Platform.OS === 'web' ? { outlineStyle: 'none' } : null) as object,
         ]}
       />
@@ -159,18 +205,23 @@ function MockQr({ size }: { size: number }) {
   );
 }
 
-/** Celular em pé: a coluna ocupa a largura toda, com margens. */
-const PHONE_COLUMN = { width: '100%', paddingHorizontal: 40 } as const;
+/** Grupo dos campos: mesma curva da pílula (raio = metade da altura do campo). */
+const FIELD_H = 100;
+const GROUP_R = 34;
 
 const styles = StyleSheet.create({
-  page: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  column: { width: 1180, alignItems: 'center', gap: spacing[8] },
-  options: { flexDirection: 'row', alignItems: 'center', alignSelf: 'stretch', gap: spacing[8] },
-  side: { flex: 1, gap: spacing[4] },
-  group: { borderRadius: 22, overflow: 'hidden' },
-  field: { height: 88, flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing[6] },
-  separator: { height: StyleSheet.hairlineWidth, marginLeft: spacing[6] },
-  divider: { alignItems: 'center', gap: spacing[3], alignSelf: 'stretch' },
-  line: { width: StyleSheet.hairlineWidth, flex: 1 },
-  qr: { padding: 14, borderRadius: 22, backgroundColor: '#FFFFFF' },
+  group: { borderRadius: GROUP_R, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth },
+  field: {
+    height: FIELD_H,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing[8],
+  },
+  separator: { height: StyleSheet.hairlineWidth, marginLeft: spacing[8] },
+  links: { flexDirection: 'row', justifyContent: 'space-between' },
+  link: { height: 72, justifyContent: 'center', paddingHorizontal: spacing[2] },
+  legalText: { fontSize: 24, lineHeight: 30 },
+  legal: { flexDirection: 'row', justifyContent: 'center', gap: spacing[8] },
+  qrScene: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  qr: { padding: 24, borderRadius: concentric(56, 24), backgroundColor: '#FFFFFF' },
 });
