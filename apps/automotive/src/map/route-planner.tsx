@@ -6,7 +6,7 @@ import { CLIENTS } from '../mocks/data';
 import { FONT, spacing, useColors } from '../theme';
 import { Button, Icon, Text, Touchable } from '../ui/primitives';
 import { Spinner } from '../ui/spinner';
-import { type ExternalStop, useStops } from './stops';
+import { type ExternalStop, routeName, useStops } from './stops';
 
 const norm = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
@@ -33,6 +33,9 @@ export function RoutePlanner({
   const real = Platform.OS !== 'web';
   const kyte = useKyteList('customer', real && kyteAgentAvailable() && kyteLogged());
   const [q, setQ] = useState('');
+  // Nome da rota (aparece em "Rotas montadas", no celular e na multimídia).
+  const [name, setName] = useState('');
+  const [suggested] = useState(routeName);
   const [picked, setPicked] = useState<Record<string, ExternalStop>>(() =>
     Object.fromEntries(
       stops.extra.map((x) => [
@@ -59,7 +62,7 @@ export function RoutePlanner({
   }, [all, q, picked]);
   const count = Object.keys(picked).length;
   const calculate = () => {
-    stops.setDay(Object.values(picked));
+    stops.setDay(Object.values(picked), name || suggested);
     stops.showDay();
     onClose();
   };
@@ -106,7 +109,7 @@ export function RoutePlanner({
     <View style={{ flex: embedded ? undefined : 1, gap: spacing[4] }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[3] }}>
         <Text variant="title2" style={{ flex: 1 }}>
-          Rota do dia
+          Nova rota
         </Text>
         {embedded && (
           <Button
@@ -121,6 +124,43 @@ export function RoutePlanner({
         <Touchable accessibilityLabel="Fechar" onPress={onClose} style={{ padding: 8 }}>
           <Icon name="close" size={38} color={c.textSecondary} />
         </Touchable>
+      </View>
+      <View style={{ gap: spacing[2] }}>
+        <Text variant="footnote" tone="secondary" style={{ fontSize: size.sub - 2 }}>
+          Nome da rota
+        </Text>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 12,
+            height: 76,
+            borderRadius: 22,
+            paddingHorizontal: 20,
+            backgroundColor: c.fill,
+          }}
+        >
+          <Icon name="pencil" size={28} color={c.textSecondary} />
+          <TextInput
+            value={name}
+            onChangeText={setName}
+            placeholder={suggested}
+            placeholderTextColor={c.textTertiary}
+            maxLength={40}
+            accessibilityLabel="Nome da rota"
+            style={[
+              {
+                flex: 1,
+                minWidth: 0,
+                width: 0,
+                color: c.text,
+                fontFamily: FONT.textRegular,
+                fontSize: size.sub + 4,
+              },
+              (Platform.OS === 'web' ? { outlineStyle: 'none' } : null) as object,
+            ]}
+          />
+        </View>
       </View>
       <View
         style={{

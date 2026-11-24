@@ -28,8 +28,8 @@ interface StopsState {
   remove: (id: string) => void;
   /** Mostra a rota do dia no Mapa. */
   showDay: () => void;
-  /** Troca a rota do dia pela lista escolhida (montar rota). */
-  setDay: (list: ExternalStop[]) => void;
+  /** Troca a rota do dia pela lista escolhida (montar rota), com o nome dado pelo usuário. */
+  setDay: (list: ExternalStop[], name?: string) => void;
   /** Grava a ordem escolhida pelo usuário (arrastando na lista "Rota"). */
   reorder: (ids: string[]) => void;
   /** `true` depois que o usuário reordenou: o Mapa segue essa ordem em vez da otimizada. */
@@ -73,7 +73,8 @@ const DEMO_SAVED: SavedRoute[] = [
   },
 ];
 
-function routeName(): string {
+/** Nome padrão quando o usuário não dá um nome à rota. */
+export function routeName(): string {
   const d = new Date();
   const hh = String(d.getHours()).padStart(2, '0');
   const mm = String(d.getMinutes()).padStart(2, '0');
@@ -142,7 +143,7 @@ export function StopsProvider({ children }: { children: ReactNode }) {
       },
       remove: (id) => setRemoved((cur) => [...cur, id]),
       showDay: () => router.replace({ pathname: '/mapa', params: { rota: 'dia' } }),
-      setDay: (list) => {
+      setDay: (list, name) => {
         setExtra(list.map(toClient));
         setBase([]);
         setRemoved([]);
@@ -150,7 +151,7 @@ export function StopsProvider({ children }: { children: ReactNode }) {
         // Montar a rota também a guarda em "Rotas montadas" (para começar depois no carro).
         const route: SavedRoute = {
           id: `r-${Date.now()}`,
-          name: routeName(),
+          name: name?.trim() || routeName(),
           when: 'Agora',
           ids: [],
           stops: list,

@@ -5,7 +5,7 @@ import Svg, { Rect } from 'react-native-svg';
 import { usePhone } from '../../layout/form-factor';
 import { OnboardingLayout, PillButton } from '../../onboarding/layout';
 import { concentric, spacing, type, useColors } from '../../theme';
-import { Appear } from '../../ui/motion';
+import { Appear, Swap } from '../../ui/motion';
 import { Icon, type IconName, Text, Touchable } from '../../ui/primitives';
 
 /**
@@ -15,12 +15,23 @@ import { Icon, type IconName, Text, Touchable } from '../../ui/primitives';
  * - E-mail: campos agrupados no estilo do iOS e o botão Entrar.
  * Protótipo de design: entrar segue para o mapa; o provedor de login ainda não foi definido.
  */
+type Stage = 'start' | 'email' | 'qr';
+
 export default function Login() {
+  const [stage, setStage] = useState<Stage>('start');
+  // Trocar de etapa tem a mesma transição da aba "Rotas" do celular (sai e entra deslizando).
+  return (
+    <Swap id={stage} dir={stage === 'start' ? -1 : 1} style={{ flex: 1 }}>
+      <LoginStage stage={stage} setStage={setStage} />
+    </Swap>
+  );
+}
+
+function LoginStage({ stage, setStage }: { stage: Stage; setStage: (s: Stage) => void }) {
   const c = useColors();
   const router = useRouter();
   const phone = usePhone();
   const enter = () => router.replace('/mapa');
-  const [stage, setStage] = useState<'start' | 'email' | 'qr'>('start');
 
   if (stage === 'email') {
     return (

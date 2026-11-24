@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { CLIENTS, type MockClient } from '../mocks/data';
 import { concentric, layout, spacing, type, useColors } from '../theme';
-import { appleEase } from '../ui/motion';
+import { appleEase, Swap } from '../ui/motion';
 import { Blur, Icon, type IconName, Text, Touchable } from '../ui/primitives';
 import { OptionGroup, OptionRow, SavedRoutes, useTint } from './saved-routes';
 import { useStops } from './stops';
@@ -162,108 +162,115 @@ export function CarSearch({ maxHeight }: { maxHeight: number }) {
               keyboardShouldPersistTaps="handled"
               contentContainerStyle={{ gap: spacing[5], paddingBottom: PAD }}
             >
-              {q ? (
-                results.length === 0 ? (
-                  <Text variant="body" tone="secondary">
-                    Nenhum cliente encontrado para "{query.trim()}".
-                  </Text>
-                ) : (
-                  <OptionGroup outerRadius={OPEN.r} outerPadding={PAD}>
-                    {results.map((x, i) => (
-                      <OptionRow
-                        key={x.id}
-                        first={i === 0}
-                        big
-                        icon="storefront"
-                        title={x.tradeName}
-                        sub={x.address}
-                        onPress={() => go(x.id)}
-                      />
-                    ))}
-                  </OptionGroup>
-                )
-              ) : view === 'routes' ? (
-                <>
-                  <Touchable
-                    accessibilityRole="button"
-                    onPress={() => setView('home')}
-                    style={styles.back}
-                  >
-                    <Icon name="chevron-back" size={32} color={c.accent} />
-                    <Text variant="headline" tone="accent" style={{ fontSize: 28 }}>
-                      Voltar
+              {/* Trocar de conteúdo (início, rotas, resultados) tem a transição da aba do celular. */}
+              <Swap
+                id={q ? 'results' : view}
+                dir={!q && view === 'home' ? -1 : 1}
+                style={{ gap: spacing[5] }}
+              >
+                {q ? (
+                  results.length === 0 ? (
+                    <Text variant="body" tone="secondary">
+                      Nenhum cliente encontrado para "{query.trim()}".
                     </Text>
-                  </Touchable>
-                  <SavedRoutes outerRadius={OPEN.r} outerPadding={PAD} />
-                </>
-              ) : (
-                <>
-                  <Text variant="title2" style={styles.section}>
-                    Atalhos
-                  </Text>
-                  <View style={styles.shortcuts}>
-                    <Shortcut
-                      icon="people"
-                      label="Clientes"
-                      tint={t}
-                      onPress={() => {
-                        hide();
-                        router.replace({ pathname: '/kyte', params: { secao: 'clientes' } });
-                      }}
-                    />
-                    <Shortcut
-                      icon="pricetag"
-                      label="Produtos"
-                      tint={t}
-                      onPress={() => {
-                        hide();
-                        router.replace({ pathname: '/kyte', params: { secao: 'produtos' } });
-                      }}
-                    />
-                    <Shortcut
-                      icon="trail-sign"
-                      label="Rotas"
-                      tint={t}
-                      onPress={() => setView('routes')}
-                    />
-                  </View>
-
-                  <Text variant="title2" style={styles.section}>
-                    Recentes
-                  </Text>
-                  <OptionGroup outerRadius={OPEN.r} outerPadding={PAD}>
-                    {recent.map((x, i) => (
-                      <OptionRow
-                        key={x.id}
-                        first={i === 0}
-                        big
-                        icon="location"
-                        title={x.tradeName}
-                        sub={x.address}
-                        onPress={() => go(x.id)}
-                      />
-                    ))}
-                  </OptionGroup>
-
-                  {stops.saved.length > 0 && (
+                  ) : (
                     <OptionGroup outerRadius={OPEN.r} outerPadding={PAD}>
-                      <OptionRow
-                        first
-                        big
-                        strong
-                        icon="play"
-                        title={`Começar: ${stops.saved[0]?.name ?? ''}`}
-                        sub="Última rota montada no celular"
+                      {results.map((x, i) => (
+                        <OptionRow
+                          key={x.id}
+                          first={i === 0}
+                          big
+                          icon="storefront"
+                          title={x.tradeName}
+                          sub={x.address}
+                          onPress={() => go(x.id)}
+                        />
+                      ))}
+                    </OptionGroup>
+                  )
+                ) : view === 'routes' ? (
+                  <>
+                    <Touchable
+                      accessibilityRole="button"
+                      onPress={() => setView('home')}
+                      style={styles.back}
+                    >
+                      <Icon name="chevron-back" size={32} color={c.accent} />
+                      <Text variant="headline" tone="accent" style={{ fontSize: 28 }}>
+                        Voltar
+                      </Text>
+                    </Touchable>
+                    <SavedRoutes outerRadius={OPEN.r} outerPadding={PAD} />
+                  </>
+                ) : (
+                  <>
+                    <Text variant="title2" style={styles.section}>
+                      Atalhos
+                    </Text>
+                    <View style={styles.shortcuts}>
+                      <Shortcut
+                        icon="people"
+                        label="Clientes"
+                        tint={t}
                         onPress={() => {
-                          const id = stops.saved[0]?.id;
                           hide();
-                          if (id) stops.startSaved(id);
+                          router.replace({ pathname: '/kyte', params: { secao: 'clientes' } });
                         }}
                       />
+                      <Shortcut
+                        icon="pricetag"
+                        label="Produtos"
+                        tint={t}
+                        onPress={() => {
+                          hide();
+                          router.replace({ pathname: '/kyte', params: { secao: 'produtos' } });
+                        }}
+                      />
+                      <Shortcut
+                        icon="trail-sign"
+                        label="Rotas"
+                        tint={t}
+                        onPress={() => setView('routes')}
+                      />
+                    </View>
+
+                    <Text variant="title2" style={styles.section}>
+                      Recentes
+                    </Text>
+                    <OptionGroup outerRadius={OPEN.r} outerPadding={PAD}>
+                      {recent.map((x, i) => (
+                        <OptionRow
+                          key={x.id}
+                          first={i === 0}
+                          big
+                          icon="location"
+                          title={x.tradeName}
+                          sub={x.address}
+                          onPress={() => go(x.id)}
+                        />
+                      ))}
                     </OptionGroup>
-                  )}
-                </>
-              )}
+
+                    {stops.saved.length > 0 && (
+                      <OptionGroup outerRadius={OPEN.r} outerPadding={PAD}>
+                        <OptionRow
+                          first
+                          big
+                          strong
+                          icon="play"
+                          title={`Começar: ${stops.saved[0]?.name ?? ''}`}
+                          sub="Última rota montada no celular"
+                          onPress={() => {
+                            const id = stops.saved[0]?.id;
+                            hide();
+                            if (id) stops.startSaved(id);
+                          }}
+                        />
+                      </OptionGroup>
+                    )}
+                  </>
+                )}
+              </Swap>
             </ScrollView>
           </Animated.View>
         )}

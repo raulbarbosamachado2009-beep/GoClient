@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { FlatList, ScrollView, Share, View } from 'react-native';
 import { useTabBarSpace } from '../../layout/form-factor';
 import { concentric } from '../../theme';
+import { Swap } from '../../ui/motion';
 import { Touchable } from '../../ui/primitives';
 import { brl, fmtQty, type KyteProduct, norm } from '../model';
 import { useKyteList } from '../store';
@@ -214,23 +215,25 @@ export function ProductDetail({ id }: { id: string }) {
             </View>
           )}
         </View>
-        {tab === 'cadastro' ? (
-          <>
-            <View style={{ flexDirection: s.phone ? 'column' : 'row', gap: 14 }}>
-              {field('Nome do Produto', p.name)}
-              {field('Preço de Venda', brl(p.price))}
-            </View>
-            <View style={{ flexDirection: s.phone ? 'column' : 'row', gap: 14 }}>
-              {field('Categoria', p.category || '—')}
-              {field('Código', p.code || '—')}
-            </View>
-          </>
-        ) : (
-          field(
-            'Estoque atual',
-            p.stock == null ? 'Sem controle de estoque' : `${fmtQty(p.stock)} un.`,
-          )
-        )}
+        <Swap id={tab} index={tab === 'cadastro' ? 0 : 1} style={{ gap: 14 }}>
+          {tab === 'cadastro' ? (
+            <>
+              <View style={{ flexDirection: s.phone ? 'column' : 'row', gap: 14 }}>
+                {field('Nome do Produto', p.name)}
+                {field('Preço de Venda', brl(p.price))}
+              </View>
+              <View style={{ flexDirection: s.phone ? 'column' : 'row', gap: 14 }}>
+                {field('Categoria', p.category || '—')}
+                {field('Código', p.code || '—')}
+              </View>
+            </>
+          ) : (
+            field(
+              'Estoque atual',
+              p.stock == null ? 'Sem controle de estoque' : `${fmtQty(p.stock)} un.`,
+            )
+          )}
+        </Swap>
         <Text size={s.small} color={KY.sub}>
           Só consulta: para mudar o cadastro use o Kyte.
         </Text>

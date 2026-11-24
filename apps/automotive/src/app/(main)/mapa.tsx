@@ -16,7 +16,6 @@ import {
   formatKm,
   formatStepDistance,
   type LatLng,
-  type LiveRoute,
 } from '../../map/routing';
 import { OptionGroup, OptionRow, SavedRoutes } from '../../map/saved-routes';
 import { useStops } from '../../map/stops';
@@ -29,7 +28,7 @@ import { usePrototype } from '../../prototype/state';
 import { concentric, layout, spacing, useColors } from '../../theme';
 import { BlurArea, BlurTargetProvider } from '../../ui/blur-target';
 import { Cover } from '../../ui/brand';
-import { Appear } from '../../ui/motion';
+import { Appear, Presence, Swap } from '../../ui/motion';
 import {
   Avatar,
   Button,
@@ -292,10 +291,18 @@ export default function MapScreen() {
           ) : live ? (
             <LiveGuidance to={client?.tradeName ?? ''} status={liveStatus} guidance={guidance} />
           ) : (
-            <Guidance />
+            // A manobra só aparece depois de tocar em "Ir" (navegação começada).
+            <Presence show={navigating} distance={-24} style={StyleSheet.absoluteFill}>
+              <Guidance />
+            </Presence>
           )}
           {mode !== 'explore' && (
-            <TripBar key={`trip:${mode}`} mode={mode} route={live ? shownRoute : undefined} />
+            <TripBar
+              key={`trip:${mode}`}
+              navigating={navigating}
+              onNavigate={navigate}
+              onStop={() => setNavigating(false)}
+            />
           )}
         </BlurTargetProvider>
       </View>
@@ -328,9 +335,8 @@ export default function MapScreen() {
               onPrevious={
                 mode === 'day' && routeClients.length > 1 ? () => setStop((s) => s - 1) : undefined
               }
-              navigating={navigating}
-              onNavigate={navigate}
-              onStopNavigation={() => setNavigating(false)}
+              trip={trip}
+              onClose={() => router.replace('/mapa')}
             />
           ) : (
             <WelcomeCard />
@@ -581,44 +587,35 @@ function maneuverIcon(type: number): IconName {
   }
 }
 
-function TripBar({ mode, route }: { mode: MapMode; route?: LiveRoute | null }) {
-  const phone = usePhone();
-  const system = useSystemInsets();
-  const router = useRouter();
-  const time = route ? formatDuration(route.durationSeconds) : null;
+/**
+ * Botão da viagem (canto de baixo do mapa, multimídia): "Ir" começa a navegação e, só depois
+ * disso, vira "Encerrar". Chegada, tempo e distância ficam no cartão do cliente.
+ */
+function TripBar({
+  navigating,
+  onNavigate,
+  onStop,
+}: {
+  navigating: boolean;
+  onNavigate: () => void;
+  onStop: () => void;
+}) {
   return (
-    <Appear
-      delay={160}
-      fade={false}
-      distance={40}
-      style={phone ? [PHONE.trip, { top: 150 + system.top }] : styles.bottomLeft}
-    >
+    <Appear delay={160} fade={false} distance={40} style={styles.bottomLeft}>
       <Material style={styles.trip}>
-        <Button
-          label="Encerrar"
-          variant="destructive"
-          size="md"
-          style={{ borderRadius: TRIP_INNER }}
-          onPress={() => router.replace('/mapa')}
-        />
-        <View style={{ flexDirection: 'row', gap: spacing[8] }}>
-          {route === undefined ? (
-            <>
-              <Stat value={mode === 'day' ? '11:58' : '09:59'} label="chegada" />
-              <Stat value={mode === 'day' ? '1:12' : '18'} label={mode === 'day' ? 'hrs' : 'min'} />
-              <Stat value={mode === 'day' ? '24,6' : '7,4'} label="km" />
-            </>
+        <Swap id={navigating ? 'stop' : 'go'} dir={navigating ? 1 : -1}>
+          {navigating ? (
+            <Button
+              label="Encerrar"
+              icon="stop-circle"
+              variant="destructive"
+              style={styles.tripButton}
+              onPress={onStop}
+            />
           ) : (
-            <>
-              <Stat
-                value={route ? formatArrival(route.durationSeconds) : '--:--'}
-                label="chegada"
-              />
-              <Stat value={time?.value ?? '--'} label={time?.unit ?? 'min'} />
-              <Stat value={route ? formatKm(route.distanceMeters) : '--'} label="km" />
-            </>
+            <Button label="Ir" icon="navigate" style={styles.tripButton} onPress={onNavigate} />
           )}
-        </View>
+        </Swap>
       </Material>
     </Appear>
   );
@@ -626,8 +623,10 @@ function TripBar({ mode, route }: { mode: MapMode; route?: LiveRoute | null }) {
 
 function Stat({ value, label }: { value: string; label: string }) {
   return (
-    <View>
-      <Text variant="title2">{value}</Text>
+    <View style={{ alignItems: 'center' }}>
+      <Text variant="title" style={{ fontSize: 34, lineHeight: 40 }}>
+        {value}
+      </Text>
       <Text variant="caption" tone="secondary">
         {label}
       </Text>
@@ -642,21 +641,20 @@ function ClientCard({
   stopLabel,
   onNext,
   onPrevious,
-  navigating,
-  onNavigate,
-  onStopNavigation,
+  trip,
+  onClose,
 }: {
   client: MockClient;
   mode: MapMode;
   stopLabel?: string;
   onNext?: () => void;
   onPrevious?: () => void;
-  navigating: boolean;
-  onNavigate: () => void;
-  onStopNavigation: () => void;
+  /** Chegada, tempo e distância (o botão "Ir" fica no canto do mapa). */
+  trip: TripInfo;
+  onClose: () => void;
 }) {
   const c = useColors();
-  const router = useRouter();
+  const _router = useRouter();
   const tile = c.mode === 'dark' ? 'rgba(255,255,255,0.1)' : '#FFFFFF';
   const district = client.district.split(' · ')[0];
   const square = (icon: IconName, label: string, onPress: () => void) => (
@@ -679,7 +677,7 @@ function ClientCard({
               {stopLabel}
             </Text>
           )}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[4] }}>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: spacing[4] }}>
             <Avatar name={client.name} size={104} radius={COMPACT_INNER} />
             <View style={{ flex: 1, gap: 4 }}>
               <Text variant="title" numberOfLines={2}>
@@ -689,6 +687,13 @@ function ClientCard({
                 {[client.address, district].filter(Boolean).join(' · ')}
               </Text>
             </View>
+            <IconButton
+              icon="close"
+              size={56}
+              iconSize={28}
+              accessibilityLabel="Fechar destino"
+              onPress={onClose}
+            />
           </View>
         </View>
         {/* Resumo do cliente no meio do cartão (dados do Kyte). */}
@@ -726,32 +731,12 @@ function ClientCard({
             {onPrevious ? square('chevron-back', 'Cliente anterior', onPrevious) : null}
             {onNext ? square('chevron-forward', 'Próximo cliente', onNext) : null}
           </View>
-          {mode !== 'explore' &&
-            (navigating ? (
-              <Button
-                label="Encerrar navegação"
-                icon="stop-circle"
-                variant="destructive"
-                style={{ borderRadius: COMPACT_INNER }}
-                onPress={onStopNavigation}
-              />
-            ) : (
-              <Button
-                label="Navegar"
-                icon="navigate"
-                style={{ borderRadius: COMPACT_INNER }}
-                onPress={onNavigate}
-              />
-            ))}
-          {mode === 'explore' && (
-            <Button
-              label="IR"
-              icon="navigate"
-              style={{ borderRadius: COMPACT_INNER }}
-              onPress={() =>
-                router.replace({ pathname: '/mapa', params: { rota: 'cliente', id: client.id } })
-              }
-            />
+          {mode !== 'explore' && (
+            <View style={[styles.tripStats, { backgroundColor: tile }]}>
+              <Stat value={trip.arrival} label="chegada" />
+              <Stat value={trip.duration.value} label={trip.duration.unit} />
+              <Stat value={trip.km} label="km" />
+            </View>
           )}
         </View>
       </Appear>
@@ -767,71 +752,72 @@ function ClientCard({
 function WelcomeCard() {
   const stops = useStops();
   const [view, setView] = useState<'home' | 'pick' | 'routes'>('home');
-  if (view === 'pick')
-    return (
-      <Material style={[styles.welcome, { justifyContent: 'flex-start' }]}>
-        <ClientPicker onClose={() => setView('home')} />
-      </Material>
-    );
-  if (view === 'routes')
-    return (
-      <Material style={styles.welcome}>
-        <Appear distance={12} style={{ flex: 1, gap: spacing[5] }}>
-          <View style={styles.welcomeHead}>
-            <Text variant="largeTitle" style={{ fontSize: 40, lineHeight: 48 }}>
-              Rotas
-            </Text>
-            <IconButton
-              icon="close"
-              size={80}
-              iconSize={36}
-              accessibilityLabel="Voltar"
-              onPress={() => setView('home')}
-            />
-          </View>
-          <ScrollView showsVerticalScrollIndicator={false}>
-            <SavedRoutes outerRadius={WELCOME_R} outerPadding={spacing[6]} />
-          </ScrollView>
-        </Appear>
-      </Material>
-    );
   const count = stops.saved.length;
+  // Mesma transição da aba "Rotas" do celular: o atual sai deslizando e o novo entra.
   return (
-    <Material style={styles.welcome}>
-      <Appear distance={12} style={{ gap: spacing[6] }}>
-        <View style={{ gap: spacing[1] }}>
-          <Text variant="largeTitle" style={{ fontSize: 42, lineHeight: 50 }}>
-            Para onde vamos?
-          </Text>
-          <Text variant="body" tone="secondary" style={{ fontSize: 26, lineHeight: 32 }}>
-            Escolha um cliente ou uma rota montada.
-          </Text>
-        </View>
-        <OptionGroup outerRadius={WELCOME_R} outerPadding={spacing[6]}>
-          <OptionRow
-            first
-            big
-            strong
-            icon="storefront"
-            title="Escolher cliente"
-            sub="Traçar o caminho até ele"
-            onPress={() => setView('pick')}
-          />
-          <OptionRow
-            big
-            icon="trail-sign"
-            title="Rotas montadas"
-            sub={
-              count === 0
-                ? 'Monte no celular'
-                : count === 1
-                  ? '1 rota do celular'
-                  : `${count} rotas do celular`
-            }
-            onPress={() => setView('routes')}
-          />
-        </OptionGroup>
-      </Appear>
+    <Material style={[styles.welcome, view !== 'home' && { justifyContent: 'flex-start' }]}>
+      <Swap
+        id={view}
+        dir={view === 'home' ? -1 : 1}
+        style={view === 'home' ? { gap: spacing[6] } : { flex: 1, gap: spacing[5] }}
+      >
+        {view === 'pick' ? (
+          <ClientPicker onClose={() => setView('home')} />
+        ) : view === 'routes' ? (
+          <>
+            <View style={styles.welcomeHead}>
+              <Text variant="largeTitle" style={{ fontSize: 40, lineHeight: 48 }}>
+                Rotas
+              </Text>
+              <IconButton
+                icon="close"
+                size={80}
+                iconSize={36}
+                accessibilityLabel="Voltar"
+                onPress={() => setView('home')}
+              />
+            </View>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <SavedRoutes outerRadius={WELCOME_R} outerPadding={spacing[6]} />
+            </ScrollView>
+          </>
+        ) : (
+          <>
+            <View style={{ gap: spacing[1] }}>
+              <Text variant="largeTitle" style={{ fontSize: 42, lineHeight: 50 }}>
+                Para onde vamos?
+              </Text>
+              <Text variant="body" tone="secondary" style={{ fontSize: 26, lineHeight: 32 }}>
+                Escolha um cliente ou uma rota montada.
+              </Text>
+            </View>
+            <OptionGroup outerRadius={WELCOME_R} outerPadding={spacing[6]}>
+              <OptionRow
+                first
+                big
+                strong
+                icon="storefront"
+                title="Escolher cliente"
+                sub="Traçar o caminho até ele"
+                onPress={() => setView('pick')}
+              />
+              <OptionRow
+                big
+                icon="trail-sign"
+                title="Rotas montadas"
+                sub={
+                  count === 0
+                    ? 'Monte no celular'
+                    : count === 1
+                      ? '1 rota do celular'
+                      : `${count} rotas do celular`
+                }
+                onPress={() => setView('routes')}
+              />
+            </OptionGroup>
+          </>
+        )}
+      </Swap>
     </Material>
   );
 }
@@ -932,19 +918,18 @@ const styles = StyleSheet.create({
     paddingRight: spacing[10],
     borderRadius: layout.radius.xl,
   },
-  trip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[10],
-    paddingVertical: spacing[4],
-    paddingLeft: spacing[4],
-    paddingRight: spacing[8],
-    borderRadius: TRIP_R,
-  },
+  trip: { padding: spacing[4], borderRadius: TRIP_R },
+  tripButton: { borderRadius: TRIP_INNER, minWidth: 280, paddingHorizontal: spacing[8] },
   card: { flex: 1, borderRadius: 40, padding: spacing[8] },
   compact: { flex: 1, borderRadius: COMPACT_R, padding: spacing[6] },
   // Cabeçalho em cima e os botões no pé do cartão (que ocupa a coluna até embaixo).
   facts: { borderRadius: COMPACT_INNER, paddingHorizontal: spacing[5] },
+  tripStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    borderRadius: COMPACT_INNER,
+    paddingVertical: spacing[2],
+  },
   fact: {
     flexDirection: 'row',
     alignItems: 'center',

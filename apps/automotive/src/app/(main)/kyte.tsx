@@ -26,7 +26,7 @@ import { KyteWindow, type KyteWindowHandle } from '../../kyte/window';
 import { usePhone } from '../../layout/form-factor';
 import { usePrototype } from '../../prototype/state';
 import { concentric } from '../../theme';
-import { Appear } from '../../ui/motion';
+import { Appear, Presence } from '../../ui/motion';
 import { Touchable } from '../../ui/primitives';
 
 /**
@@ -184,7 +184,10 @@ export default function KyteScreen() {
         <Appear key={key} distance={10} style={{ flex: 1 }}>
           {body}
         </Appear>
-        {menuOpen && logged && <SectionMenu onClose={() => setMenuOpen(false)} />}
+        {/* O menu entra e sai com fade (o fundo escurecido também). */}
+        <Presence show={menuOpen && logged} distance={0} style={StyleSheet.absoluteFill}>
+          <SectionMenu onClose={() => setMenuOpen(false)} />
+        </Presence>
       </View>
     </KyteNavContext.Provider>
   );

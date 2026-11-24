@@ -2,7 +2,6 @@ import { useRouter } from 'expo-router';
 import { type ComponentRef, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
-  Easing,
   Keyboard,
   PanResponder,
   type PanResponderCallbacks,
@@ -18,8 +17,8 @@ import { customerAddress, findCustomer, useKyteList } from '../kyte/store';
 import { TAB_BAR_HEIGHT, useSystemInsets, useTabBarSpace } from '../layout/form-factor';
 import { CLIENTS, type MockClient, REGIONS } from '../mocks/data';
 import { useFrameScale } from '../preview/automotive-frame';
-import { concentric, nativeDriver, spacing, useColors } from '../theme';
-import { appleEase } from '../ui/motion';
+import { concentric, spacing, useColors } from '../theme';
+import { useSwap } from '../ui/motion';
 import { Avatar, Blur, Icon, type IconName, Text, Touchable } from '../ui/primitives';
 import { RoutePlanner } from './route-planner';
 import { RouteQueue } from './route-queue';
@@ -570,14 +569,16 @@ export function ExploreSheet() {
       .catch((e: Error) => setNotice(e.message));
   };
   const startSearch = () => {
-    setSearching(true);
+    if (!searching) swap.run(1, () => setSearching(true));
     sheet.current?.snap(2);
     requestAnimationFrame(() => input.current?.focus());
   };
   const endSearch = () => {
-    setSearching(false);
-    setQuery('');
-    setRegion(null);
+    swap.run(-1, () => {
+      setSearching(false);
+      setQuery('');
+      setRegion(null);
+    });
     Keyboard.dismiss();
     input.current?.blur();
     sheet.current?.snap(0);
@@ -1374,44 +1375,6 @@ function Quick({
       </Text>
     </Tap>
   );
-}
-
-/**
- * Troca de conteúdo com a curva da Apple: o atual sai deslizando e some, o novo entra do
- * outro lado (`dir` 1 = avança, -1 = volta). Só opacidade e deslocamento (driver nativo).
- */
-function useSwap() {
-  const v = useRef(new Animated.Value(0)).current;
-  const busy = useRef(false);
-  const run = (dir: 1 | -1, change: () => void) => {
-    if (busy.current) return;
-    busy.current = true;
-    Animated.timing(v, {
-      toValue: -dir,
-      duration: 160,
-      easing: Easing.in(Easing.quad),
-      useNativeDriver: nativeDriver,
-    }).start(() => {
-      change();
-      v.setValue(dir);
-      Animated.timing(v, {
-        toValue: 0,
-        duration: 340,
-        easing: appleEase,
-        useNativeDriver: nativeDriver,
-      }).start(() => {
-        busy.current = false;
-      });
-    });
-  };
-  const style = {
-    opacity: v.interpolate({ inputRange: [-1, 0, 1], outputRange: [0, 1, 0] }),
-    transform: [
-      { translateX: v.interpolate({ inputRange: [-1, 0, 1], outputRange: [-48, 0, 48] }) },
-      { scale: v.interpolate({ inputRange: [-1, 0, 1], outputRange: [0.98, 1, 0.98] }) },
-    ],
-  };
-  return { run, style };
 }
 
 function Detail({ label, value, tone }: { label: string; value: string; tone?: 'accent' }) {

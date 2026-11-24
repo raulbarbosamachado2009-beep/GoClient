@@ -5,7 +5,7 @@ Leia este arquivo antes de começar qualquer trabalho.
 
 ## Estado atual do app
 
-_Última atualização: 2026-11-24 11:31 — rotas montadas só no celular (Regra 3) e começadas na multimídia, busca do Mapa da multimídia que vira cartão, opções maiores em azul._
+_Última atualização: 2026-11-24 11:56 — botão Ir/Encerrar no mapa da multimídia, nome nas rotas montadas e transições em todo o app._
 
 - **Automotive (`apps/automotive`)** é onde está quase todo o produto: Mapa (OSM + OpenRouteService,
   navegação com voz), Kyte (telas próprias sobre a janela do Kyte), Música (Spotify App Remote) e
@@ -14,6 +14,27 @@ _Última atualização: 2026-11-24 11:31 — rotas montadas só no celular (Regr
 - Regras de negócio em `packages/core` (com testes); visual só com `@goclient/design-tokens`.
 
 ## Mudanças
+
+### 2026-11-24 11:56 — 6ª rodada: Ir/Encerrar, nome da rota e transições
+
+Pedido do usuário (thread "Melhorar o design e o onboarding do app", 6ª rodada).
+
+- **Lógica da navegação (multimídia):** "Encerrar" só aparece depois de tocar em **Ir**. Antes
+  disso, o botão do canto do mapa é "Ir" (azul); com a navegação começada ele troca, com
+  transição, para "Encerrar". A manobra ("350 m…") só aparece navegando, com fade.
+- **Troca de lugares:** chegada, minutos e km foram para o cartão do cliente (o botão Navegar
+  saiu de lá). O cartão ganhou um × para fechar o destino.
+- **Nome da rota:** ao montar uma rota no celular, o usuário dá um nome (campo "Nome da rota";
+  vazio usa "Rota de <dia>, hh:mm"). O nome aparece em "Rotas montadas".
+- **Transições (a mesma da aba "Rotas" do celular, agora `Swap` em `ui/motion.tsx`):**
+  "Para onde vamos?" ↔ Rotas montadas ↔ Escolher cliente; busca da multimídia (início, Rotas,
+  resultados); busca da aba do celular (abrir e fechar); abas das telas do Kyte (cliente,
+  venda, produto); etapas do login.
+- **Aparecer e sumir (`Presence`):** menu ☰ do Kyte (com o fundo escurecido) e a manobra do
+  mapa.
+- Arquivos: `ui/motion.tsx`, `app/(main)/mapa.tsx`, `map/car-search.tsx`, `map/phone-sheet.tsx`,
+  `map/route-planner.tsx`, `map/stops.tsx`, `app/(main)/kyte.tsx`, `kyte/screens/clients.tsx`,
+  `kyte/screens/sale.tsx`, `kyte/screens/products.tsx`, `app/onboarding/login.tsx`.
 
 ### 2026-11-24 11:31 — 5ª rodada: rotas montadas no celular, busca da multimídia e opções em azul
 
