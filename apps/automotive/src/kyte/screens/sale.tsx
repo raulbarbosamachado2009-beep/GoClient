@@ -210,8 +210,8 @@ export function SaleDetail({ id }: { id: string }) {
           onPress={() => nav.open({ type: 'receipt', id: sale.id })}
           accessibilityLabel="Ver recibo"
           style={{
-            width: s.phone ? 110 : 150,
-            height: s.phone ? 96 : 110,
+            width: s.phone ? 110 : 170,
+            height: s.phone ? 96 : 128,
             borderRadius: 18,
             borderWidth: 2,
             borderColor: '#C8CFD8',
@@ -226,7 +226,7 @@ export function SaleDetail({ id }: { id: string }) {
           onPress={() => !canceled && setConfirm(true)}
           style={{
             flex: 1,
-            height: s.phone ? 96 : 110,
+            height: s.phone ? 96 : 128,
             borderRadius: 18,
             backgroundColor: canceled ? '#9AA3AF' : KY.night,
             flexDirection: 'row',
@@ -587,7 +587,7 @@ export function Receipt({ id }: { id: string }) {
             onPress={a.run}
             style={{
               flex: 1,
-              height: s.phone ? 108 : 96,
+              height: s.phone ? 108 : 128,
               borderRadius: 16,
               backgroundColor: 'rgba(255,255,255,.08)',
               alignItems: 'center',

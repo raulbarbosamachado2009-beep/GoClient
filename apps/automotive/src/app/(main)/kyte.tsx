@@ -25,6 +25,7 @@ import { Header, type IconName, KIcon, KY, Text, useKySize } from '../../kyte/ui
 import { KyteWindow, type KyteWindowHandle } from '../../kyte/window';
 import { usePhone } from '../../layout/form-factor';
 import { usePrototype } from '../../prototype/state';
+import { concentric } from '../../theme';
 import { Appear } from '../../ui/motion';
 import { Touchable } from '../../ui/primitives';
 
@@ -141,7 +142,7 @@ export default function KyteScreen() {
         )}
         {sellMsg && (
           <View style={{ backgroundColor: '#E6FAF4', paddingHorizontal: 24, paddingVertical: 12 }}>
-            <Text size={phone ? 18 : 20} weight="medium" color={KY.greenInk}>
+            <Text size={phone ? 18 : 24} weight="medium" color={KY.greenInk}>
               {sellMsg}
             </Text>
           </View>
@@ -189,6 +190,10 @@ export default function KyteScreen() {
   );
 }
 
+/** Menu ☰ com bordas concêntricas: itens com o raio do menu menos o espaçamento. */
+const MENU_R = 28;
+const MENU_PAD = 10;
+
 /** Menu ☰: as seções do Kyte no GoClient. */
 function SectionMenu({ onClose }: { onClose: () => void }) {
   const s = useKySize();
@@ -206,12 +211,12 @@ function SectionMenu({ onClose }: { onClose: () => void }) {
         distance={12}
         style={{
           position: 'absolute',
-          top: 96,
+          top: s.phone ? 96 : 124,
           left: s.pad,
-          width: s.phone ? 420 : 440,
+          width: s.phone ? 420 : 520,
           backgroundColor: KY.card,
-          borderRadius: 22,
-          paddingVertical: 10,
+          borderRadius: MENU_R,
+          padding: MENU_PAD,
           shadowColor: '#000',
           shadowOpacity: 0.25,
           shadowRadius: 24,
@@ -230,7 +235,8 @@ function SectionMenu({ onClose }: { onClose: () => void }) {
                 alignItems: 'center',
                 gap: 20,
                 paddingHorizontal: 26,
-                height: s.phone ? 86 : 80,
+                height: s.phone ? 86 : 112,
+                borderRadius: concentric(MENU_R, MENU_PAD),
                 backgroundColor: on ? '#E6FAF4' : 'transparent',
               }}
             >

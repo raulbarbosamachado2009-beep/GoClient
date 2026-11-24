@@ -70,7 +70,7 @@ export function ClientsScreen() {
       key={k}
       onPress={() => setFilter((f) => (f === k ? 'todos' : k))}
       style={{
-        height: s.phone ? 56 : 54,
+        height: s.phone ? 56 : 80,
         paddingHorizontal: 24,
         borderRadius: 999,
         borderWidth: 2,

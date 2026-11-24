@@ -87,7 +87,7 @@ export function ProductsScreen() {
 
 function ProductRow({ p, stock, onOpen }: { p: KyteProduct; stock: boolean; onOpen: () => void }) {
   const s = useKySize();
-  const thumb = s.phone ? 76 : 64;
+  const thumb = s.phone ? 76 : 88;
   return (
     <Touchable
       onPress={onOpen}
@@ -190,7 +190,7 @@ export function ProductDetail({ id }: { id: string }) {
             >
               <View
                 style={{
-                  height: s.phone ? 150 : 110,
+                  height: s.phone ? 150 : 140,
                   alignItems: 'center',
                   justifyContent: 'center',
                   paddingHorizontal: 12,
