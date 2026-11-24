@@ -5,7 +5,7 @@ Leia este arquivo antes de começar qualquer trabalho.
 
 ## Estado atual do app
 
-_Última atualização: 2026-11-24 14:45 — Regra 1 retirada: o "+" do Kyte abre os cadastros também na multimídia._
+_Última atualização: 2026-11-24 14:53 — coluna da direita do Mapa sempre cheia: a música cresce quando o destino encolhe._
 
 - **Automotive (`apps/automotive`)** é onde está quase todo o produto: Mapa (OSM + OpenRouteService,
   navegação com voz), Kyte (telas próprias sobre a janela do Kyte), Música (Spotify App Remote) e
@@ -14,6 +14,14 @@ _Última atualização: 2026-11-24 14:45 — Regra 1 retirada: o "+" do Kyte abr
 - Regras de negócio em `packages/core` (com testes); visual só com `@goclient/design-tokens`.
 
 ## Mudanças
+
+### 2026-11-24 14:53 — Coluna da direita do Mapa sempre cheia
+
+- Multimídia, Mapa: a música e o destino preenchem a coluna de cima a baixo, sem espaço vazio.
+  Com "Para onde vamos?" (cartão baixo) a música cresce e mostra a capa grande; com um destino
+  ou a lista de clientes (cartão alto) a música volta ao tamanho de painel.
+- Os dois cartões mudam de forma juntos (altura e cantos) com o mesmo desfoque de movimento
+  (`MorphColumn` em `app/(main)/mapa.tsx`, que substitui o `MorphCard`).
 
 ### 2026-11-24 14:45 — Regra 1 retirada: cadastros do Kyte também na multimídia
 

@@ -320,15 +320,13 @@ export default function MapScreen() {
         </BlurTargetProvider>
       </View>
 
-      {/* Coluna da direita: a música num cartão baixo em cima e o destino (cliente ou "Para
-          onde vamos?") embaixo, ocupando o resto — o cartão do cliente é o maior. */}
+      {/* Coluna da direita: música em cima e destino embaixo, sempre ocupando a coluna inteira
+          de cima a baixo. Com "Para onde vamos?" (cartão baixo) a música cresce e mostra a capa
+          grande; com um destino (cartão alto) a música encolhe. Os dois mudam de forma juntos,
+          com desfoque. */}
       <View style={styles.side}>
-        <Appear delay={160} distance={40} fade={false} style={{ height: NOW_H }}>
-          <NowPlayingCard />
-        </Appear>
-        {/* O cartão muda de forma: baixo no "Para onde vamos?" e da altura da coluna com um
-            destino escolhido (ou numa lista). A forma cresce/encolhe com desfoque. */}
-        <MorphCard
+        <MorphColumn
+          top={(expand, artSize) => <NowPlayingCard expand={expand} artSize={artSize} />}
           compact={!client && welcomeCompact}
           compactHeight={homeH > 0 ? homeH + spacing[6] * 2 : 0}
         >
@@ -366,7 +364,7 @@ export default function MapScreen() {
               <WelcomeCard onCompact={setWelcomeCompact} onHomeHeight={setHomeH} />
             )}
           </Swap>
-        </MorphCard>
+        </MorphColumn>
       </View>
     </View>
   );
@@ -378,12 +376,22 @@ export default function MapScreen() {
  * progresso e os controles anterior / tocar-pausar / próxima embaixo. "Anterior" volta ao
  * início da música se ela já passou dos 3 s (como no Spotify e no iPhone).
  */
-function NowPlayingCard() {
+function NowPlayingCard({
+  expand,
+  artSize,
+}: {
+  /** 0 = cartão baixo (só controles), 1 = cartão alto (capa grande em cima). */
+  expand: Animated.AnimatedInterpolation<number>;
+  artSize: number;
+}) {
   const router = useRouter();
   const { togglePlaying, next, previous } = usePrototype();
   const np = useNowPlaying();
   const { track, playing } = np;
   const back = () => (np.positionMs() > 3000 ? np.seek(0) : previous());
+  const headCover = expand.interpolate({ inputRange: [0, 1], outputRange: [80 + spacing[4], 0] });
+  const headCoverO = expand.interpolate({ inputRange: [0, 0.5], outputRange: [1, 0] });
+  const artScale = expand.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1] });
   return (
     <View style={styles.now}>
       <Image
@@ -397,9 +405,23 @@ function NowPlayingCard() {
         accessibilityRole="button"
         accessibilityLabel={`Abrir o player: ${track.title}`}
         onPress={() => router.push('/player')}
+        style={styles.nowArt}
+      >
+        {artSize > 0 && (
+          <Animated.View style={{ opacity: expand, transform: [{ scale: artScale }] }}>
+            <Cover color={track.cover} image={track.image} size={artSize} radius={NOW_INNER} />
+          </Animated.View>
+        )}
+      </Touchable>
+      <Touchable
+        accessibilityRole="button"
+        accessibilityLabel={`Abrir o player: ${track.title}`}
+        onPress={() => router.push('/player')}
         style={styles.nowHead}
       >
-        <Cover color={track.cover} image={track.image} size={80} radius={NOW_INNER} />
+        <Animated.View style={{ width: headCover, opacity: headCoverO, overflow: 'hidden' }}>
+          <Cover color={track.cover} image={track.image} size={80} radius={NOW_INNER} />
+        </Animated.View>
         <View style={{ flex: 1, gap: 2 }}>
           <Text variant="headline" color="#FFFFFF" numberOfLines={1}>
             {track.title}
@@ -729,28 +751,42 @@ function StopButton({ onPress }: { onPress: () => void }) {
 }
 
 /**
- * Casca de vidro do cartão da direita, com a forma animada: altura e cantos andam juntos (como
- * a busca) e um desfoque de movimento passa pelo cartão no meio da troca. O conteúdo é
- * montado já no tamanho final e a casca recorta, para nada se espremer durante a animação.
+ * Coluna da direita: cartão da música em cima e o cartão de vidro do destino embaixo, sempre
+ * preenchendo a coluna de cima a baixo. Quando o destino fica baixo ("Para onde vamos?"), a
+ * música cresce e ocupa o resto; quando o destino precisa de espaço, a música volta ao
+ * tamanho de painel. As duas formas andam juntas (altura e cantos) e um desfoque de movimento
+ * passa pelas duas no meio da troca. O conteúdo do destino é montado já no tamanho final e a
+ * casca recorta, para nada se espremer durante a animação.
  */
-function MorphCard({
+function MorphColumn({
   compact,
   compactHeight,
+  top,
   children,
 }: {
   compact: boolean;
   compactHeight: number;
+  top: (expand: Animated.AnimatedInterpolation<number>, artSize: number) => ReactNode;
   children: ReactNode;
 }) {
   const c = useColors();
-  const [full, setFull] = useState(0);
-  const target =
-    compact && compactHeight > 0 ? Math.min(compactHeight, full || compactHeight) : full;
+  const [total, setTotal] = useState(0);
+  const gap = layout.gutter;
+  // Destino alto: a música fica no tamanho de painel e o destino leva o resto.
+  const big = Math.max(total - NOW_H - gap, 0);
+  const small = compactHeight > 0 ? Math.min(compactHeight, big) : big;
+  const target = compact ? small : big;
+  // Capa grande: cabe no espaço que sobra em cima da música quando ela cresce.
+  const grownNow = total - gap - small;
+  const artSize = Math.max(
+    Math.min(SIDE_W - spacing[6] * 2, grownNow - NOW_H - spacing[3]) - spacing[2],
+    0,
+  );
   const h = useRef(new Animated.Value(0)).current;
   const m = useRef(new Animated.Value(0)).current;
   const first = useRef(true);
   useEffect(() => {
-    if (!target) return;
+    if (!total) return;
     if (first.current) {
       first.current = false;
       h.setValue(target);
@@ -766,7 +802,13 @@ function MorphCard({
       }),
       Animated.timing(m, { toValue: 1, duration: 560, useNativeDriver: false }),
     ]).start();
-  }, [target, h, m]);
+  }, [target, total, h, m]);
+  const nowH = Animated.add(total - gap, Animated.multiply(h, -1));
+  const expand = h.interpolate({
+    inputRange: [Math.min(small, big - 1), big],
+    outputRange: [1, 0],
+    extrapolate: 'clamp',
+  });
   const blurO = m.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 1, 0] });
   const webBlur =
     Platform.OS === 'web'
@@ -777,21 +819,36 @@ function MorphCard({
           }),
         }
       : null;
+  const pulse = (tint: 'dark' | 'light') => (
+    <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { opacity: blurO }]}>
+      <Blur radius={18} tint={tint} />
+    </Animated.View>
+  );
   return (
-    <View style={{ flex: 1 }} onLayout={(e) => setFull(e.nativeEvent.layout.height)}>
-      {full > 0 && (
-        <Animated.View style={[styles.morph, { height: h, borderColor: c.material.border }]}>
-          <Blur radius={44} tint={c.material.tint} />
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: c.material.fallback }]} />
+    <View style={{ flex: 1 }} onLayout={(e) => setTotal(e.nativeEvent.layout.height)}>
+      {total > 0 && (
+        <>
+          <Appear delay={160} distance={40} fade={false}>
+            <Animated.View style={[styles.nowShell, { height: nowH }]}>
+              <Animated.View style={[{ flex: 1 }, webBlur as object]}>
+                {top(expand, artSize)}
+              </Animated.View>
+              {pulse('dark')}
+            </Animated.View>
+          </Appear>
           <Animated.View
-            style={[{ height: compact ? Math.max(target, 1) : full }, webBlur as object]}
+            style={[styles.morph, { height: h, marginTop: gap, borderColor: c.material.border }]}
           >
-            {children}
+            <Blur radius={44} tint={c.material.tint} />
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: c.material.fallback }]} />
+            <Animated.View
+              style={[{ height: compact ? Math.max(target, 1) : big }, webBlur as object]}
+            >
+              {children}
+            </Animated.View>
+            {pulse(c.material.tint)}
           </Animated.View>
-          <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { opacity: blurO }]}>
-            <Blur radius={18} tint={c.material.tint} />
-          </Animated.View>
-        </Animated.View>
+        </>
       )}
     </View>
   );
@@ -1215,7 +1272,6 @@ const styles = StyleSheet.create({
     right: layout.gutter,
     bottom: layout.gutter,
     width: SIDE_W,
-    gap: layout.gutter,
   },
   now: {
     flex: 1,
@@ -1225,11 +1281,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[6],
     paddingVertical: spacing[5],
     gap: spacing[3],
-    justifyContent: 'center',
   },
   nowBackdrop: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' },
   nowControls: { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center' },
-  nowHead: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
+  nowHead: { flexDirection: 'row', alignItems: 'center', height: 80 },
+  // Capa grande: ocupa o espaço que sobra em cima quando o cartão da música cresce.
+  nowArt: { flex: 1, minHeight: 0, alignItems: 'center', justifyContent: 'center' },
   maneuver: { flexDirection: 'row', alignItems: 'center', gap: spacing[6] },
   // Celular: manobra em cima e a faixa de chegada/tempo/distância embaixo.
   guidanceStack: {
@@ -1269,6 +1326,7 @@ const styles = StyleSheet.create({
   card: { flex: 1, borderRadius: 40, padding: spacing[8] },
   compact: { flex: 1, padding: spacing[6] },
   morph: { borderRadius: COMPACT_R, overflow: 'hidden', borderWidth: 1 },
+  nowShell: { borderRadius: NOW_R, overflow: 'hidden' },
   wideAction: {
     flex: 1,
     height: 96,
