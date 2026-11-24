@@ -1,7 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import type { ComponentProps, ReactNode } from 'react';
 import {
-  ActivityIndicator,
   Image,
   Text as RNText,
   type StyleProp,
@@ -14,6 +13,7 @@ import {
 import { usePhone, useSystemInsets, useTabBarSpace } from '../layout/form-factor';
 import { FONT } from '../theme';
 import { Touchable } from '../ui/primitives';
+import { Spinner } from '../ui/spinner';
 
 /**
  * Peças visuais das telas do Kyte no GoClient, no estilo do próprio Kyte (prints enviados):
@@ -51,21 +51,25 @@ export function useKySize() {
         small: 16,
         icon: 30,
         rowH: 92,
+        thumb: 76,
         pad: 22,
         radius: 16,
       }
-    : {
+    : // Multimídia: tudo bem maior, para tocar com o carro em movimento (alvos de 96+).
+      {
         phone,
-        title: 44,
-        big: 34,
-        body: 26,
-        row: 29,
-        sub: 22,
-        small: 19,
-        icon: 34,
-        rowH: 78,
-        pad: 24,
-        radius: 18,
+        title: 50,
+        big: 42,
+        body: 33,
+        row: 40,
+        sub: 29,
+        small: 24,
+        icon: 46,
+        // Linhas de lista (produtos, clientes, venda) bem altas: alvo de toque de 148.
+        rowH: 148,
+        thumb: 116,
+        pad: 32,
+        radius: 24,
       };
 }
 
@@ -138,7 +142,7 @@ export function Header({
         styles.header,
         {
           paddingHorizontal: s.pad,
-          height: 96 + (s.phone ? top : 0),
+          height: (s.phone ? 96 : 124) + (s.phone ? top : 0),
           paddingTop: s.phone ? top : 0,
         },
       ]}
@@ -175,7 +179,7 @@ export function IconButton({
   size?: number;
 }) {
   const s = useKySize();
-  const box = s.phone ? 64 : 68;
+  const box = s.phone ? 64 : 100;
   return (
     <Touchable
       onPress={onPress}
@@ -190,7 +194,7 @@ export function IconButton({
 /** Botão verde quadrado (o "+" do Kyte). */
 export function PlusButton({ onPress, label }: { onPress: () => void; label: string }) {
   const s = useKySize();
-  const box = s.phone ? 72 : 76;
+  const box = s.phone ? 72 : 100;
   return (
     <Touchable
       onPress={onPress}
@@ -198,7 +202,7 @@ export function PlusButton({ onPress, label }: { onPress: () => void; label: str
       style={{
         width: box,
         height: box,
-        borderRadius: 16,
+        borderRadius: s.phone ? 16 : 24,
         backgroundColor: KY.green,
         alignItems: 'center',
         justifyContent: 'center',
@@ -228,8 +232,8 @@ export function GreenButton({
       onPress={onPress}
       style={[
         {
-          height: height ?? (s.phone ? 88 : 96),
-          borderRadius: 18,
+          height: height ?? (s.phone ? 88 : 128),
+          borderRadius: s.phone ? 18 : 28,
           backgroundColor: KY.green,
           alignItems: 'center',
           justifyContent: 'center',
@@ -266,7 +270,7 @@ export function SearchField({
           flexDirection: 'row',
           alignItems: 'center',
           gap: 14,
-          height: s.phone ? 76 : 70,
+          height: s.phone ? 76 : 100,
           borderRadius: 999,
           backgroundColor: '#E4E8ED',
           paddingHorizontal: 24,
@@ -329,7 +333,7 @@ export function Tabs<K extends string>({
             scaleTo={0.98}
             style={{
               flex: 1,
-              height: s.phone ? 76 : 72,
+              height: s.phone ? 76 : 104,
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'center',
@@ -351,12 +355,23 @@ export function Tabs<K extends string>({
 }
 
 /** Miniatura do produto: a foto, ou o começo do nome num quadrado escuro (como no Kyte). */
-export function Thumb({ image, name, size }: { image: string; name: string; size: number }) {
+export function Thumb({
+  image,
+  name,
+  size,
+  radius = 10,
+}: {
+  image: string;
+  name: string;
+  size: number;
+  /** Raio concêntrico com a linha que contém a miniatura. */
+  radius?: number;
+}) {
   if (image)
     return (
       <Image
         source={{ uri: image }}
-        style={{ width: size, height: size, borderRadius: 10, backgroundColor: KY.line }}
+        style={{ width: size, height: size, borderRadius: radius, backgroundColor: KY.line }}
       />
     );
   return (
@@ -364,7 +379,7 @@ export function Thumb({ image, name, size }: { image: string; name: string; size
       style={{
         width: size,
         height: size,
-        borderRadius: 10,
+        borderRadius: radius,
         backgroundColor: '#525D6E',
         alignItems: 'center',
         justifyContent: 'center',
@@ -422,7 +437,7 @@ export function State({
     <View style={{ alignItems: 'center', justifyContent: 'center', padding: 40, gap: 18, flex: 1 }}>
       {loading ? (
         <>
-          <ActivityIndicator size="large" color={KY.green} />
+          <Spinner color={KY.green} />
           <Text size={s.body} color={KY.sub}>
             Lendo os dados do Kyte…
           </Text>
@@ -465,8 +480,8 @@ export function SmallButton({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 10,
-        paddingHorizontal: 24,
-        height: s.phone ? 68 : 64,
+        paddingHorizontal: s.phone ? 24 : 32,
+        height: s.phone ? 68 : 96,
         borderRadius: 999,
         backgroundColor: bg,
         borderWidth: tone === 'light' ? 1 : 0,
@@ -483,5 +498,5 @@ export function SmallButton({
 
 export const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  divider: { width: 2, height: 52, marginRight: 6 },
+  divider: { width: 2, height: 60, marginRight: 6 },
 });

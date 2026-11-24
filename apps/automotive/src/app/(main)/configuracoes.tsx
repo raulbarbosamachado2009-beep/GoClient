@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
+import { useWakeEnabled } from '../../havena/settings';
 import { MAPS_ENABLED } from '../../integrations/env';
 import { kyteAgent, noteKyteLogged, reloadKyteAgent } from '../../kyte/agent';
 import { clearKyteData } from '../../kyte/store';
@@ -24,18 +25,21 @@ import {
 
 /**
  * Ajustes no estilo do iOS: perfil, aparência (claro/escuro funcionando no protótipo),
- * idioma, Havena, navegação, integrações, dados e sair.
+ * idioma, Lucas, navegação, integrações, dados e sair.
  */
 export default function SettingsScreen() {
   const c = useColors();
   const { preference, setPreference } = useTheme();
   const router = useRouter();
-  const [wakeWord, setWakeWord] = useState(true);
+  const [wakeWord, setWakeWord] = useWakeEnabled();
   const [voiceReplies, setVoiceReplies] = useState(true);
   const [offline, setOffline] = useState(true);
   const sp = useSpotify();
   const { kyteOpen, setKyteOpen } = usePrototype();
   const phone = usePhone();
+  // Multimídia: ícones, linhas e recuos maiores (alvos de toque com o carro em movimento).
+  const ic = phone ? 68 : 104;
+  const inset = phone ? 128 : 184;
   const spotifyValue = !sp.enabled
     ? 'Demonstração (sem Client ID)'
     : sp.active
@@ -43,9 +47,9 @@ export default function SettingsScreen() {
       : 'Não conectado';
 
   const sections = [
-    <Group key="perfil" inset={148}>
+    <Group key="perfil" inset={phone ? 148 : 212}>
       <Row
-        leading={<Avatar name="Raul Barbosa" size={96} />}
+        leading={<Avatar name="Raul Barbosa" size={phone ? 96 : 140} />}
         title="Raul Barbosa"
         subtitle="Perfil, conta e plano Pro"
         chevron
@@ -55,15 +59,15 @@ export default function SettingsScreen() {
 
     <View key="aparencia">
       <SectionHeader title="Aparência" />
-      <Group inset={128}>
+      <Group inset={inset}>
         <Row
-          leading={<AppIcon icon="contrast" color="#0A84FF" size={68} />}
+          leading={<AppIcon icon="contrast" color="#0A84FF" size={ic} />}
           title="Tema"
           trailing={
             <Segmented<ThemePreference>
               value={preference}
               onChange={setPreference}
-              segmentWidth={phone ? 128 : 180}
+              segmentWidth={phone ? 118 : 240}
               options={[
                 { value: 'light', label: 'Claro' },
                 { value: 'dark', label: 'Escuro' },
@@ -73,7 +77,7 @@ export default function SettingsScreen() {
           }
         />
         <Row
-          leading={<AppIcon icon="language" color="#5856D6" size={68} />}
+          leading={<AppIcon icon="language" color="#5856D6" size={ic} />}
           title="Idioma"
           value="Português (Brasil)"
           chevron
@@ -82,16 +86,17 @@ export default function SettingsScreen() {
       </Group>
     </View>,
 
-    <View key="havena">
-      <SectionHeader title="Havena" />
-      <Group inset={128}>
+    <View key="lucas">
+      <SectionHeader title="Lucas" />
+      <Group inset={inset}>
         <Row
-          leading={<AppIcon icon="mic" color="#FF375F" size={68} />}
-          title='Ativar com "Oi, Havena"'
+          leading={<AppIcon icon="mic" color="#FF375F" size={ic} />}
+          title='Ativar com "Olá, Lucas"'
+          subtitle='Também: "bom dia", "oh IA" e "olá, inteligência artificial"'
           trailing={<Switch value={wakeWord} onChange={setWakeWord} />}
         />
         <Row
-          leading={<AppIcon icon="volume-high" color="#FF9F0A" size={68} />}
+          leading={<AppIcon icon="volume-high" color="#FF9F0A" size={ic} />}
           title="Respostas por voz"
           trailing={<Switch value={voiceReplies} onChange={setVoiceReplies} />}
         />
@@ -100,19 +105,19 @@ export default function SettingsScreen() {
 
     <View key="integracoes">
       <SectionHeader title="Navegação e integrações" />
-      <Group inset={128}>
+      <Group inset={inset}>
         <Row
-          leading={<AppIcon icon="map" color="#30D158" size={68} />}
+          leading={<AppIcon icon="map" color="#30D158" size={ic} />}
           title="Mapa"
           value={MAPS_ENABLED ? 'OpenStreetMap' : 'Demonstração (sem chave)'}
         />
         <Row
-          leading={<AppIcon icon="navigate" color="#30D158" size={68} />}
+          leading={<AppIcon icon="navigate" color="#30D158" size={ic} />}
           title="Navegação com voz"
           value={MAPS_ENABLED ? 'No GoClient, por dentro dos bairros' : 'Demonstração'}
         />
         <Row
-          leading={<AppIcon icon="musical-notes" color="#1ED760" glyph="#000" size={68} />}
+          leading={<AppIcon icon="musical-notes" color="#1ED760" glyph="#000" size={ic} />}
           title="Spotify"
           value={spotifyValue}
           chevron={sp.enabled}
@@ -128,7 +133,7 @@ export default function SettingsScreen() {
           />
         )}
         <Row
-          leading={<KyteLogo size={68} />}
+          leading={<KyteLogo size={ic} />}
           title="Kyte"
           value={kyteOpen ? 'Conectado' : 'Desconectado'}
           chevron
@@ -164,20 +169,20 @@ export default function SettingsScreen() {
 
     <View key="dados">
       <SectionHeader title="Dados e privacidade" />
-      <Group inset={128}>
+      <Group inset={inset}>
         <Row
-          leading={<AppIcon icon="cloud-offline" color="#64D2FF" glyph="#003A55" size={68} />}
+          leading={<AppIcon icon="cloud-offline" color="#64D2FF" glyph="#003A55" size={ic} />}
           title="Modo offline"
           trailing={<Switch value={offline} onChange={setOffline} />}
         />
         <Row
-          leading={<AppIcon icon="hand-left" color="#0A84FF" size={68} />}
+          leading={<AppIcon icon="hand-left" color="#0A84FF" size={ic} />}
           title="Permissões"
           chevron
           onPress={() => {}}
         />
         <Row
-          leading={<AppIcon icon="information-circle" color="#8E8E93" size={68} />}
+          leading={<AppIcon icon="information-circle" color="#8E8E93" size={ic} />}
           title="Sobre"
           value="Versão 0.1.0"
           chevron

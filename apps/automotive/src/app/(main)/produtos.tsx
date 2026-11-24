@@ -303,11 +303,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   page: { flex: 1, paddingHorizontal: 48, paddingTop: 36, gap: spacing[5] },
+  // Bordas concêntricas: cartão 32, espaçamento 12 → foto com 20.
   card: {
     padding: spacing[3],
     paddingBottom: spacing[4],
     gap: spacing[3],
-    borderRadius: layout.radius.lg,
+    borderRadius: 32,
   },
   cardFoot: {
     flexDirection: 'row',

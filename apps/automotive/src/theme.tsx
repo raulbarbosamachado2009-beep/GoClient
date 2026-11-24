@@ -237,6 +237,16 @@ export const layout = {
   radius: { sm: 12, md: 18, lg: 24, xl: 32 },
 } as const;
 
+/**
+ * Bordas concêntricas: o raio de dentro é o raio de fora menos o espaço entre as bordas
+ * (ex.: cartão com raio 48 e 18 de espaçamento → peças de dentro com raio 30). Assim as
+ * curvas de dentro e de fora ficam paralelas, como nos aparelhos da Apple. Nunca fica
+ * abaixo de `min`, para a peça de dentro não virar um canto vivo.
+ */
+export function concentric(outer: number, padding: number, min = 8): number {
+  return Math.max(outer - padding, min);
+}
+
 export const nativeDriver = Platform.OS !== 'web';
 
 /* ---------------- Contexto ---------------- */

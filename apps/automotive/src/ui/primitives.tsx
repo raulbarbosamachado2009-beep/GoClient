@@ -23,6 +23,7 @@ import {
   type ViewProps,
   type ViewStyle,
 } from 'react-native';
+import { usePhone } from '../layout/form-factor';
 import {
   layout,
   nativeDriver,
@@ -237,11 +238,14 @@ export function Avatar({
   name,
   size = 64,
   square = false,
+  radius,
   colors = ['#A6ABB8', '#858994'],
 }: {
   name: string;
   size?: number;
   square?: boolean;
+  /** Raio dos cantos (para seguir as bordas concêntricas de quem o contém). */
+  radius?: number;
   /** Degradê do fundo (padrão: cinza). */
   colors?: readonly [string, string];
 }) {
@@ -257,7 +261,11 @@ export function Avatar({
       colors={colors}
       style={[
         styles.center,
-        { width: size, height: size, borderRadius: square ? size * 0.26 : size / 2 },
+        {
+          width: size,
+          height: size,
+          borderRadius: radius ?? (square ? size * 0.26 : size / 2),
+        },
       ]}
     >
       <RNText
@@ -427,7 +435,15 @@ export function Segmented<T extends string>({
         >
           {o.icon && <Icon name={o.icon} size={30} />}
           {o.label && (
-            <Text variant="subhead" style={{ fontSize: 24, lineHeight: 30 }}>
+            <Text
+              variant="subhead"
+              numberOfLines={1}
+              style={
+                segmentWidth < 150
+                  ? { fontSize: 21, lineHeight: 26 }
+                  : { fontSize: 31, lineHeight: 37 }
+              }
+            >
               {o.label}
             </Text>
           )}
@@ -440,15 +456,23 @@ export function Segmented<T extends string>({
 /** Interruptor do iOS com o botão deslizando por mola. */
 export function Switch({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
   const c = useColors();
-  const x = useSpring(value ? 44 : 0);
+  const phone = usePhone();
+  // Multimídia: interruptor maior (132 × 80).
+  const x = useSpring(value ? (phone ? 44 : 60) : 0);
   return (
     <Pressable
       accessibilityRole="switch"
       accessibilityState={{ checked: value }}
       onPress={() => onChange(!value)}
-      style={[styles.switch, { backgroundColor: value ? c.success : c.fillStrong }]}
+      style={[
+        styles.switch,
+        !phone && styles.switchCar,
+        { backgroundColor: value ? c.success : c.fillStrong },
+      ]}
     >
-      <Animated.View style={[styles.knob, { transform: [{ translateX: x }] }]} />
+      <Animated.View
+        style={[styles.knob, !phone && styles.knobCar, { transform: [{ translateX: x }] }]}
+      />
     </Pressable>
   );
 }
@@ -505,39 +529,47 @@ export function Row({
   titleColor?: string;
 }) {
   const c = useColors();
+  const phone = usePhone();
   const [pressed, setPressed] = useState(false);
+  const t = phone ? rowTextPhone : rowText;
   const content = (
     <>
       {leading}
       <View style={{ flex: 1, gap: 2 }}>
-        <Text variant="body" color={titleColor} numberOfLines={1} style={rowText.title}>
+        <Text variant="body" color={titleColor} numberOfLines={1} style={t.title}>
           {title}
         </Text>
         {subtitle && (
-          <Text variant="caption" tone="secondary" numberOfLines={1} style={rowText.subtitle}>
+          <Text variant="caption" tone="secondary" numberOfLines={1} style={t.subtitle}>
             {subtitle}
           </Text>
         )}
       </View>
       {value && (
-        <Text variant="body" tone="secondary" numberOfLines={1} style={rowText.title}>
+        <Text
+          variant="body"
+          tone="secondary"
+          numberOfLines={1}
+          style={[t.title, phone && { maxWidth: 200 }]}
+        >
           {value}
         </Text>
       )}
       {trailing}
-      {chevron && <Icon name="chevron-forward" size={32} color={c.textTertiary} />}
+      {chevron && <Icon name="chevron-forward" size={phone ? 32 : 46} color={c.textTertiary} />}
     </>
   );
   // Sem ação, a linha é só um contêiner: controles dentro dela (interruptor, seletor)
   // continuam recebendo toques normalmente.
-  if (!onPress) return <View style={styles.row}>{content}</View>;
+  const rowStyle = [styles.row, !phone && styles.rowCar];
+  if (!onPress) return <View style={rowStyle}>{content}</View>;
   return (
     <Pressable
       accessibilityRole="button"
       onPress={onPress}
       onPressIn={() => setPressed(true)}
       onPressOut={() => setPressed(false)}
-      style={[styles.row, pressed && { backgroundColor: c.fill }]}
+      style={[rowStyle, pressed && { backgroundColor: c.fill }]}
     >
       {content}
     </Pressable>
@@ -545,9 +577,14 @@ export function Row({
 }
 
 export function SectionHeader({ title, action }: { title: string; action?: ReactNode }) {
+  const phone = usePhone();
   return (
     <View style={styles.sectionHeader}>
-      <Text variant="subhead" tone="secondary">
+      <Text
+        variant="subhead"
+        tone="secondary"
+        style={phone ? { fontSize: 25, lineHeight: 31 } : { fontSize: 32, lineHeight: 38 }}
+      >
         {title}
       </Text>
       {action}
@@ -681,8 +718,13 @@ function lighten(hex: string, amount: number): string {
 
 /** Textos das linhas de lista, maiores para tocar e ler no carro. */
 const rowText = StyleSheet.create({
-  title: { fontSize: 28, lineHeight: 34 },
-  subtitle: { fontSize: 21, lineHeight: 27 },
+  title: { fontSize: 38, lineHeight: 46 },
+  subtitle: { fontSize: 29, lineHeight: 36 },
+});
+/** Celular em pé: medidas do iOS (corpo 17 pt, legenda 15 pt) na tela de 720. */
+const rowTextPhone = StyleSheet.create({
+  title: { fontSize: 31, lineHeight: 38 },
+  subtitle: { fontSize: 26, lineHeight: 32 },
 });
 
 const styles = StyleSheet.create({
@@ -730,6 +772,8 @@ const styles = StyleSheet.create({
     gap: spacing[2],
   },
   switch: { width: 112, height: 68, borderRadius: 34, padding: 4 },
+  switchCar: { width: 152, height: 92, borderRadius: 46 },
+  knobCar: { width: 84, height: 84, borderRadius: 42 },
   knob: {
     width: 60,
     height: 60,
@@ -748,6 +792,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[6],
     paddingVertical: spacing[4],
   },
+  // Multimídia: linhas mais altas (Ajustes e listas).
+  rowCar: { minHeight: 168, paddingHorizontal: spacing[8] },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',

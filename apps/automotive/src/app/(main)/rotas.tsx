@@ -1,7 +1,8 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, ScrollView, StyleSheet, View } from 'react-native';
+import { Animated, ScrollView, StyleSheet, View } from 'react-native';
 import { usePhone } from '../../layout/form-factor';
+import { useMapNav } from '../../map/map-nav';
 import { CLIENTS, REGIONS } from '../../mocks/data';
 import { usePrototype } from '../../prototype/state';
 import { layout, nativeDriver, spacing, useColors } from '../../theme';
@@ -20,6 +21,7 @@ import {
   SearchField,
   Text,
 } from '../../ui/primitives';
+import { Spinner } from '../../ui/spinner';
 
 /**
  * Página de Rotas: escolher os clientes do dia (esquerda), revisar a seleção (direita) e
@@ -29,7 +31,8 @@ import {
 export default function RoutesScreen() {
   const c = useColors();
   const { setOverlay } = usePrototype();
-  const router = useRouter();
+  const _router = useRouter();
+  const mapNav = useMapNav();
   const [region, setRegion] = useState<string>('Todas');
   const [selected, setSelected] = useState<string[]>(['c7', 'c1', 'c6']);
   const phone = usePhone();
@@ -49,7 +52,7 @@ export default function RoutesScreen() {
         count={chosen.length}
         onDone={() => {
           setOverlay(null);
-          router.replace({ pathname: '/mapa', params: { rota: 'dia' } });
+          mapNav({ rota: 'dia' });
         }}
       />,
     );
@@ -226,7 +229,7 @@ function Calculating({ count, onDone }: { count: number; onDone: () => void }) {
         }}
       >
         <Material style={styles.hud}>
-          <ActivityIndicator size="large" color={c.text} style={{ transform: [{ scale: 1.8 }] }} />
+          <Spinner size={104} color={c.text} />
           <View style={{ alignItems: 'center', gap: 4 }}>
             <Text variant="title2">Calculando rota</Text>
             <Text variant="callout" tone="secondary">

@@ -17,7 +17,10 @@ export type Detail =
   | { type: 'sale'; id: string }
   | { type: 'product'; id: string }
   | { type: 'receipt'; id: string }
-  | { type: 'diagnostico' };
+  | { type: 'diagnostico' }
+  /** Cadastros manuais de produto e cliente. */
+  | { type: 'newProduct' }
+  | { type: 'newClient' };
 
 export interface KyteNav {
   section: Section;

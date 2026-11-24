@@ -1,5 +1,5 @@
 import { type ReactNode, useState } from 'react';
-import { ActivityIndicator, Image, ScrollView, StyleSheet, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, View } from 'react-native';
 import { usePhone } from '../../../layout/form-factor';
 import { BROWSE, SHOWS } from '../../../mocks/data';
 import { useTrackSearch } from '../../../music/library';
@@ -11,6 +11,7 @@ import { spacing, useColors } from '../../../theme';
 import { Cover, shade } from '../../../ui/brand';
 import { Appear } from '../../../ui/motion';
 import { IconButton, SearchField, Text, Touchable } from '../../../ui/primitives';
+import { Spinner } from '../../../ui/spinner';
 
 const WATCH = [
   { id: 'w1', name: 'Clipes da Semana', cover: '#2C6E7A' },
@@ -50,7 +51,7 @@ function CarSearch() {
 
       {searching && (
         <View style={{ gap: spacing[2] }}>
-          {search.loading && <ActivityIndicator size="large" color={c.music.accent} />}
+          {search.loading && <Spinner color={c.music.accent} />}
           {!search.loading && search.results.length === 0 && (
             <Text variant="headline" tone="secondary">
               Nada encontrado para “{query.trim()}”.

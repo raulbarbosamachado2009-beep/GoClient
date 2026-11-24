@@ -1,17 +1,19 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, View } from 'react-native';
+import { FlatList, StyleSheet, View } from 'react-native';
 import { PHONE_SCROLL_END, useBleed, usePhone } from '../../../../layout/form-factor';
 import { GENRES, type Genre } from '../../../../mocks/data';
 import { usePlaylistData } from '../../../../music/library';
 import { MusicBack, MusicChip } from '../../../../music/ui';
 import { usePlay } from '../../../../music/use-play';
 import { usePrototype } from '../../../../prototype/state';
+import { LIKED_CONTEXT } from '../../../../spotify/transport';
 import { spacing, useColors } from '../../../../theme';
 import { Cover } from '../../../../ui/brand';
 import { Appear } from '../../../../ui/motion';
 import { Icon, IconButton, Text, Touchable } from '../../../../ui/primitives';
+import { Spinner } from '../../../../ui/spinner';
 
 /**
  * Página da playlist (referência: imagem 3). Os gêneros filtram a lista (apenas no
@@ -35,12 +37,16 @@ export default function PlaylistScreen() {
   );
   const ids = tracks.map((t) => t.id);
   const total = data.total;
-  // No Spotify, toca a partir da playlist/álbum (a fila segue a ordem do Spotify).
-  const context = live ? playlist.uri : undefined;
-  const playAll = () => {
-    if (ids[0]) play(ids[0], ids, context, tracks[0]);
+  // No Spotify, toca a partir da playlist/álbum/Curtidas (a fila segue a ordem do Spotify).
+  const context = live ? (playlist.liked ? LIKED_CONTEXT : playlist.uri) : undefined;
+  const opts = { title: playlist.name };
+  // "Tocar" começa do início, em ordem; "Aleatório" liga o aleatório do Spotify.
+  const playAll = (shuffle = false) => {
+    const i = shuffle ? Math.floor(Math.random() * ids.length) : 0;
+    const pick = ids[i];
+    if (pick) play(pick, ids, context, tracks[i], { ...opts, shuffle });
     else if (context) {
-      playContext(context);
+      playContext(context, { ...opts, shuffle });
       router.push('/player');
     }
   };
@@ -81,11 +87,7 @@ export default function PlaylistScreen() {
           iconSize={phone ? 48 : 60}
           color="rgba(255,255,255,0.75)"
           accessibilityLabel="Aleatório"
-          onPress={() => {
-            const i = Math.floor(Math.random() * ids.length);
-            const pick = ids[i];
-            if (pick) play(pick, ids, context, tracks[i]);
-          }}
+          onPress={() => playAll(true)}
         />
         <IconButton
           icon="play"
@@ -94,7 +96,7 @@ export default function PlaylistScreen() {
           color="#000000"
           style={{ backgroundColor: c.music.accent }}
           accessibilityLabel="Tocar playlist"
-          onPress={playAll}
+          onPress={() => playAll()}
         />
       </View>
 
@@ -125,7 +127,7 @@ export default function PlaylistScreen() {
         ListEmptyComponent={
           data.loading ? (
             <View style={styles.empty}>
-              <ActivityIndicator size="large" color={c.music.accent} />
+              <Spinner color={c.music.accent} />
             </View>
           ) : (
             <View style={styles.empty}>
@@ -149,7 +151,7 @@ export default function PlaylistScreen() {
                 {/* Área tocável da faixa; o botão "mais opções" fica fora dela. */}
                 <Touchable
                   accessibilityRole="button"
-                  onPress={() => play(item.id, ids, context, item)}
+                  onPress={() => play(item.id, ids, context, item, opts)}
                   scaleTo={0.985}
                   style={styles.rowMain}
                 >

@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { callPhone, openWhatsApp } from '../../integrations/contact';
 import { NO_FLEX, usePhone } from '../../layout/form-factor';
+import { useMapNav } from '../../map/map-nav';
 import { CLIENTS, type MockClient } from '../../mocks/data';
 import { usePrototype } from '../../prototype/state';
 import { Sheet, useSheetClose } from '../../shell/sheet';
@@ -71,12 +72,12 @@ function ClientDetails({ client }: { client: MockClient }) {
 
 function ClientDetailsContent({ client }: { client: MockClient }) {
   const c = useColors();
-  const router = useRouter();
+  const _router = useRouter();
+  const mapNav = useMapNav();
   const close = useSheetClose();
   const phone = usePhone();
   // Fecha a ficha com a animação e só então abre o mapa com a rota.
-  const go = () =>
-    close(() => router.replace({ pathname: '/mapa', params: { rota: 'cliente', id: client.id } }));
+  const go = () => close(() => mapNav({ rota: 'cliente', id: client.id }));
 
   return (
     <>

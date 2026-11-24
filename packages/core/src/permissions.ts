@@ -14,7 +14,11 @@ export const RESOURCES = [
 ] as const;
 export type Resource = (typeof RESOURCES)[number];
 
-export const ACTIONS = ['read', 'create', 'update', 'delete'] as const;
+/**
+ * `reorder` muda só a ordem de uma lista já montada (ex.: paradas da rota), sem pôr nem tirar
+ * itens. Fica separado de `update` porque a multimídia pode reordenar mas não montar rotas.
+ */
+export const ACTIONS = ['read', 'create', 'update', 'delete', 'reorder'] as const;
 export type Action = (typeof ACTIONS)[number];
 
 export interface AccessContext {
@@ -25,8 +29,8 @@ export interface AccessContext {
 
 export type DenialReason =
   | 'role_not_allowed'
-  /** Regra 1: no Automotive, clientes e produtos não são criados/editados manualmente. */
-  | 'automotive_manual_edit_blocked';
+  /** Regra 3: rotas são montadas no celular; no Automotive só são lidas, reordenadas e iniciadas. */
+  | 'automotive_route_build_blocked';
 
 export type AccessDecision =
   | {
@@ -48,15 +52,12 @@ const ROLE_MATRIX: Record<Role, Partial<Record<Resource, readonly Action[]>>> = 
     product: ['read', 'create', 'update'],
     region: ['read'],
     visit: ['read', 'create', 'update', 'delete'],
-    route: ['read', 'create', 'update', 'delete'],
+    route: ['read', 'create', 'update', 'delete', 'reorder'],
     settings: ['read'],
     integration: ['read'],
   },
   viewer: Object.fromEntries(RESOURCES.map((r) => [r, ['read'] as const])),
 };
-
-/** Recursos cuja edição manual é bloqueada no Automotive (Regra 1). */
-const AUTOMOTIVE_MANUAL_LOCKED: readonly Resource[] = ['customer', 'product'];
 
 /**
  * Ponto único de decisão de acesso. Usado pela API (autoritativo) e pelas
@@ -70,15 +71,15 @@ export function can(ctx: AccessContext, resource: Resource, action: Action): Acc
 
   const isWrite = action !== 'read';
 
-  // Regra 1 — Automotive não permite criação/edição manual de clientes e produtos.
-  // Regra 2 — a Havena pode fazê-lo (canal `havena`), sujeita a papel e confirmação.
-  if (
-    isWrite &&
-    ctx.platform === 'automotive' &&
-    ctx.channel === 'manual' &&
-    AUTOMOTIVE_MANUAL_LOCKED.includes(resource)
-  ) {
-    return { allowed: false, reason: 'automotive_manual_edit_blocked' };
+  // Regra 1 (cadastro manual bloqueado no Automotive) foi retirada em 2026-11-24 a pedido do
+  // dono do produto: a multimídia também cadastra clientes e produtos à mão.
+  // Regra 2 — escritas pela Havena (canal `havena`) exigem confirmação (ver o retorno).
+
+  // Regra 3 — rotas só são montadas (criadas, alteradas, excluídas) no celular. Na
+  // multimídia o usuário escolhe, começa e reordena as paradas de uma rota já montada
+  // (reordenar liberado em 2026-11-24 a pedido do dono do produto); pôr ou tirar paradas, não.
+  if (isWrite && action !== 'reorder' && ctx.platform === 'automotive' && resource === 'route') {
+    return { allowed: false, reason: 'automotive_route_build_blocked' };
   }
 
   return { allowed: true, requiresConfirmation: isWrite && ctx.channel === 'havena' };

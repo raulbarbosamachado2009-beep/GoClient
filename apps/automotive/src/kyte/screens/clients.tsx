@@ -3,7 +3,9 @@ import { useMemo, useState } from 'react';
 import { FlatList, ScrollView, View } from 'react-native';
 import { callPhone, openWhatsApp } from '../../integrations/contact';
 import { useTabBarSpace } from '../../layout/form-factor';
+import { useMapNav } from '../../map/map-nav';
 import { useStops } from '../../map/stops';
+import { Swap } from '../../ui/motion';
 import { Touchable } from '../../ui/primitives';
 import { brl, type KyteCustomer, norm } from '../model';
 import { useKyteList } from '../store';
@@ -20,6 +22,7 @@ import {
   Text,
   useKySize,
 } from '../ui';
+import { useCanCreate } from './create';
 import { SaleRow } from './history';
 import { useKyteNav } from './nav';
 
@@ -29,6 +32,7 @@ type Filter = 'todos' | 'primeira' | 'negativo' | 'positivo';
 export function ClientsScreen() {
   const s = useKySize();
   const nav = useKyteNav();
+  const canCreate = useCanCreate('customer');
   const data = useKyteList('customer');
   const sales = useKyteList('sale');
   const [q, setQ] = useState('');
@@ -70,7 +74,7 @@ export function ClientsScreen() {
       key={k}
       onPress={() => setFilter((f) => (f === k ? 'todos' : k))}
       style={{
-        height: s.phone ? 56 : 54,
+        height: s.phone ? 56 : 80,
         paddingHorizontal: 24,
         borderRadius: 999,
         borderWidth: 2,
@@ -90,7 +94,14 @@ export function ClientsScreen() {
       <Header
         title={`Clientes${data.list ? ` (${data.list.length})` : ''}`}
         onMenu={nav.menu}
-        right={<PlusButton label="Cadastrar cliente com a Havena" onPress={nav.havena} />}
+        right={
+          // Abre o cadastro (celular e multimídia); sem permissão, o Lucas faz com confirmação.
+          canCreate ? (
+            <PlusButton label="Novo cliente" onPress={() => nav.open({ type: 'newClient' })} />
+          ) : (
+            <PlusButton label="Cadastrar cliente com o Lucas" onPress={nav.havena} />
+          )
+        }
       />
       <View style={{ paddingHorizontal: s.pad, gap: 14, paddingBottom: 14 }}>
         <SearchField value={q} onChange={setQ} placeholder="Procure por nome, email ou telefone" />
@@ -167,8 +178,8 @@ function ClientRow({ c, onOpen }: { c: KyteCustomer; onOpen: () => void }) {
         alignItems: 'center',
         gap: 18,
         backgroundColor: KY.card,
-        borderRadius: 14,
-        paddingLeft: 26,
+        borderRadius: s.radius,
+        paddingLeft: s.pad,
         paddingRight: 14,
         height: s.rowH,
       }}
@@ -193,7 +204,8 @@ export function ClientDetail({ id }: { id: string }) {
   const s = useKySize();
   const nav = useKyteNav();
   const stops = useStops();
-  const router = useRouter();
+  const _router = useRouter();
+  const mapNav = useMapNav();
   const data = useKyteList('customer');
   const sales = useKyteList('sale');
   const [tab, setTab] = useState<'dados' | 'vendas' | 'pedidos' | 'conta'>('dados');
@@ -246,123 +258,138 @@ export function ClientDetail({ id }: { id: string }) {
           ]}
         />
       </View>
-      {tab === 'vendas' ? (
-        <FlatList
-          data={mine}
-          keyExtractor={(v) => v.id || v.number}
-          contentContainerStyle={{ paddingHorizontal: s.pad, gap: 8, paddingBottom: tabSpace + 30 }}
-          ListEmptyComponent={
-            <State empty="Nenhuma venda deste cliente nas vendas lidas do Kyte." />
-          }
-          renderItem={({ item }) => (
-            <SaleRow v={item} onOpen={() => nav.open({ type: 'sale', id: item.id })} />
-          )}
-          ListFooterComponent={
-            mine.length ? (
-              <View
-                style={{ backgroundColor: '#DDF5EC', borderRadius: 16, padding: 22, marginTop: 6 }}
-              >
-                <Text size={s.row} weight="bold" color={KY.greenInk}>
-                  {brl(mine.reduce((a, v) => a + (v.canceled ? 0 : (v.total ?? 0)), 0))} em{' '}
-                  {mine.length} {mine.length === 1 ? 'venda' : 'vendas'}
-                </Text>
-              </View>
-            ) : undefined
-          }
-        />
-      ) : (
-        <ScrollView
-          contentContainerStyle={{
-            paddingHorizontal: s.pad,
-            gap: 14,
-            paddingBottom: tabSpace + 30,
-          }}
-        >
-          {tab === 'dados' && (
-            <>
-              <View
-                style={{
-                  backgroundColor: '#E4E8ED',
-                  borderRadius: 18,
-                  padding: 24,
-                  alignItems: 'center',
-                }}
-              >
+      <Swap
+        id={tab}
+        index={['dados', 'vendas', 'pedidos', 'conta'].indexOf(tab)}
+        style={{ flex: 1 }}
+      >
+        {tab === 'vendas' ? (
+          <FlatList
+            data={mine}
+            keyExtractor={(v) => v.id || v.number}
+            contentContainerStyle={{
+              paddingHorizontal: s.pad,
+              gap: 8,
+              paddingBottom: tabSpace + 30,
+            }}
+            ListEmptyComponent={
+              <State empty="Nenhuma venda deste cliente nas vendas lidas do Kyte." />
+            }
+            renderItem={({ item }) => (
+              <SaleRow v={item} onOpen={() => nav.open({ type: 'sale', id: item.id })} />
+            )}
+            ListFooterComponent={
+              mine.length ? (
                 <View
                   style={{
-                    width: 130,
-                    height: 130,
-                    borderRadius: 65,
-                    backgroundColor: '#D3D9E0',
-                    alignItems: 'center',
-                    justifyContent: 'center',
+                    backgroundColor: '#DDF5EC',
+                    borderRadius: 16,
+                    padding: 22,
+                    marginTop: 6,
                   }}
                 >
-                  <KIcon name="image-outline" size={52} color={KY.ink} />
+                  <Text size={s.row} weight="bold" color={KY.greenInk}>
+                    {brl(mine.reduce((a, v) => a + (v.canceled ? 0 : (v.total ?? 0)), 0))} em{' '}
+                    {mine.length} {mine.length === 1 ? 'venda' : 'vendas'}
+                  </Text>
                 </View>
-                <Touchable
-                  onPress={() => c.phone && openWhatsApp(c.phone)}
-                  style={{ marginTop: -26, marginLeft: 90 }}
+              ) : undefined
+            }
+          />
+        ) : (
+          <ScrollView
+            contentContainerStyle={{
+              paddingHorizontal: s.pad,
+              gap: 14,
+              paddingBottom: tabSpace + 30,
+            }}
+          >
+            {tab === 'dados' && (
+              <>
+                <View
+                  style={{
+                    backgroundColor: '#E4E8ED',
+                    borderRadius: 18,
+                    padding: 24,
+                    alignItems: 'center',
+                  }}
                 >
-                  <KIcon name="logo-whatsapp" size={44} color={c.phone ? KY.wa : KY.ink} />
-                </Touchable>
-              </View>
-              <View style={{ flexDirection: s.phone ? 'column' : 'row', gap: 14 }}>
-                {field('Nome', c.name)}
-                {field('Celular/WhatsApp', c.phone || '—')}
-              </View>
-              {field('Endereço', address || 'Sem endereço no Kyte')}
-              {c.email ? field('E-mail', c.email) : null}
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
-                <SmallButton
-                  label="Ir agora"
-                  icon="navigate"
-                  tone="green"
-                  onPress={() => {
-                    if (!address)
-                      return setMsg('Cadastre o endereço deste cliente no Kyte primeiro.');
-                    stops.goNow(stop);
-                    router.replace('/mapa');
-                  }}
-                />
-                <SmallButton
-                  label="Colocar na rota"
-                  icon="add-circle-outline"
-                  onPress={() => {
-                    if (!address)
-                      return setMsg('Cadastre o endereço deste cliente no Kyte primeiro.');
-                    stops.add(stop);
-                    setMsg(`${c.name} está na rota do dia.`);
-                  }}
-                />
-                <SmallButton
-                  label="Ligar"
-                  icon="call"
-                  onPress={() =>
-                    callPhone(c.phone)
-                      ? null
-                      : setMsg('Este cliente não tem telefone válido no Kyte.')
-                  }
-                />
-              </View>
-              {msg && (
-                <Text size={s.sub} color={KY.sub}>
-                  {msg}
+                  <View
+                    style={{
+                      width: 130,
+                      height: 130,
+                      borderRadius: 65,
+                      backgroundColor: '#D3D9E0',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <KIcon name="image-outline" size={52} color={KY.ink} />
+                  </View>
+                  <Touchable
+                    onPress={() => c.phone && openWhatsApp(c.phone)}
+                    style={{ marginTop: -26, marginLeft: 90 }}
+                  >
+                    <KIcon name="logo-whatsapp" size={44} color={c.phone ? KY.wa : KY.ink} />
+                  </Touchable>
+                </View>
+                <View style={{ flexDirection: s.phone ? 'column' : 'row', gap: 14 }}>
+                  {field('Nome', c.name)}
+                  {field('Celular/WhatsApp', c.phone || '—')}
+                </View>
+                {field('Endereço', address || 'Sem endereço no Kyte')}
+                {c.email ? field('E-mail', c.email) : null}
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
+                  <SmallButton
+                    label="Ir agora"
+                    icon="navigate"
+                    tone="green"
+                    onPress={() => {
+                      if (!address)
+                        return setMsg('Cadastre o endereço deste cliente no Kyte primeiro.');
+                      stops.goNow(stop);
+                      mapNav();
+                    }}
+                  />
+                  <SmallButton
+                    label="Colocar na rota"
+                    icon="add-circle-outline"
+                    onPress={() => {
+                      if (!address)
+                        return setMsg('Cadastre o endereço deste cliente no Kyte primeiro.');
+                      stops.add(stop);
+                      setMsg(`${c.name} está na rota do dia.`);
+                    }}
+                  />
+                  <SmallButton
+                    label="Ligar"
+                    icon="call"
+                    onPress={() =>
+                      callPhone(c.phone)
+                        ? null
+                        : setMsg('Este cliente não tem telefone válido no Kyte.')
+                    }
+                  />
+                </View>
+                {msg && (
+                  <Text size={s.sub} color={KY.sub}>
+                    {msg}
+                  </Text>
+                )}
+              </>
+            )}
+            {tab === 'pedidos' && <State empty="Nenhum pedido em aberto deste cliente." />}
+            {tab === 'conta' && (
+              <View style={{ gap: 14 }}>
+                {field('Saldo', c.balance == null ? '—' : brl(c.balance))}
+                <Text size={s.small} color={KY.sub}>
+                  Saldo negativo = o cliente deve; positivo = crédito com a loja.
                 </Text>
-              )}
-            </>
-          )}
-          {tab === 'pedidos' && <State empty="Nenhum pedido em aberto deste cliente." />}
-          {tab === 'conta' && (
-            <View style={{ gap: 14 }}>
-              {field('Saldo', c.balance == null ? '—' : brl(c.balance))}
-              <Text size={s.small} color={KY.sub}>
-                Saldo negativo = o cliente deve; positivo = crédito com a loja.
-              </Text>
-            </View>
-          )}
-        </ScrollView>
-      )}
+              </View>
+            )}
+          </ScrollView>
+        )}
+      </Swap>
     </View>
   );
 }

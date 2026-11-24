@@ -1,10 +1,11 @@
-import { type ComponentRef, useEffect, useMemo, useRef } from 'react';
+import { type ComponentRef, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { WebView } from 'react-native-webview';
+import { MAPS_ENABLED } from '../integrations/env';
 import { usePhone, useSystemInsets, useTabBarSpace } from '../layout/form-factor';
 import { useFrameScale } from '../preview/automotive-frame';
 import { layout } from '../theme';
-import { type MapState, mapHtml } from './map-html';
+import { type MapState, mapHtml, warmupHtml } from './map-html';
 import type { LatLng } from './routing';
 
 export interface MapPin {
@@ -97,6 +98,10 @@ export function LiveMap({
           domStorageEnabled
           setSupportMultipleWindows={false}
           overScrollMode="never"
+          // Biblioteca, estilo, fontes e blocos já baixados saem do cache do aparelho sem
+          // esperar a rede (o mapa abre em ~1 s nas próximas vezes).
+          cacheEnabled
+          cacheMode="LOAD_CACHE_ELSE_NETWORK"
           style={{ flex: 1, backgroundColor: dark ? '#1b1b1d' : '#e9e9ec' }}
           onMessage={(e) => {
             try {
@@ -129,4 +134,31 @@ function sized(scale: number) {
 
 const styles = StyleSheet.create({
   unscale: { position: 'absolute' },
+  warmup: { position: 'absolute', width: 1, height: 1, opacity: 0, left: -10, top: -10 },
 });
+
+/**
+ * Aquece o mapa enquanto a pessoa ainda está no onboarding/login: uma janela invisível baixa
+ * a biblioteca e o estilo para o cache compartilhado das WebViews. Quando o Mapa abre, tudo
+ * já está no aparelho. Some sozinha depois de alguns segundos.
+ */
+export function MapWarmup() {
+  const [on, setOn] = useState(true);
+  useEffect(() => {
+    const id = setTimeout(() => setOn(false), 20000);
+    return () => clearTimeout(id);
+  }, []);
+  if (!on || !MAPS_ENABLED) return null;
+  return (
+    <View pointerEvents="none" style={styles.warmup}>
+      <WebView
+        source={{ html: warmupHtml(), baseUrl: 'https://goclient.local/' }}
+        originWhitelist={['*']}
+        javaScriptEnabled
+        domStorageEnabled
+        cacheEnabled
+        onMessage={() => setOn(false)}
+      />
+    </View>
+  );
+}

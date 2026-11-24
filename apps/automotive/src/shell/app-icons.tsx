@@ -74,3 +74,39 @@ export function OutlineGlyph({
       );
   }
 }
+
+/**
+ * Ícone do Mapa no estilo dos ícones de app da Apple (desenho próprio, não é o do Apple
+ * Maps): um pedaço de mapa — parque verde, avenida clara, rua amarela e a rota azul — com o
+ * marcador de navegação no meio. Versão clara e escura, como os ícones do iOS.
+ */
+export function MapAppIcon({ size, dark }: { size: number; dark: boolean }) {
+  const ground = dark ? '#2B2D31' : '#F3F1EC';
+  const park = dark ? '#2F6B45' : '#8FD9A8';
+  const water = dark ? '#1F3B5C' : '#A7D3F5';
+  const road = dark ? '#4A4D55' : '#FFFFFF';
+  const street = dark ? '#8A6A1F' : '#FFD45C';
+  return (
+    <Svg width={size} height={size} viewBox="0 0 100 100">
+      <Path d="M0 0H100V100H0Z" fill={ground} />
+      {/* Parque (canto de cima à esquerda) e lago (canto de baixo à direita). */}
+      <Path d="M0 0H46L30 38L0 46Z" fill={park} />
+      <Path d="M100 64V100H62C70 84 84 70 100 64Z" fill={water} />
+      {/* Avenida larga na diagonal e uma rua amarela cruzando. */}
+      <Path d="M-6 80L80 -6" stroke={road} strokeWidth={16} strokeLinecap="square" />
+      <Path d="M18 106L54 -6" stroke={street} strokeWidth={7} />
+      {/* Rota azul em curva até o marcador. */}
+      <Path
+        d="M100 30C78 34 66 44 50 50"
+        stroke="#0A84FF"
+        strokeWidth={9}
+        strokeLinecap="round"
+        fill="none"
+      />
+      {/* Marcador de navegação: disco branco com a seta azul. */}
+      <Circle cx={50} cy={52} r={21} fill="#FFFFFF" />
+      <Circle cx={50} cy={52} r={17} fill="#0A84FF" />
+      <Path d="M50 40L59 62L50 57L41 62Z" fill="#FFFFFF" />
+    </Svg>
+  );
+}

@@ -21,14 +21,14 @@ module.exports = ({ config }) => {
       ['expo-navigation-bar', { style: 'dark', enforceContrast: false }],
       [
         'expo-audio',
-        { microphonePermission: 'O GoClient usa o microfone para você conversar com a Havena.' },
+        { microphonePermission: 'O GoClient usa o microfone para você conversar com o Lucas.' },
       ],
       // Havena: reconhecimento de voz do aparelho (serviço do Google no Android).
       [
         'expo-speech-recognition',
         {
-          microphonePermission: 'O GoClient usa o microfone para você conversar com a Havena.',
-          speechRecognitionPermission: 'O GoClient reconhece a sua voz para a Havena.',
+          microphonePermission: 'O GoClient usa o microfone para você conversar com o Lucas.',
+          speechRecognitionPermission: 'O GoClient reconhece a sua voz para o Lucas.',
           androidSpeechServicePackages: [
             'com.google.android.googlequicksearchbox',
             'com.google.android.as',

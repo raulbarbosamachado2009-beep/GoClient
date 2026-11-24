@@ -7,7 +7,7 @@ Leia `docs/architecture.md` antes de propor mudanças estruturais.
 - Desenvolvimento por fases. Não crie telas do produto sem aprovação da arquitetura/design da fase.
 - Regras de negócio vivem em `packages/core` e são aplicadas **na API** (autoritativa) e nas interfaces (para esconder/desabilitar ações). Nunca implemente uma regra só na interface.
 - Toda escrita de dados passa pela API (`apps/api`). Aplicativos não acessam o banco diretamente.
-- Regra 1: no Automotive não há criação/edição manual de clientes e produtos. Regra 2: a Havena pode fazê-lo, com confirmação do usuário. Ambas estão em `can()` (`packages/core/src/permissions.ts`) e têm testes.
+- Regra 1 (retirada em 2026-11-24 a pedido do usuário): o Automotive também cria e edita clientes e produtos à mão. Regra 2: escritas pela Havena (Lucas) pedem confirmação do usuário. Regra 3: rotas são montadas só no celular; no Automotive elas são lidas, iniciadas e reordenadas (ação `reorder`), mas não ganham nem perdem paradas. As regras estão em `can()` (`packages/core/src/permissions.ts`) e têm testes.
 - Não invente integrações. Kyte e Spotify têm limitações documentadas em `docs/integrations.md`.
 - Visual: use apenas `@goclient/design-tokens`. Sem gradientes, neon ou decoração. Escuro por padrão.
 

@@ -206,7 +206,7 @@ export function SaleRow({ v, onOpen }: { v: KyteSale; onOpen: () => void }) {
         backgroundColor: KY.card,
         borderRadius: 14,
         paddingHorizontal: 26,
-        paddingVertical: s.phone ? 20 : 16,
+        paddingVertical: s.phone ? 20 : 26,
         opacity: v.canceled ? 0.6 : 1,
       }}
     >

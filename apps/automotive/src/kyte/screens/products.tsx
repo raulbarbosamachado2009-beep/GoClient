@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import { FlatList, ScrollView, Share, View } from 'react-native';
 import { useTabBarSpace } from '../../layout/form-factor';
+import { concentric } from '../../theme';
+import { Swap } from '../../ui/motion';
 import { Touchable } from '../../ui/primitives';
 import { brl, fmtQty, type KyteProduct, norm } from '../model';
 import { useKyteList } from '../store';
@@ -16,12 +18,14 @@ import {
   Thumb,
   useKySize,
 } from '../ui';
+import { useCanCreate } from './create';
 import { useKyteNav } from './nav';
 
 /** Produtos (print 6): abas Itens/Estoque, busca e a lista com foto, nome e preço. */
 export function ProductsScreen() {
   const s = useKySize();
   const nav = useKyteNav();
+  const canCreate = useCanCreate('product');
   const data = useKyteList('product');
   const [tab, setTab] = useState<'itens' | 'estoque'>('itens');
   const [q, setQ] = useState('');
@@ -38,7 +42,14 @@ export function ProductsScreen() {
       <Header
         title={`Produtos${data.list ? ` (${data.list.length})` : ''}`}
         onMenu={nav.menu}
-        right={<PlusButton label="Cadastrar produto com a Havena" onPress={nav.havena} />}
+        right={
+          // Abre o cadastro (celular e multimídia); sem permissão, o Lucas faz com confirmação.
+          canCreate ? (
+            <PlusButton label="Novo produto" onPress={() => nav.open({ type: 'newProduct' })} />
+          ) : (
+            <PlusButton label="Cadastrar produto com o Lucas" onPress={nav.havena} />
+          )
+        }
       />
       <View style={{ paddingHorizontal: s.pad, gap: 14, paddingBottom: 14 }}>
         <Tabs
@@ -87,7 +98,8 @@ export function ProductsScreen() {
 
 function ProductRow({ p, stock, onOpen }: { p: KyteProduct; stock: boolean; onOpen: () => void }) {
   const s = useKySize();
-  const thumb = s.phone ? 76 : 64;
+  // Miniatura concêntrica com a linha: raio da linha − (altura da linha − miniatura) / 2.
+  const inset = (s.rowH - s.thumb) / 2;
   return (
     <Touchable
       onPress={onOpen}
@@ -97,12 +109,13 @@ function ProductRow({ p, stock, onOpen }: { p: KyteProduct; stock: boolean; onOp
         alignItems: 'center',
         gap: 24,
         backgroundColor: KY.card,
-        borderRadius: 14,
-        paddingHorizontal: 22,
+        borderRadius: s.radius,
+        paddingLeft: inset,
+        paddingRight: s.pad,
         height: s.rowH,
       }}
     >
-      <Thumb image={p.image} name={p.name} size={thumb} />
+      <Thumb image={p.image} name={p.name} size={s.thumb} radius={concentric(s.radius, inset, 6)} />
       <Text size={s.row} weight="medium" lines={1} style={{ flex: 1 }}>
         {p.name}
       </Text>
@@ -190,7 +203,7 @@ export function ProductDetail({ id }: { id: string }) {
             >
               <View
                 style={{
-                  height: s.phone ? 150 : 110,
+                  height: s.phone ? 150 : 140,
                   alignItems: 'center',
                   justifyContent: 'center',
                   paddingHorizontal: 12,
@@ -211,23 +224,25 @@ export function ProductDetail({ id }: { id: string }) {
             </View>
           )}
         </View>
-        {tab === 'cadastro' ? (
-          <>
-            <View style={{ flexDirection: s.phone ? 'column' : 'row', gap: 14 }}>
-              {field('Nome do Produto', p.name)}
-              {field('Preço de Venda', brl(p.price))}
-            </View>
-            <View style={{ flexDirection: s.phone ? 'column' : 'row', gap: 14 }}>
-              {field('Categoria', p.category || '—')}
-              {field('Código', p.code || '—')}
-            </View>
-          </>
-        ) : (
-          field(
-            'Estoque atual',
-            p.stock == null ? 'Sem controle de estoque' : `${fmtQty(p.stock)} un.`,
-          )
-        )}
+        <Swap id={tab} index={tab === 'cadastro' ? 0 : 1} style={{ gap: 14 }}>
+          {tab === 'cadastro' ? (
+            <>
+              <View style={{ flexDirection: s.phone ? 'column' : 'row', gap: 14 }}>
+                {field('Nome do Produto', p.name)}
+                {field('Preço de Venda', brl(p.price))}
+              </View>
+              <View style={{ flexDirection: s.phone ? 'column' : 'row', gap: 14 }}>
+                {field('Categoria', p.category || '—')}
+                {field('Código', p.code || '—')}
+              </View>
+            </>
+          ) : (
+            field(
+              'Estoque atual',
+              p.stock == null ? 'Sem controle de estoque' : `${fmtQty(p.stock)} un.`,
+            )
+          )}
+        </Swap>
         <Text size={s.small} color={KY.sub}>
           Só consulta: para mudar o cadastro use o Kyte.
         </Text>

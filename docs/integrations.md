@@ -72,14 +72,19 @@ Código: `apps/automotive/src/kyte/bridge.ts` (rotas e script injetado) e `src/a
   quantidades, para ajustar o reconhecimento se o Kyte usar nomes diferentes.
 - **Cancelar venda:** com confirmação, a janela invisível abre a venda no Histórico do Kyte e
   usa o botão "Cancelar venda" dele.
-- **Cadastros:** pelos botões "+" a Havena abre (regra: cadastro manual só pela Havena, com
-  confirmação).
+- **Cadastros:** o "+" abre "Novo produto" (nome e preço) e "Adicionar cliente" (nome,
+  celular e endereço), no celular e na multimídia, e a janela invisível preenche o cadastro no
+  Kyte (`kyte/screens/create.tsx`). O Lucas também cadastra, com confirmação. No Preview nada é
+  gravado.
 - **Limitações:** sem API pública e sem acesso a uma conta para testar ao vivo, os nomes dos
   campos do Kyte são presumidos; se o reconhecimento não achar algo, a tela diz isso e aponta
   o Diagnóstico. Listas muito longas dependem do Kyte entregá-las à página (a janela rola a
   lista para trazer as páginas seguintes). Só no app Android; no Preview, dados de exemplo.
 
-## Havena (IA)
+## Lucas (IA, antes "Havena")
+
+O assistente se chama **Lucas** (voz masculina). No código, a pasta `havena/` e o canal
+`havena` das permissões mantêm o nome antigo, para não quebrar API e testes.
 
 - **Com internet:** modelo da NVIDIA (plano gratuito, ~40 pedidos/min; termos: uso de
   desenvolvimento). Escolhido por teste real com a chave: `nvidia/nemotron-3.5-super-vl-120b-a12b`
@@ -90,9 +95,21 @@ Código: `apps/automotive/src/kyte/bridge.ts` (rotas e script injetado) e `src/a
   o envio é um toque da pessoa), cadastrar cliente/produto no Kyte, resumo de vendas, abrir
   telas. **Rota, WhatsApp e cadastros sempre pedem confirmação** ("sim"/"não" ou botões).
 - **Voz:** reconhecimento do próprio Android (`expo-speech-recognition`, serviço do Google) e
-  fala do aparelho (`expo-speech`). Sem custo.
-- **Sem internet / sem chave:** comandos fixos (`havena/offline.ts`): passar, voltar, pausar,
-  continuar música; rota do dia; abrir telas.
+  fala do aparelho (`expo-speech`). Sem custo. A voz escolhida é pt-BR **masculina** instalada
+  no aparelho (`pickAssistantVoice`, @goclient/core); o sistema não informa o gênero, então a
+  escolha é pelos nomes conhecidos (Google `pt-br-x-ptd`, Samsung `SMTm`, Apple Felipe/Reed…).
+  Sem voz masculina instalada, usa a padrão com tom mais grave. Voz gerada por IA: fase futura.
+- **Escuta contínua** (`havena/listener.ts`): depois de ativado, o Lucas ouve até a pessoa
+  fechar; só desliga o microfone enquanto pensa e fala. A frase é entregue depois de ~1 s de
+  silêncio, juntando os trechos que o Android manda separados (antes chegava só "bom" de
+  "bom dia"). Modo contínuo exige Android 13+; abaixo disso, o microfone reabre sozinho.
+- **Ativação por voz** (`havena/wake.tsx`, ligada em Ajustes): com o app aberto, "olá/oi/ei
+  Lucas", "bom dia", "oh IA" e "olá, inteligência artificial" (`matchWakePhrase`, @goclient/core).
+  O que vem junto ("olá Lucas, que horas são") já é respondido. Só funciona com o app aberto e
+  na tela (o Android não deixa ouvir com o app fechado sem um serviço próprio).
+- **Sem internet / sem chave:** hora e data (`answerClock`), comandos fixos
+  (`havena/offline.ts`): passar, voltar, pausar, continuar música; rota do dia; abrir telas.
+  Com o modelo, a data e a hora de agora também vão no contexto.
 - **Próxima fase:** modelo local (llama.cpp) em multimídias com 6 GB ou mais de RAM.
 
 ## Spotify
@@ -130,13 +147,26 @@ demonstração. Código em `apps/automotive/src/spotify/`.
   mesmo aparelho, trocadas pelo menu da foto do perfil.
 - **Dados:** Músicas Curtidas, playlists, álbuns e programas salvos, artistas seguidos,
   tocadas recentemente, busca de músicas (máx. 10 resultados, regra de fev/2026).
-- **Reprodução:** tocar/pausar/próxima/anterior e tocar playlist/álbum/programa pela Web API; o
-  estado é lido a cada 4 s. Sem aparelho ativo, o GoClient liga o app do Spotify **por trás**
-  com o SDK oficial App Remote 0.8.0 (módulo local `apps/automotive/modules/spotify-remote`, aar
-  do repositório github.com/spotify/android-sdk, licença Apache 2.0), espera ele aparecer como
-  aparelho e manda o comando; se não aparecer, manda o comando direto pelo SDK. A pessoa não sai
-  do GoClient. Exige o app do Spotify instalado e logado na multimídia; na primeira conexão o
-  Spotify pode mostrar uma tela pedindo para autorizar o GoClient.
+- **Reprodução (desde 24/11/2026):** com o app do Spotify instalado na multimídia, todos os
+  comandos (tocar, pausar, pular, voltar, posição, aleatório, repetir, fila) vão pelo SDK
+  oficial **App Remote 0.8.0** (módulo local `apps/automotive/modules/spotify-remote`, aar do
+  repositório github.com/spotify/android-sdk, licença Apache 2.0) direto para o Spotify **deste
+  aparelho**: o som nunca vai parar em outro aparelho da conta. Uma faixa escolhida numa
+  playlist, álbum ou nas Curtidas é tocada pela **posição** dela (`skipToIndex`), então a
+  música que toca é sempre a que a pessoa tocou. O estado (faixa, play/pausa, posição,
+  aleatório, repetir, contexto) chega por **evento** do SDK, na hora; a Web API só completa os
+  dados (capa grande, artistas, fila). Regras em `apps/automotive/src/spotify/transport.ts`
+  (com testes).
+- **Sem o app do Spotify** (ou se o SDK não conectar), os mesmos comandos vão pela Web API
+  (Spotify Connect) para o aparelho ativo da conta, e o estado é lido a cada 4 s.
+- **Player:** a parte de baixo mostra só dados reais da faixa tocando: artista (foto e gêneros
+  de `GET /artists/{id}`), artistas da faixa, próximas da fila e créditos (artistas e álbum).
+  "Ouvintes mensais", vídeos relacionados e "Conheça" não existem na API para este app e
+  saíram. Seguir artista exigiria o escopo `user-follow-modify` e `PUT /me/library` (não
+  pedido hoje).
+- Na primeira conexão o Spotify pode mostrar uma tela pedindo para autorizar o GoClient. Ao
+  abrir o GoClient, ele tenta conectar ao Spotify em silêncio (sem essa tela) para já mostrar o
+  que está tocando.
 
 **Limitações reais (não contornáveis pelo GoClient):**
 
@@ -149,8 +179,11 @@ demonstração. Código em `apps/automotive/src/spotify/`.
 - O login pelo **Google** é bloqueado pelo Google dentro de WebViews: usar e-mail e senha.
 - A cor de fundo do player/mini player das capas remotas é um tom estável derivado do item, não
   a cor extraída da capa (exigiria biblioteca nativa).
-- O áudio sai pelo Spotify da conta ativa: se outra pessoa da família trocar de conta, o app do
-  Spotify da multimídia precisa estar com a mesma conta, senão o som toca no aparelho dela.
+- O SDK controla o app do Spotify **com a conta que estiver logada nele**. Se a conta ativa no
+  GoClient for outra, as bibliotecas e playlists vêm da conta do GoClient, mas o som e o
+  estado vêm da conta do app do Spotify: as duas precisam ser a mesma.
+- Nada disso foi testado num aparelho de verdade a partir do ambiente de desenvolvimento: o
+  SDK só existe na compilação Android com o app do Spotify instalado.
 
 **Configuração (uma vez):**
 

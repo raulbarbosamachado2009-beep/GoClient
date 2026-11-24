@@ -1,10 +1,12 @@
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { useState } from 'react';
-import { ActivityIndicator, Image, Linking, Platform, ScrollView, Share, View } from 'react-native';
+import { Image, Linking, Platform, ScrollView, Share, View } from 'react-native';
 import { callPhone, openWhatsApp } from '../../integrations/contact';
 import { useTabBarSpace } from '../../layout/form-factor';
+import { Swap } from '../../ui/motion';
 import { Touchable } from '../../ui/primitives';
+import { Spinner } from '../../ui/spinner';
 import { kyteAgent } from '../agent';
 import { brl, fmtQty, type KyteSale } from '../model';
 import { type KyteStoreInfo, PREVIEW, patchSale, useKyteList, useKyteStore } from '../store';
@@ -130,65 +132,67 @@ export function SaleDetail({ id }: { id: string }) {
             paddingVertical: 8,
           }}
         >
-          {tab === 'itens' &&
-            (sale.items.length ? (
-              sale.items.map((i, n) => (
-                <View
-                  // biome-ignore lint/suspicious/noArrayIndexKey: itens da venda não têm id
-                  key={n}
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    paddingVertical: 20,
-                    borderTopWidth: n ? 1 : 0,
-                    borderTopColor: KY.line,
-                    gap: 20,
-                  }}
-                >
-                  <Text size={s.big} color={KY.sub} style={{ width: s.phone ? 74 : 90 }}>
-                    {fmtQty(i.qty)} x
-                  </Text>
-                  <Text size={s.big} weight="semibold" style={{ flex: 1 }}>
-                    {i.name}
-                  </Text>
-                  <Text size={s.big}>{brl(i.total)}</Text>
-                </View>
-              ))
-            ) : (
-              <State empty="O Kyte não mandou os itens desta venda." />
-            ))}
-          {tab === 'detalhes' && (
-            <View style={{ paddingVertical: 12, gap: 16 }}>
-              <Pair label="Data" value={dateTime(sale.date)} />
-              <Pair label="Número" value={sale.number ? `#${sale.number}` : '—'} />
-              <Pair label="Pagamento" value={sale.payment || '—'} />
-              <Pair label="Vendedor" value={sale.seller || '—'} />
-              <Pair label="Situação" value={canceled ? 'Cancelada' : 'Concluída'} />
-            </View>
-          )}
-          {tab === 'cliente' && (
-            <View style={{ paddingVertical: 12, gap: 16 }}>
-              <Pair label="Cliente" value={sale.customer?.name || 'Venda sem cliente'} />
-              {sale.customer?.phone ? <Pair label="Celular" value={sale.customer.phone} /> : null}
-              {sale.customer?.district ? (
-                <Pair label="Bairro" value={sale.customer.district} />
-              ) : null}
-              {sale.customer?.phone ? (
-                <View style={{ flexDirection: 'row', gap: 12, paddingBottom: 8 }}>
-                  <SmallButton
-                    label="WhatsApp"
-                    icon="logo-whatsapp"
-                    onPress={() => openWhatsApp(sale.customer?.phone ?? '')}
-                  />
-                  <SmallButton
-                    label="Ligar"
-                    icon="call"
-                    onPress={() => callPhone(sale.customer?.phone ?? '')}
-                  />
-                </View>
-              ) : null}
-            </View>
-          )}
+          <Swap id={tab} index={['itens', 'detalhes', 'cliente'].indexOf(tab)}>
+            {tab === 'itens' &&
+              (sale.items.length ? (
+                sale.items.map((i, n) => (
+                  <View
+                    // biome-ignore lint/suspicious/noArrayIndexKey: itens da venda não têm id
+                    key={n}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      paddingVertical: 20,
+                      borderTopWidth: n ? 1 : 0,
+                      borderTopColor: KY.line,
+                      gap: 20,
+                    }}
+                  >
+                    <Text size={s.big} color={KY.sub} style={{ width: s.phone ? 74 : 90 }}>
+                      {fmtQty(i.qty)} x
+                    </Text>
+                    <Text size={s.big} weight="semibold" style={{ flex: 1 }}>
+                      {i.name}
+                    </Text>
+                    <Text size={s.big}>{brl(i.total)}</Text>
+                  </View>
+                ))
+              ) : (
+                <State empty="O Kyte não mandou os itens desta venda." />
+              ))}
+            {tab === 'detalhes' && (
+              <View style={{ paddingVertical: 12, gap: 16 }}>
+                <Pair label="Data" value={dateTime(sale.date)} />
+                <Pair label="Número" value={sale.number ? `#${sale.number}` : '—'} />
+                <Pair label="Pagamento" value={sale.payment || '—'} />
+                <Pair label="Vendedor" value={sale.seller || '—'} />
+                <Pair label="Situação" value={canceled ? 'Cancelada' : 'Concluída'} />
+              </View>
+            )}
+            {tab === 'cliente' && (
+              <View style={{ paddingVertical: 12, gap: 16 }}>
+                <Pair label="Cliente" value={sale.customer?.name || 'Venda sem cliente'} />
+                {sale.customer?.phone ? <Pair label="Celular" value={sale.customer.phone} /> : null}
+                {sale.customer?.district ? (
+                  <Pair label="Bairro" value={sale.customer.district} />
+                ) : null}
+                {sale.customer?.phone ? (
+                  <View style={{ flexDirection: 'row', gap: 12, paddingBottom: 8 }}>
+                    <SmallButton
+                      label="WhatsApp"
+                      icon="logo-whatsapp"
+                      onPress={() => openWhatsApp(sale.customer?.phone ?? '')}
+                    />
+                    <SmallButton
+                      label="Ligar"
+                      icon="call"
+                      onPress={() => callPhone(sale.customer?.phone ?? '')}
+                    />
+                  </View>
+                ) : null}
+              </View>
+            )}
+          </Swap>
         </View>
         {msg && (
           <Text size={s.sub} color={KY.sub}>
@@ -209,8 +213,8 @@ export function SaleDetail({ id }: { id: string }) {
           onPress={() => nav.open({ type: 'receipt', id: sale.id })}
           accessibilityLabel="Ver recibo"
           style={{
-            width: s.phone ? 110 : 150,
-            height: s.phone ? 96 : 110,
+            width: s.phone ? 110 : 170,
+            height: s.phone ? 96 : 128,
             borderRadius: 18,
             borderWidth: 2,
             borderColor: '#C8CFD8',
@@ -225,7 +229,7 @@ export function SaleDetail({ id }: { id: string }) {
           onPress={() => !canceled && setConfirm(true)}
           style={{
             flex: 1,
-            height: s.phone ? 96 : 110,
+            height: s.phone ? 96 : 128,
             borderRadius: 18,
             backgroundColor: canceled ? '#9AA3AF' : KY.night,
             flexDirection: 'row',
@@ -271,7 +275,7 @@ export function SaleDetail({ id }: { id: string }) {
             </Text>
             <View style={{ flexDirection: 'row', gap: 14, justifyContent: 'flex-end' }}>
               {working ? (
-                <ActivityIndicator color={KY.red} />
+                <Spinner size={36} color={KY.red} />
               ) : (
                 <>
                   <SmallButton label="Voltar" onPress={() => setConfirm(false)} />
@@ -586,7 +590,7 @@ export function Receipt({ id }: { id: string }) {
             onPress={a.run}
             style={{
               flex: 1,
-              height: s.phone ? 108 : 96,
+              height: s.phone ? 108 : 128,
               borderRadius: 16,
               backgroundColor: 'rgba(255,255,255,.08)',
               alignItems: 'center',

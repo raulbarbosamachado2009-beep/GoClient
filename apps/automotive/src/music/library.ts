@@ -34,7 +34,7 @@ import { useSpotify, useSpotifyLive } from '../spotify/provider';
 const cache = new Map<string, unknown>();
 
 /** GET na Web API com cache por conta durante o uso do app. `path` nulo = não buscar. */
-function useSpotifyGet<T, R>(path: string | null, map: (raw: T) => R) {
+export function useSpotifyGet<T, R>(path: string | null, map: (raw: T) => R) {
   const { call, active } = useSpotify();
   const key = path && active ? `${active.id}|${path}` : null;
   const [state, setState] = useState<{ key: string | null; data?: R; error?: string }>(() => ({

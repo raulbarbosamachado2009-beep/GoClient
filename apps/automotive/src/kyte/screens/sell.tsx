@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { FlatList, ScrollView, View } from 'react-native';
 import { openWhatsApp } from '../../integrations/contact';
 import { useTabBarSpace } from '../../layout/form-factor';
+import { concentric } from '../../theme';
 import { Touchable } from '../../ui/primitives';
 import { brl, fmtQty, type KyteCustomer, type KyteProduct, norm } from '../model';
 import { useKyteList } from '../store';
@@ -105,8 +106,8 @@ export function SellScreen({ onFinish }: { onFinish: (p: SellPlan) => void }) {
               onPress={() => setPicking(true)}
               accessibilityLabel="Selecionar cliente"
               style={{
-                width: s.phone ? 72 : 76,
-                height: s.phone ? 72 : 76,
+                width: s.phone ? 72 : 100,
+                height: s.phone ? 72 : 100,
                 borderRadius: 16,
                 backgroundColor: KY.green,
                 alignItems: 'center',
@@ -177,14 +178,20 @@ export function SellScreen({ onFinish }: { onFinish: (p: SellPlan) => void }) {
                   alignItems: 'center',
                   gap: 22,
                   backgroundColor: KY.card,
-                  borderRadius: 14,
-                  paddingHorizontal: 20,
+                  borderRadius: s.radius,
+                  paddingLeft: (s.rowH - s.thumb) / 2,
+                  paddingRight: s.pad,
                   height: s.rowH,
                   borderWidth: 2,
                   borderColor: n ? KY.green : 'transparent',
                 }}
               >
-                <Thumb image={item.image} name={item.name} size={s.phone ? 70 : 62} />
+                <Thumb
+                  image={item.image}
+                  name={item.name}
+                  size={s.thumb}
+                  radius={concentric(s.radius, (s.rowH - s.thumb) / 2, 6)}
+                />
                 <Text size={s.row} weight="medium" lines={1} style={{ flex: 1 }}>
                   {item.name}
                 </Text>
@@ -214,7 +221,7 @@ export function SellScreen({ onFinish }: { onFinish: (p: SellPlan) => void }) {
         <Touchable
           onPress={() => count && setReview(true)}
           style={{
-            height: s.phone ? 96 : 88,
+            height: s.phone ? 96 : 120,
             borderRadius: 18,
             borderWidth: 3,
             borderColor: KY.green,
@@ -324,7 +331,7 @@ export function SellScreen({ onFinish }: { onFinish: (p: SellPlan) => void }) {
                 label="Finalizar no Kyte"
                 icon="checkmark-circle-outline"
                 style={{ flex: 1 }}
-                height={s.phone ? 80 : 76}
+                height={s.phone ? 80 : 112}
                 onPress={() => {
                   setReview(false);
                   onFinish({ items: lines.map(([name, qty]) => ({ name, qty })), customer });

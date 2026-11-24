@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { ActivityIndicator, ScrollView, Share, View } from 'react-native';
+import { ScrollView, Share, View } from 'react-native';
 import { useTabBarSpace } from '../../layout/form-factor';
+import { Spinner } from '../../ui/spinner';
 import { type KyteDiagnosis, kyteAgent } from '../agent';
 import { PREVIEW } from '../store';
 import { Header, KY, SmallButton, Text, useKySize } from '../ui';
@@ -63,7 +64,7 @@ export function DiagnosticScreen() {
         </Text>
         <View style={{ flexDirection: 'row', gap: 12 }}>
           {busy ? (
-            <ActivityIndicator color={KY.green} size="large" />
+            <Spinner color={KY.green} />
           ) : (
             <SmallButton
               label={PREVIEW ? 'Só no app instalado' : 'Ler agora'}

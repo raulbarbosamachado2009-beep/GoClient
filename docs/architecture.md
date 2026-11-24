@@ -150,13 +150,14 @@ Colunas comuns às tabelas sincronizáveis: `id` (UUID gerado no cliente, permit
 - **Papéis**: `owner`, `admin` (tudo), `seller` (opera clientes, produtos, visitas e rotas; não
   exclui clientes/produtos), `viewer` (somente leitura).
 - **Plataforma** e **canal** (`manual`, `havena`, `integration`) entram na decisão:
-  - Regra 1: `automotive` + `manual` + escrita em `customer`/`product` → negado.
-  - Regra 2: `automotive` + `havena` → permitido se o papel permitir, **com confirmação**.
+  - Regra 1 (retirada em 2026-11-24 a pedido do usuário): o Automotive também cadastra e edita
+    clientes e produtos à mão.
+  - Regra 2: canal `havena` → permitido se o papel permitir, **com confirmação**.
+  - Regra 3: `automotive` + escrita em `route` → negado (rotas são montadas no celular), exceto `reorder` (mudar a ordem das paradas, liberado em 2026-11-24).
 - `GET /v1/me` devolve a matriz efetiva para a interface decidir o que mostrar.
 
-Limitação honesta: a plataforma é **declarada pelo app**. A Regra 1 é uma regra de produto (evitar
-digitação ao volante), não uma barreira de segurança — quem tem permissão de editar pode editar
-pelo Mobile. Se for necessário tratá-la como segurança, cada app pode receber credenciais de
+Limitação honesta: a plataforma é **declarada pelo app**. A Regra 3 é uma regra de produto, não
+uma barreira de segurança — quem tem permissão de editar pode editar pelo Mobile. Se for necessário tratá-la como segurança, cada app pode receber credenciais de
 cliente próprias (ADR futura).
 
 ## 8. Sincronização offline

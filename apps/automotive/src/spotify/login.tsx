@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { usePhone } from '../layout/form-factor';
 import { spacing } from '../theme';
 import { Button, IconButton, Text } from '../ui/primitives';
+import { Spinner } from '../ui/spinner';
 import { Unscaled } from '../ui/unscaled';
 import {
   createAuthRequest,
@@ -144,7 +145,7 @@ function SpotifyLogin() {
               startInLoadingState
               renderLoading={() => (
                 <Center>
-                  <ActivityIndicator size="large" color="#1ED760" />
+                  <Spinner color="#1ED760" />
                 </Center>
               )}
               style={{ flex: 1, backgroundColor: '#121212' }}
@@ -153,7 +154,7 @@ function SpotifyLogin() {
         )}
         {(status === 'exchanging' || (!request && status === 'page')) && (
           <Center>
-            <ActivityIndicator size="large" color="#1ED760" />
+            <Spinner color="#1ED760" />
             <Text variant="headline" color="#FFFFFF">
               Conectando sua conta…
             </Text>

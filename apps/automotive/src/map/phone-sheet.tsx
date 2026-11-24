@@ -1,15 +1,5 @@
 import { useRouter } from 'expo-router';
-import {
-  type ComponentProps,
-  type ComponentRef,
-  createContext,
-  type ReactNode,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { type ComponentRef, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   Keyboard,
@@ -27,9 +17,14 @@ import { customerAddress, findCustomer, useKyteList } from '../kyte/store';
 import { TAB_BAR_HEIGHT, useSystemInsets, useTabBarSpace } from '../layout/form-factor';
 import { CLIENTS, type MockClient, REGIONS } from '../mocks/data';
 import { useFrameScale } from '../preview/automotive-frame';
-import { layout, spacing, useColors } from '../theme';
-import { Avatar, Icon, type IconName, Text, Touchable } from '../ui/primitives';
+import { concentric, spacing, useColors } from '../theme';
+import { useSwap } from '../ui/motion';
+import { Avatar, Blur, Icon, type IconName, Text, Touchable } from '../ui/primitives';
+import { useMapNav } from './map-nav';
 import { RoutePlanner } from './route-planner';
+import { RouteQueue } from './route-queue';
+import { SavedRoutes } from './saved-routes';
+import { DraggedContext, REORDER_HANDLE, SheetLock, Tap } from './sheet-context';
 import { useStops } from './stops';
 
 /**
@@ -40,19 +35,6 @@ import { useStops } from './stops';
 export type Detent = 0 | 1 | 2;
 export type SheetController = { snap: (d: Detent) => void };
 
-/** Diz se o último gesto na aba foi um arrasto (aí o toque nos botões é ignorado). */
-const DraggedContext = createContext<{ current: boolean }>({ current: false });
-/** Botão da aba: ignora o toque quando o gesto foi um arrasto da aba. */
-function Tap({ onPress, ...rest }: ComponentProps<typeof Touchable>) {
-  const dragged = useContext(DraggedContext);
-  return (
-    <Touchable
-      {...rest}
-      onPress={onPress ? (e) => (dragged.current ? undefined : onPress(e)) : undefined}
-    />
-  );
-}
-
 const NO_SELECT = (Platform.OS === 'web' ? { userSelect: 'none' } : null) as object;
 /** No navegador, põe a aba numa camada própria da GPU (o deslocamento não repinta o mapa). */
 const WEB = Platform.OS === 'web';
@@ -62,6 +44,17 @@ const SPRING = { stiffness: 190, damping: 26 };
 const OVERSCROLL = { overscrollBehavior: 'contain' } as object;
 /** Margem do conteúdo até a borda da tela (fixa: o conteúdo nunca muda de largura). */
 const CONTENT_INSET = 20;
+/**
+ * Bordas concêntricas (raio de dentro = raio de fora − espaçamento). Na altura média — a do
+ * cartão do cliente e dos atalhos — a aba fica a 16 da borda da tela e o conteúdo a 44, ou
+ * seja, 28 de espaço entre a borda da aba e as peças de dentro.
+ */
+const SHEET_RADIUS = 64;
+const SHEET_PAD = 28;
+/** Raio das peças de dentro da aba (cartões, botões, busca): 64 − 28 = 36. */
+export const SHEET_INNER = concentric(SHEET_RADIUS, SHEET_PAD);
+/** Peças dentro dos cartões, que têm 16 de espaçamento interno. */
+const CARD_INNER = concentric(SHEET_INNER, spacing[4]);
 const WILL_MOVE = (Platform.OS === 'web' ? { willChange: 'transform' } : null) as object;
 
 export function DragSheet({
@@ -100,6 +93,13 @@ export function DragSheet({
   scaleRef.current = scale;
   const dragged = useRef(false);
   const scrollTop = useRef(0);
+  // Item da lista sendo arrastado (lista "Rota"): a aba fica parada e o conteúdo não rola.
+  const [locked, setLocked] = useState(false);
+  const lockedRef = useRef(false);
+  const lock = useRef((on: boolean) => {
+    lockedRef.current = on;
+    setLocked(on);
+  }).current;
   const detentRef = useRef<Detent>(initial);
 
   // Geometria da aba para uma altura `v`: recolhida = pílula flutuante; média = cartão
@@ -272,7 +272,9 @@ export function DragSheet({
   const contentPan = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponderCapture: (_e, g) =>
-        vertical(g) && (detentRef.current !== 2 || (g.dy > 0 && scrollTop.current <= 0)),
+        !lockedRef.current &&
+        vertical(g) &&
+        (detentRef.current !== 2 || (g.dy > 0 && scrollTop.current <= 0)),
       onMoveShouldSetPanResponder: () => false,
       ...handlers,
     }),
@@ -298,10 +300,16 @@ export function DragSheet({
       y0 = y;
       mode = 'maybe';
       inHeader = !!head && target instanceof Node && head.contains(target);
+      // Alça de arrastar um item da lista: o gesto é do item, não da aba.
+      if (target instanceof Element && target.closest(`[${REORDER_HANDLE}]`)) mode = 'native';
       samples = [{ y, t: performance.now() }];
     };
     const move = (x: number, y: number, prevent: () => void) => {
       if (mode === 'idle' || mode === 'native') return;
+      if (lockedRef.current) {
+        mode = 'native';
+        return;
+      }
       const dx = x - x0;
       const dy = y - y0;
       if (mode === 'maybe') {
@@ -400,78 +408,81 @@ export function DragSheet({
 
   return (
     <DraggedContext.Provider value={dragged}>
-      <View
-        pointerEvents="box-none"
-        style={styles.area}
-        onLayout={(e) => {
-          setScreen(Math.round(e.nativeEvent.layout.height));
-          setWidth(Math.round(e.nativeEvent.layout.width));
-        }}
-      >
-        {screen > 0 && width > 0 && (
-          <Animated.View
-            ref={clipRef}
-            pointerEvents="box-none"
-            style={[styles.clip, { height: screen }, anim?.clip, WILL_MOVE, NO_SELECT]}
-          >
+      <SheetLock.Provider value={lock}>
+        <View
+          pointerEvents="box-none"
+          style={styles.area}
+          onLayout={(e) => {
+            setScreen(Math.round(e.nativeEvent.layout.height));
+            setWidth(Math.round(e.nativeEvent.layout.width));
+          }}
+        >
+          {screen > 0 && width > 0 && (
             <Animated.View
-              ref={bgRef}
-              pointerEvents="none"
-              style={[
-                styles.sheetBg,
-                {
-                  height: screen,
-                  borderColor: c.material.border,
-                  backgroundColor: c.mode === 'dark' ? '#1C1C1E' : '#F2F2F7',
-                },
-                anim?.bg,
-                WILL_MOVE,
-              ]}
-            />
-            <Animated.View
-              ref={bodyRef}
-              style={[
-                styles.body,
-                {
-                  left: CONTENT_INSET,
-                  width: width - CONTENT_INSET * 2,
-                  height: screen,
-                },
-                anim?.body,
-                WILL_MOVE,
-              ]}
+              ref={clipRef}
+              pointerEvents="box-none"
+              style={[styles.clip, { height: screen }, anim?.clip, WILL_MOVE, NO_SELECT]}
             >
-              {/* Cabeçalho fixo: a busca nunca rola junto com a lista. */}
-              <View ref={headerRef} {...(WEB ? null : pan.panHandlers)}>
-                <Touchable
-                  accessibilityRole="button"
-                  accessibilityLabel={detent === 2 ? 'Recolher aba' : 'Expandir aba'}
-                  onPress={() =>
-                    snap(detentRef.current === 2 ? 0 : ((detentRef.current + 1) as Detent))
-                  }
-                  style={styles.grabArea}
-                >
-                  <View style={[styles.grabber, { backgroundColor: c.textTertiary }]} />
-                </Touchable>
-                <View style={styles.header}>{header}</View>
-              </View>
-              <ScrollView
-                style={[{ flex: 1 }, WEB && OVERSCROLL]}
-                scrollEnabled={detent === 2}
-                showsVerticalScrollIndicator={detent === 2}
-                contentContainerStyle={styles.content}
-                scrollEventThrottle={16}
-                onScroll={(e) => {
-                  scrollTop.current = e.nativeEvent.contentOffset.y;
-                }}
-                {...(WEB ? null : contentPan.panHandlers)}
+              <Animated.View
+                ref={bgRef}
+                pointerEvents="none"
+                style={[
+                  styles.sheetBg,
+                  { height: screen, borderColor: c.material.border },
+                  anim?.bg,
+                  WILL_MOVE,
+                ]}
               >
-                {children}
-              </ScrollView>
+                {/* Fundo de vidro: desfoca o mapa atrás da aba (no Android sem desfoque ao
+                    vivo, vira a cor quase opaca do material). */}
+                <Blur radius={40} tint={c.material.tint} />
+                <View style={[StyleSheet.absoluteFill, { backgroundColor: c.material.fallback }]} />
+              </Animated.View>
+              <Animated.View
+                ref={bodyRef}
+                style={[
+                  styles.body,
+                  {
+                    left: CONTENT_INSET,
+                    width: width - CONTENT_INSET * 2,
+                    height: screen,
+                  },
+                  anim?.body,
+                  WILL_MOVE,
+                ]}
+              >
+                {/* Cabeçalho fixo: a busca nunca rola junto com a lista. */}
+                <View ref={headerRef} {...(WEB ? null : pan.panHandlers)}>
+                  <Touchable
+                    accessibilityRole="button"
+                    accessibilityLabel={detent === 2 ? 'Recolher aba' : 'Expandir aba'}
+                    onPress={() =>
+                      snap(detentRef.current === 2 ? 0 : ((detentRef.current + 1) as Detent))
+                    }
+                    style={styles.grabArea}
+                  >
+                    <View style={[styles.grabber, { backgroundColor: c.textTertiary }]} />
+                  </Touchable>
+                  <View style={styles.header}>{header}</View>
+                </View>
+                <ScrollView
+                  style={[{ flex: 1 }, WEB && OVERSCROLL]}
+                  scrollEnabled={detent === 2 && !locked}
+                  showsVerticalScrollIndicator={detent === 2}
+                  contentContainerStyle={styles.content}
+                  scrollEventThrottle={16}
+                  onScroll={(e) => {
+                    scrollTop.current = e.nativeEvent.contentOffset.y;
+                  }}
+                  {...(WEB ? null : contentPan.panHandlers)}
+                >
+                  {children}
+                </ScrollView>
+              </Animated.View>
             </Animated.View>
-          </Animated.View>
-        )}
-      </View>
+          )}
+        </View>
+      </SheetLock.Provider>
     </DraggedContext.Provider>
   );
 }
@@ -483,9 +494,9 @@ const RECENT = ['c1', 'c6', 'c3'];
 export function ExploreSheet() {
   const c = useColors();
   const router = useRouter();
+  const mapNav = useMapNav();
   const recent = RECENT.map((id) => CLIENTS.find((x) => x.id === id) as MockClient);
-  const goTo = (id: string) =>
-    router.replace({ pathname: '/mapa', params: { rota: 'cliente', id } });
+  const goTo = (id: string) => mapNav({ rota: 'cliente', id });
   // Busca como no Apple Maps: tocar no campo abre a aba inteira, mostra o teclado,
   // atalhos de filtro e sugestões — sem sair do Mapa.
   const sheet = useRef<SheetController | null>(null);
@@ -501,16 +512,38 @@ export function ExploreSheet() {
   const [notice, setNotice] = useState<string | null>(null);
   // Montar a rota do dia dentro da própria aba (sem página separada).
   const [planning, setPlanning] = useState(false);
+  // "Rotas": montar uma nova ou começar uma já montada.
+  const [hub, setHub] = useState(false);
+  // Trocar de conteúdo (atalhos → rota do dia / clientes) tem transição: o atual sai
+  // deslizando e o novo entra pelo outro lado.
+  const swap = useSwap();
   const openPlanner = () => {
-    setMode(null);
-    setPlanning(true);
     sheet.current?.snap(2);
+    swap.run(1, () => {
+      setMode(null);
+      setHub(false);
+      setPlanning(true);
+    });
+  };
+  const openHub = () => {
+    sheet.current?.snap(2);
+    swap.run(1, () => {
+      setMode(null);
+      setPlanning(false);
+      setHub(true);
+    });
+  };
+  const closeHub = () => {
+    swap.run(-1, () => setHub(false));
+    sheet.current?.snap(1);
   };
   const openClients = () => {
-    setPlanning(false);
-    setMode('clients');
-    setNotice(null);
     sheet.current?.snap(2);
+    swap.run(1, () => {
+      setPlanning(false);
+      setMode('clients');
+      setNotice(null);
+    });
   };
   // Cliente do Kyte: a janela invisível abre a ficha, lê o endereço e traça a rota.
   const pickKyte = (name: string) => {
@@ -537,14 +570,16 @@ export function ExploreSheet() {
       .catch((e: Error) => setNotice(e.message));
   };
   const startSearch = () => {
-    setSearching(true);
+    if (!searching) swap.run(1, () => setSearching(true));
     sheet.current?.snap(2);
     requestAnimationFrame(() => input.current?.focus());
   };
   const endSearch = () => {
-    setSearching(false);
-    setQuery('');
-    setRegion(null);
+    swap.run(-1, () => {
+      setSearching(false);
+      setQuery('');
+      setRegion(null);
+    });
     Keyboard.dismiss();
     input.current?.blur();
     sheet.current?.snap(0);
@@ -639,112 +674,139 @@ export function ExploreSheet() {
         </View>
       }
     >
-      {planning ? (
-        <View style={{ height: 1150 }}>
+      <Animated.View style={swap.style}>
+        {planning ? (
           <RoutePlanner
+            embedded
             onClose={() => {
-              setPlanning(false);
+              swap.run(-1, () => setPlanning(false));
               sheet.current?.snap(1);
             }}
           />
-        </View>
-      ) : searching ? (
-        <SearchBody
-          clientsMode={mode === 'clients'}
-          kyteNames={mode === 'clients' ? kyte.names : null}
-          kyteLoading={kyte.loading}
-          notice={notice}
-          onPickKyte={pickKyte}
-          onMore={() => router.replace({ pathname: '/kyte', params: { secao: 'clientes' } })}
-          query={query}
-          region={region}
-          onRegion={(r) => setRegion(region === r ? null : r)}
-          results={results}
-          recent={recent}
-          onPick={(id) => {
-            Keyboard.dismiss();
-            goTo(id);
-          }}
-          onDayRoute={() => router.replace({ pathname: '/mapa', params: { rota: 'dia' } })}
-        />
-      ) : (
-        <>
-          <Section title="Atalhos" />
-          <View style={styles.shortcuts}>
-            <Shortcut
-              label="Clientes"
-              sub="no Kyte"
-              color="#0A84FF"
-              icon={<Icon name="people" size={56} color="#FFFFFF" />}
-              onPress={openClients}
-            />
-            <Shortcut
-              label="Produtos"
-              sub="no Kyte"
-              color="#FF9F0A"
-              icon={<Icon name="pricetag" size={52} color="#FFFFFF" />}
-              onPress={() => router.replace({ pathname: '/kyte', params: { secao: 'produtos' } })}
-            />
-            <Shortcut
-              label="Rotas"
-              sub="Montar"
-              subTone="accent"
-              color="#30D158"
-              icon={<Icon name="trail-sign" size={52} color="#FFFFFF" />}
-              onPress={openPlanner}
-            />
-          </View>
-
-          <Section title="Recentes" onPress={openClients} />
-          <View style={[styles.card, { backgroundColor: c.fill }]}>
-            {recent.map((x, i) => (
-              <View key={x.id}>
-                {i > 0 && <View style={[styles.sep, { backgroundColor: c.separator }]} />}
-                <Tap
-                  accessibilityRole="button"
-                  onPress={() => goTo(x.id)}
-                  scaleTo={0.98}
-                  style={styles.recent}
-                >
-                  <View style={[styles.pin, { backgroundColor: '#FF375F' }]}>
-                    <Icon name="location-sharp" size={34} color="#FFFFFF" />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text variant="headline" style={TYPE.rowTitle} numberOfLines={1}>
-                      {x.tradeName}
-                    </Text>
-                    <Text variant="callout" tone="secondary" style={TYPE.rowSub} numberOfLines={1}>
-                      {x.address} · {x.district.split(' · ').slice(1).join(' · ')}
-                    </Text>
-                  </View>
-                  <Icon name="ellipsis-horizontal" size={40} color={c.textSecondary} />
-                </Tap>
-              </View>
-            ))}
-          </View>
-
-          <Section title="Rota de hoje" onPress={openPlanner} />
-          <Tap
-            accessibilityRole="button"
-            onPress={() => router.replace({ pathname: '/mapa', params: { rota: 'dia' } })}
-            scaleTo={0.98}
-            style={[styles.guide, { backgroundColor: c.fill }]}
-          >
-            <View style={[styles.guideArt, { backgroundColor: '#0A84FF' }]}>
-              <Icon name="map" size={72} color="#FFFFFF" />
+        ) : hub ? (
+          <View style={{ gap: spacing[5] }}>
+            <View style={styles.hubHead}>
+              <Text variant="title2" style={TYPE.section}>
+                Rotas
+              </Text>
+              <Tap
+                accessibilityRole="button"
+                accessibilityLabel="Fechar"
+                onPress={closeHub}
+                style={[styles.close, { backgroundColor: c.fill }]}
+              >
+                <Icon name="close" size={30} color={c.textSecondary} />
+              </Tap>
             </View>
-            <Text variant="headline" style={TYPE.rowTitle}>
-              Visitas de hoje
-            </Text>
-            <Text variant="callout" tone="secondary" style={TYPE.rowSub}>
-              {stops.dayIds.length} clientes
-            </Text>
-          </Tap>
+            <SavedRoutes
+              onBuild={openPlanner}
+              outerRadius={SHEET_RADIUS}
+              outerPadding={SHEET_PAD}
+            />
+          </View>
+        ) : searching ? (
+          <SearchBody
+            clientsMode={mode === 'clients'}
+            kyteNames={mode === 'clients' ? kyte.names : null}
+            kyteLoading={kyte.loading}
+            notice={notice}
+            onPickKyte={pickKyte}
+            onMore={() => router.replace({ pathname: '/kyte', params: { secao: 'clientes' } })}
+            query={query}
+            region={region}
+            onRegion={(r) => setRegion(region === r ? null : r)}
+            results={results}
+            recent={recent}
+            onPick={(id) => {
+              Keyboard.dismiss();
+              goTo(id);
+            }}
+            onDayRoute={() => mapNav({ rota: 'dia' })}
+          />
+        ) : (
+          <>
+            <Section title="Atalhos" />
+            <View style={styles.shortcuts}>
+              <Shortcut
+                label="Clientes"
+                sub="no Kyte"
+                color="#0A84FF"
+                icon={<Icon name="people" size={56} color="#FFFFFF" />}
+                onPress={openClients}
+              />
+              <Shortcut
+                label="Produtos"
+                sub="no Kyte"
+                color="#0A84FF"
+                icon={<Icon name="pricetag" size={52} color="#FFFFFF" />}
+                onPress={() => router.replace({ pathname: '/kyte', params: { secao: 'produtos' } })}
+              />
+              <Shortcut
+                label="Rotas"
+                sub="Montar ou começar"
+                subTone="accent"
+                color="#0A84FF"
+                icon={<Icon name="trail-sign" size={52} color="#FFFFFF" />}
+                onPress={openHub}
+              />
+            </View>
 
-          <WideAction icon="trail-sign" label="Montar rota do dia" onPress={openPlanner} />
-          <WideAction icon="share-outline" label="Compartilhar localização" />
-        </>
-      )}
+            <Section title="Recentes" onPress={openClients} />
+            <View style={[styles.card, { backgroundColor: c.fill }]}>
+              {recent.map((x, i) => (
+                <View key={x.id}>
+                  {i > 0 && <View style={[styles.sep, { backgroundColor: c.separator }]} />}
+                  <Tap
+                    accessibilityRole="button"
+                    onPress={() => goTo(x.id)}
+                    scaleTo={0.98}
+                    style={styles.recent}
+                  >
+                    <View style={[styles.pin, { backgroundColor: '#FF375F' }]}>
+                      <Icon name="location-sharp" size={34} color="#FFFFFF" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text variant="headline" style={TYPE.rowTitle} numberOfLines={1}>
+                        {x.tradeName}
+                      </Text>
+                      <Text
+                        variant="callout"
+                        tone="secondary"
+                        style={TYPE.rowSub}
+                        numberOfLines={1}
+                      >
+                        {x.address} · {x.district.split(' · ').slice(1).join(' · ')}
+                      </Text>
+                    </View>
+                    <Icon name="ellipsis-horizontal" size={40} color={c.textSecondary} />
+                  </Tap>
+                </View>
+              ))}
+            </View>
+
+            <Section title="Rota de hoje" onPress={openPlanner} />
+            <Tap
+              accessibilityRole="button"
+              onPress={() => mapNav({ rota: 'dia' })}
+              scaleTo={0.98}
+              style={[styles.guide, { backgroundColor: c.fill }]}
+            >
+              <View style={[styles.guideArt, { backgroundColor: '#0A84FF' }]}>
+                <Icon name="map" size={72} color="#FFFFFF" />
+              </View>
+              <Text variant="headline" style={TYPE.rowTitle}>
+                Visitas de hoje
+              </Text>
+              <Text variant="callout" tone="secondary" style={TYPE.rowSub}>
+                {stops.dayIds.length} clientes
+              </Text>
+            </Tap>
+
+            <WideAction icon="trail-sign" label="Montar rota do dia" onPress={openPlanner} />
+            <WideAction icon="share-outline" label="Compartilhar localização" />
+          </>
+        )}
+      </Animated.View>
     </DragSheet>
   );
 }
@@ -1000,15 +1062,28 @@ export interface TripInfo {
 export function RouteSheet({
   client,
   stopLabel,
-  trip,
+  queue,
+  onReorder,
+  onPick,
   onNext,
   onPrevious,
   onNavigate,
   onEnd,
+  navigating = false,
+  onStopNavigation,
 }: {
   client: MockClient;
   stopLabel?: string;
-  trip: TripInfo;
+  /** Navegando: o botão vira "Encerrar navegação" e as setas somem. */
+  navigating?: boolean;
+  onStopNavigation?: () => void;
+  /** Chegada/tempo/km: no celular aparecem no cartão da manobra, no topo. */
+  trip?: TripInfo;
+  /** Clientes escolhidos para visitar, na ordem da visita (lista "Rota"). */
+  queue: MockClient[];
+  onReorder: (ids: string[]) => void;
+  /** Tocar num cliente da lista "Rota": vai até aquela parada. */
+  onPick: (id: string) => void;
   onNext?: () => void;
   onPrevious?: () => void;
   onNavigate: () => void;
@@ -1017,15 +1092,26 @@ export function RouteSheet({
   const router = useRouter();
   const c = useColors();
   const active = client.status === 'Ativo';
+  // "Rota" troca o conteúdo do cartão (pedido e detalhes) pela lista das paradas.
+  const sheet = useRef<SheetController | null>(null);
+  const swap = useSwap();
+  const [view, setView] = useState<'client' | 'route'>('client');
+  const toggleRoute = () => {
+    const next = view === 'route' ? 'client' : 'route';
+    swap.run(next === 'route' ? 1 : -1, () => setView(next));
+    if (next === 'route') sheet.current?.snap(2);
+  };
   return (
     <DragSheet
       key={client.id}
-      initial={1}
-      collapsed={338}
+      // Abre recolhida (nome + Navegar): o mapa fica livre; puxar mostra o resto.
+      initial={0}
+      collapsed={240}
+      controller={sheet}
       header={
         <View style={{ gap: spacing[5] }}>
           <View style={styles.titleRow}>
-            <Avatar name={client.name} size={80} square />
+            <Avatar name={client.name} size={80} radius={SHEET_INNER} />
             <View style={{ flex: 1 }}>
               <Text variant="title2" numberOfLines={1}>
                 {client.tradeName}
@@ -1050,28 +1136,40 @@ export function RouteSheet({
             </Tap>
           </View>
 
-          <View style={styles.stats}>
-            <Stat value={trip.arrival} label="chegada" />
-            <Stat value={trip.duration.value} label={trip.duration.unit} />
-            <Stat value={trip.km} label="km" />
-          </View>
-
           <View style={styles.actions}>
-            {onPrevious && (
+            {!navigating && onPrevious && (
               <SquareButton icon="chevron-back" label="Cliente anterior" onPress={onPrevious} />
             )}
-            <Tap
-              accessibilityRole="button"
-              onPress={onNavigate}
-              scaleTo={0.97}
-              style={[styles.go, { backgroundColor: c.accent }]}
-            >
-              <Icon name="navigate" size={34} color="#FFFFFF" />
-              <Text variant="headline" color="#FFFFFF">
-                Navegar
-              </Text>
-            </Tap>
-            {onNext && (
+            {navigating ? (
+              <Tap
+                accessibilityRole="button"
+                onPress={onStopNavigation}
+                scaleTo={0.97}
+                style={[styles.go, { backgroundColor: c.danger }]}
+              >
+                <Icon name="stop-circle" size={34} color="#FFFFFF" />
+                <Text variant="headline" color="#FFFFFF">
+                  Encerrar navegação
+                </Text>
+              </Tap>
+            ) : (
+              <Tap
+                accessibilityRole="button"
+                onPress={() => {
+                  // Começou a navegar: a aba recolhe e deixa o mapa livre.
+                  sheet.current?.snap(0);
+                  onNavigate();
+                }}
+                scaleTo={0.97}
+                style={[styles.go, { backgroundColor: c.accent }]}
+              >
+                <Icon name="navigate" size={34} color="#FFFFFF" />
+                <Text variant="headline" color="#FFFFFF">
+                  Navegar
+                </Text>
+              </Tap>
+            )}
+            {!navigating && onNext && (
               <SquareButton icon="chevron-forward" label="Próximo cliente" onPress={onNext} />
             )}
           </View>
@@ -1081,7 +1179,7 @@ export function RouteSheet({
       <View style={styles.quickRow}>
         <Quick icon="call" label="Ligar" onPress={() => callPhone(client.phone)} />
         <Quick icon="logo-whatsapp" label="WhatsApp" onPress={() => openWhatsApp(client.phone)} />
-        <Quick icon="document-text" label="Pedido" />
+        <Quick icon="list" label="Rota" active={view === 'route'} onPress={toggleRoute} />
         <Quick
           icon="storefront"
           label="Ficha"
@@ -1089,25 +1187,66 @@ export function RouteSheet({
         />
       </View>
 
-      <Section title="Pedido" />
-      <View
-        style={[styles.card, { backgroundColor: c.fill, padding: spacing[6], gap: spacing[2] }]}
-      >
-        {client.order.map((line) => (
-          <Text key={line} variant="body">
-            {line}
-          </Text>
-        ))}
-      </View>
+      <Animated.View style={swap.style}>
+        {view === 'route' ? (
+          <>
+            <View style={styles.routeHead}>
+              <Text variant="title2" style={TYPE.section}>
+                Rota
+              </Text>
+              <Text variant="callout" tone="secondary">
+                {queue.length === 1 ? '1 parada' : `${queue.length} paradas`}
+              </Text>
+            </View>
+            {queue.length > 1 && (
+              <Text variant="callout" tone="secondary" style={{ marginBottom: spacing[3] }}>
+                Arraste pela alça para mudar a ordem das visitas.
+              </Text>
+            )}
+            <RouteQueue
+              clients={queue}
+              currentId={client.id}
+              onReorder={onReorder}
+              onPick={(id) => {
+                swap.run(-1, () => setView('client'));
+                onPick(id);
+              }}
+            />
+          </>
+        ) : (
+          <>
+            {client.order.length > 0 && (
+              <>
+                <Section title="Pedido" />
+                <View
+                  style={[
+                    styles.card,
+                    { backgroundColor: c.fill, padding: spacing[6], gap: spacing[2] },
+                  ]}
+                >
+                  {client.order.map((line) => (
+                    <Text key={line} variant="body">
+                      {line}
+                    </Text>
+                  ))}
+                </View>
+              </>
+            )}
 
-      <Section title="Detalhes" />
-      <View style={[styles.card, { backgroundColor: c.fill }]}>
-        <Detail label="Endereço" value={`${client.address}\n${client.district}`} />
-        <View style={[styles.sep, { backgroundColor: c.separator }]} />
-        <Detail label="Telefone" value={client.phone} tone="accent" />
-        <View style={[styles.sep, { backgroundColor: c.separator }]} />
-        <Detail label="Última visita" value={client.lastVisit} />
-      </View>
+            <Section title="Detalhes" />
+            <View style={[styles.card, { backgroundColor: c.fill }]}>
+              <Detail
+                label="Endereço"
+                value={[client.address, client.district].filter(Boolean).join('\n')}
+              />
+              <View style={[styles.sep, { backgroundColor: c.separator }]} />
+              <Detail label="Telefone" value={client.phone || '—'} tone="accent" />
+              <View style={[styles.sep, { backgroundColor: c.separator }]} />
+              <Detail label="Última visita" value={client.lastVisit} />
+            </View>
+          </>
+        )}
+      </Animated.View>
     </DragSheet>
   );
 }
@@ -1185,19 +1324,6 @@ function WideAction({
   );
 }
 
-function Stat({ value, label }: { value: string; label: string }) {
-  return (
-    <View>
-      <Text variant="largeTitle" style={{ fontSize: 40, lineHeight: 46 }}>
-        {value}
-      </Text>
-      <Text variant="callout" tone="secondary">
-        {label}
-      </Text>
-    </View>
-  );
-}
-
 function SquareButton({
   icon,
   label,
@@ -1220,16 +1346,32 @@ function SquareButton({
   );
 }
 
-function Quick({ icon, label, onPress }: { icon: IconName; label: string; onPress?: () => void }) {
+function Quick({
+  icon,
+  label,
+  active,
+  onPress,
+}: {
+  icon: IconName;
+  label: string;
+  /** Ligado (ex.: "Rota" aberta): fundo na cor de destaque. */
+  active?: boolean;
+  onPress?: () => void;
+}) {
   const c = useColors();
   return (
     <Tap
       accessibilityRole="button"
+      accessibilityState={active === undefined ? undefined : { selected: active }}
       onPress={onPress}
-      style={[styles.quick, { backgroundColor: c.fill }]}
+      style={[styles.quick, { backgroundColor: active ? c.accent : c.fill }]}
     >
-      <Icon name={icon} size={34} color={c.accent} />
-      <Text variant="caption" tone="accent">
+      <Icon name={icon} size={34} color={active ? '#FFFFFF' : c.accent} />
+      <Text
+        variant="caption"
+        tone={active ? undefined : 'accent'}
+        color={active ? '#FFFFFF' : undefined}
+      >
         {label}
       </Text>
     </Tap>
@@ -1279,8 +1421,8 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     top: 0,
-    borderBottomLeftRadius: 52,
-    borderBottomRightRadius: 52,
+    borderBottomLeftRadius: SHEET_RADIUS,
+    borderBottomRightRadius: SHEET_RADIUS,
     overflow: 'hidden',
   },
   sheetBg: {
@@ -1288,9 +1430,10 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     top: 0,
-    borderTopLeftRadius: 52,
-    borderTopRightRadius: 52,
+    borderTopLeftRadius: SHEET_RADIUS,
+    borderTopRightRadius: SHEET_RADIUS,
     borderWidth: 1,
+    overflow: 'hidden',
   },
   body: { position: 'absolute', top: 0 },
   grabArea: { height: 40, alignItems: 'center', justifyContent: 'center' },
@@ -1310,7 +1453,7 @@ const styles = StyleSheet.create({
   cancel: {
     width: 84,
     height: 84,
-    borderRadius: 42,
+    borderRadius: SHEET_INNER,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1330,17 +1473,20 @@ const styles = StyleSheet.create({
   search: {
     flex: 1,
     height: 84,
-    borderRadius: 42,
+    borderRadius: SHEET_INNER,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[3],
     paddingHorizontal: spacing[5],
   },
+  // Título de seção: mais espaço em cima (separa do bloco anterior) que embaixo (fica junto
+  // do que ele nomeia), como nos títulos de seção do iOS.
   section: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[2],
-    marginTop: spacing[6],
+    marginTop: spacing[8],
+    marginBottom: spacing[4],
     alignSelf: 'flex-start',
   },
   shortcuts: { flexDirection: 'row', gap: spacing[4] },
@@ -1353,7 +1499,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: spacing[2],
   },
-  card: { borderRadius: 30, overflow: 'hidden' },
+  card: { borderRadius: SHEET_INNER, overflow: 'hidden' },
   sep: { height: StyleSheet.hairlineWidth, marginLeft: 104 },
   recent: {
     flexDirection: 'row',
@@ -1363,17 +1509,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[5],
   },
   pin: { width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center' },
-  guide: { width: 300, borderRadius: 30, padding: spacing[4], gap: 2 },
+  guide: { width: 300, borderRadius: SHEET_INNER, padding: spacing[4], gap: 2 },
   guideArt: {
     height: 140,
-    borderRadius: 18,
+    borderRadius: CARD_INNER,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing[4],
   },
   wide: {
     height: 84,
-    borderRadius: 42,
+    borderRadius: SHEET_INNER,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: spacing[8],
@@ -1388,12 +1534,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  stats: { flexDirection: 'row', gap: spacing[10] },
   actions: { flexDirection: 'row', gap: spacing[3] },
   go: {
     flex: 1,
     height: 88,
-    borderRadius: layout.radius.md,
+    borderRadius: SHEET_INNER,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1402,15 +1547,28 @@ const styles = StyleSheet.create({
   square: {
     width: 88,
     height: 88,
-    borderRadius: layout.radius.md,
+    borderRadius: SHEET_INNER,
     alignItems: 'center',
     justifyContent: 'center',
   },
   quickRow: { flexDirection: 'row', gap: spacing[3] },
+  hubHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: spacing[4],
+  },
+  routeHead: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    marginTop: spacing[6],
+    marginBottom: spacing[2],
+  },
   quick: {
     flex: 1,
     height: 96,
-    borderRadius: layout.radius.md,
+    borderRadius: SHEET_INNER,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 2,

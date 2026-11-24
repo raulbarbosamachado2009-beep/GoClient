@@ -6,6 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import type { ReactNode } from 'react';
 import { fontAssets } from '../fonts';
 import { useSystemInsets } from '../layout/form-factor';
+import { MapWarmup } from '../map/live-map';
 import { AutomotiveFrame } from '../preview/automotive-frame';
 import { PrototypeProvider } from '../prototype/state';
 import { SpotifyLoginHost } from '../spotify/login';
@@ -27,6 +28,7 @@ export default function RootLayout() {
                   <Routes />
                   <SpotifyNotice />
                   <SpotifyLoginHost />
+                  <MapWarmup />
                 </>
               ) : null}
             </Frame>

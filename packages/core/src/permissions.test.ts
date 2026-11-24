@@ -3,22 +3,49 @@ import { authorizeHavenaTool, havenaTools } from './havena';
 import { can } from './permissions';
 
 describe('can()', () => {
-  it('Regra 1: bloqueia criação manual de cliente no Automotive', () => {
+  it('Regra 1 retirada: o Automotive cria e edita clientes e produtos à mão', () => {
     expect(
       can({ role: 'seller', platform: 'automotive', channel: 'manual' }, 'customer', 'create'),
-    ).toEqual({ allowed: false, reason: 'automotive_manual_edit_blocked' });
+    ).toEqual({ allowed: true, requiresConfirmation: false });
     expect(
       can({ role: 'owner', platform: 'automotive', channel: 'manual' }, 'product', 'update'),
-    ).toEqual({ allowed: false, reason: 'automotive_manual_edit_blocked' });
+    ).toEqual({ allowed: true, requiresConfirmation: false });
   });
 
-  it('Regra 1: permite leitura no Automotive', () => {
+  it('Regra 3: rotas só são montadas no celular; a multimídia lê e reordena', () => {
+    for (const action of ['create', 'update', 'delete'] as const) {
+      for (const channel of ['manual', 'havena'] as const) {
+        expect(can({ role: 'owner', platform: 'automotive', channel }, 'route', action)).toEqual({
+          allowed: false,
+          reason: 'automotive_route_build_blocked',
+        });
+      }
+    }
+    expect(
+      can({ role: 'seller', platform: 'automotive', channel: 'manual' }, 'route', 'read'),
+    ).toEqual({ allowed: true, requiresConfirmation: false });
+    expect(
+      can({ role: 'seller', platform: 'mobile', channel: 'manual' }, 'route', 'create'),
+    ).toEqual({ allowed: true, requiresConfirmation: false });
+    // Reordenar as paradas é liberado no carro (com confirmação se vier da Havena).
+    expect(
+      can({ role: 'seller', platform: 'automotive', channel: 'manual' }, 'route', 'reorder'),
+    ).toEqual({ allowed: true, requiresConfirmation: false });
+    expect(
+      can({ role: 'seller', platform: 'automotive', channel: 'havena' }, 'route', 'reorder'),
+    ).toEqual({ allowed: true, requiresConfirmation: true });
+    expect(
+      can({ role: 'viewer', platform: 'automotive', channel: 'manual' }, 'route', 'reorder'),
+    ).toEqual({ allowed: false, reason: 'role_not_allowed' });
+  });
+
+  it('permite leitura no Automotive', () => {
     expect(
       can({ role: 'seller', platform: 'automotive', channel: 'manual' }, 'customer', 'read'),
     ).toEqual({ allowed: true, requiresConfirmation: false });
   });
 
-  it('Regra 1: permite criação manual no Mobile', () => {
+  it('permite criação manual no Mobile', () => {
     expect(
       can({ role: 'seller', platform: 'mobile', channel: 'manual' }, 'customer', 'create'),
     ).toEqual({ allowed: true, requiresConfirmation: false });
@@ -40,12 +67,6 @@ describe('can()', () => {
     expect(
       can({ role: 'seller', platform: 'mobile', channel: 'manual' }, 'customer', 'delete'),
     ).toEqual({ allowed: false, reason: 'role_not_allowed' });
-  });
-
-  it('rotas podem ser organizadas manualmente no Automotive', () => {
-    expect(
-      can({ role: 'seller', platform: 'automotive', channel: 'manual' }, 'route', 'update'),
-    ).toEqual({ allowed: true, requiresConfirmation: false });
   });
 });
 
