@@ -63,7 +63,7 @@ export default function SettingsScreen() {
             <Segmented<ThemePreference>
               value={preference}
               onChange={setPreference}
-              segmentWidth={phone ? 128 : 180}
+              segmentWidth={phone ? 118 : 180}
               options={[
                 { value: 'light', label: 'Claro' },
                 { value: 'dark', label: 'Escuro' },

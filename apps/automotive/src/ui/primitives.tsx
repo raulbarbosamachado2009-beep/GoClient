@@ -23,6 +23,7 @@ import {
   type ViewProps,
   type ViewStyle,
 } from 'react-native';
+import { usePhone } from '../layout/form-factor';
 import {
   layout,
   nativeDriver,
@@ -434,7 +435,15 @@ export function Segmented<T extends string>({
         >
           {o.icon && <Icon name={o.icon} size={30} />}
           {o.label && (
-            <Text variant="subhead" style={{ fontSize: 24, lineHeight: 30 }}>
+            <Text
+              variant="subhead"
+              numberOfLines={1}
+              style={
+                segmentWidth < 150
+                  ? { fontSize: 21, lineHeight: 26 }
+                  : { fontSize: 24, lineHeight: 30 }
+              }
+            >
               {o.label}
             </Text>
           )}
@@ -512,22 +521,29 @@ export function Row({
   titleColor?: string;
 }) {
   const c = useColors();
+  const phone = usePhone();
   const [pressed, setPressed] = useState(false);
+  const t = phone ? rowTextPhone : rowText;
   const content = (
     <>
       {leading}
       <View style={{ flex: 1, gap: 2 }}>
-        <Text variant="body" color={titleColor} numberOfLines={1} style={rowText.title}>
+        <Text variant="body" color={titleColor} numberOfLines={1} style={t.title}>
           {title}
         </Text>
         {subtitle && (
-          <Text variant="caption" tone="secondary" numberOfLines={1} style={rowText.subtitle}>
+          <Text variant="caption" tone="secondary" numberOfLines={1} style={t.subtitle}>
             {subtitle}
           </Text>
         )}
       </View>
       {value && (
-        <Text variant="body" tone="secondary" numberOfLines={1} style={rowText.title}>
+        <Text
+          variant="body"
+          tone="secondary"
+          numberOfLines={1}
+          style={[t.title, phone && { maxWidth: 200 }]}
+        >
           {value}
         </Text>
       )}
@@ -552,9 +568,14 @@ export function Row({
 }
 
 export function SectionHeader({ title, action }: { title: string; action?: ReactNode }) {
+  const phone = usePhone();
   return (
     <View style={styles.sectionHeader}>
-      <Text variant="subhead" tone="secondary">
+      <Text
+        variant="subhead"
+        tone="secondary"
+        style={phone ? { fontSize: 25, lineHeight: 31 } : undefined}
+      >
         {title}
       </Text>
       {action}
@@ -690,6 +711,11 @@ function lighten(hex: string, amount: number): string {
 const rowText = StyleSheet.create({
   title: { fontSize: 28, lineHeight: 34 },
   subtitle: { fontSize: 21, lineHeight: 27 },
+});
+/** Celular em pé: medidas do iOS (corpo 17 pt, legenda 15 pt) na tela de 720. */
+const rowTextPhone = StyleSheet.create({
+  title: { fontSize: 31, lineHeight: 38 },
+  subtitle: { fontSize: 26, lineHeight: 32 },
 });
 
 const styles = StyleSheet.create({
