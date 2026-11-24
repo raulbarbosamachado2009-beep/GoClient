@@ -52,7 +52,7 @@ const FEATURES: { icon: IconName; title: string; text: string }[] = [
   },
   {
     icon: 'mic',
-    title: 'Havena ao seu lado',
+    title: 'Lucas ao seu lado',
     text: 'Pergunte e organize por voz, sem tirar as mãos do volante.',
   },
   {
@@ -98,7 +98,7 @@ export function PhoneWelcome({ onContinue }: { onContinue: () => void }) {
           style={{ fontSize: 22, lineHeight: 28 }}
         >
           Seus clientes, rotas e pedidos de voz são usados para montar as visitas, sugerir rotas e
-          responder pela Havena. A senha do Kyte e do Spotify fica só na página de cada um.{' '}
+          responder pelo Lucas. A senha do Kyte e do Spotify fica só na página de cada um.{' '}
           <Text variant="footnote" color={BLUE} style={{ fontSize: 22, lineHeight: 28 }}>
             Veja como seus dados são usados…
           </Text>

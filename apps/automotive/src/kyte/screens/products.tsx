@@ -38,7 +38,7 @@ export function ProductsScreen() {
       <Header
         title={`Produtos${data.list ? ` (${data.list.length})` : ''}`}
         onMenu={nav.menu}
-        right={<PlusButton label="Cadastrar produto com a Havena" onPress={nav.havena} />}
+        right={<PlusButton label="Cadastrar produto com o Lucas" onPress={nav.havena} />}
       />
       <View style={{ paddingHorizontal: s.pad, gap: 14, paddingBottom: 14 }}>
         <Tabs

@@ -31,7 +31,7 @@ interface TabDef {
 const TABS: TabDef[] = [
   { key: 'mapa', label: 'Mapa', href: '/mapa' },
   { key: 'musica', label: 'Spotify', href: '/musica' },
-  { key: 'havena', label: 'Falar com a Havena' },
+  { key: 'havena', label: 'Falar com o Lucas' },
   { key: 'kyte', label: 'Kyte', href: '/kyte' },
   { key: 'ajustes', label: 'Ajustes', href: '/configuracoes' },
 ];

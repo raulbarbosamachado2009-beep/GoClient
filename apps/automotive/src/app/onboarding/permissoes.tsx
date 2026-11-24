@@ -9,7 +9,7 @@ import { Appear } from '../../ui/motion';
 import { Button, Icon, type IconName, Text } from '../../ui/primitives';
 
 const PERMISSIONS: { icon: IconName; title: string; text: string; optional?: boolean }[] = [
-  { icon: 'mic', title: 'Microfone', text: 'Para você conversar com a Havena enquanto dirige.' },
+  { icon: 'mic', title: 'Microfone', text: 'Para você conversar com o Lucas enquanto dirige.' },
   {
     icon: 'location',
     title: 'Localização',
@@ -17,7 +17,7 @@ const PERMISSIONS: { icon: IconName; title: string; text: string; optional?: boo
   },
   {
     icon: 'sparkles',
-    title: 'Havena (inteligência artificial)',
+    title: 'Lucas (inteligência artificial)',
     text: 'Seus pedidos de voz são processados para consultar e organizar informações.',
     optional: true,
   },
@@ -48,7 +48,7 @@ export default function Permissions() {
       {
         art: 'microphone' as const,
         kind: 'microphone' as const,
-        title: 'Converse com a Havena',
+        title: 'Converse com o Lucas',
         text: 'Permita o microfone para pedir rotas, consultar clientes e organizar o dia por voz.',
       },
     ];

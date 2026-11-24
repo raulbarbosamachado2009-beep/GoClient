@@ -2,6 +2,7 @@ import { Slot, usePathname } from 'expo-router';
 import { type ComponentRef, useEffect, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { warmVoice } from '../../havena/voice';
+import { WakeListener } from '../../havena/wake';
 import { KyteAgentHost } from '../../kyte/agent';
 import { usePhone, useSystemInsets, useTabBarSpace } from '../../layout/form-factor';
 import { StopsProvider } from '../../map/stops';
@@ -25,7 +26,7 @@ export default function MainLayout() {
   // Dentro da Música, as abas trocam o conteúdo sem refazer a transição da seção inteira.
   const section = pathname.split('/')[1] ?? '';
   // Áreas de desfoque no Android (ver ui/blur-target.tsx): a barra lateral desfoca o
-  // conteúdo; janelas e a Havena desfocam o conteúdo + a barra lateral.
+  // conteúdo; janelas e o Lucas desfocam o conteúdo + a barra lateral.
   const content = useRef<ComponentRef<typeof View>>(null);
   const screen = useRef<ComponentRef<typeof View>>(null);
   const phone = usePhone();
@@ -35,13 +36,15 @@ export default function MainLayout() {
   const fullHeight = underBar || section === 'musica' || section === 'kyte';
   const system = useSystemInsets();
   const tabSpace = useTabBarSpace();
-  // Liga o motor de voz logo ao abrir o app: a primeira resposta da Havena já sai na hora.
+  // Liga o motor de voz logo ao abrir o app: a primeira resposta do Lucas já sai na hora.
   useEffect(warmVoice, []);
   return (
     <StopsProvider>
       <View style={[styles.root, { backgroundColor: c.background }]}>
-        {/* Janela invisível do Kyte, usada pela Havena e pelo Início (só no app Android). */}
+        {/* Janela invisível do Kyte, usada pelo Lucas e pelo Início (só no app Android). */}
         <KyteAgentHost />
+        {/* Ativação por voz ("olá Lucas", "bom dia", "oh IA"…), com o Lucas fechado. */}
+        <WakeListener />
         <BlurArea targetRef={screen} style={StyleSheet.absoluteFill}>
           {/* No Mapa o conteúdo passa por baixo da barra lateral (que é translúcida). */}
           <BlurArea

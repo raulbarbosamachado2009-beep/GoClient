@@ -90,7 +90,7 @@ export function ClientsScreen() {
       <Header
         title={`Clientes${data.list ? ` (${data.list.length})` : ''}`}
         onMenu={nav.menu}
-        right={<PlusButton label="Cadastrar cliente com a Havena" onPress={nav.havena} />}
+        right={<PlusButton label="Cadastrar cliente com o Lucas" onPress={nav.havena} />}
       />
       <View style={{ paddingHorizontal: s.pad, gap: 14, paddingBottom: 14 }}>
         <SearchField value={q} onChange={setQ} placeholder="Procure por nome, email ou telefone" />

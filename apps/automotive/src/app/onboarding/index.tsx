@@ -21,7 +21,7 @@ const FEATURES: { icon: IconName; title: string; text: string }[] = [
   },
   {
     icon: 'mic',
-    title: 'Havena ao seu lado',
+    title: 'Lucas ao seu lado',
     text: 'Pergunte e organize por voz, sem tirar as mãos do volante.',
   },
 ];

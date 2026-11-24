@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
+import { useWakeEnabled } from '../../havena/settings';
 import { MAPS_ENABLED } from '../../integrations/env';
 import { kyteAgent, noteKyteLogged, reloadKyteAgent } from '../../kyte/agent';
 import { clearKyteData } from '../../kyte/store';
@@ -24,13 +25,13 @@ import {
 
 /**
  * Ajustes no estilo do iOS: perfil, aparência (claro/escuro funcionando no protótipo),
- * idioma, Havena, navegação, integrações, dados e sair.
+ * idioma, Lucas, navegação, integrações, dados e sair.
  */
 export default function SettingsScreen() {
   const c = useColors();
   const { preference, setPreference } = useTheme();
   const router = useRouter();
-  const [wakeWord, setWakeWord] = useState(true);
+  const [wakeWord, setWakeWord] = useWakeEnabled();
   const [voiceReplies, setVoiceReplies] = useState(true);
   const [offline, setOffline] = useState(true);
   const sp = useSpotify();
@@ -82,12 +83,13 @@ export default function SettingsScreen() {
       </Group>
     </View>,
 
-    <View key="havena">
-      <SectionHeader title="Havena" />
+    <View key="lucas">
+      <SectionHeader title="Lucas" />
       <Group inset={128}>
         <Row
           leading={<AppIcon icon="mic" color="#FF375F" size={68} />}
-          title='Ativar com "Oi, Havena"'
+          title='Ativar com "Olá, Lucas"'
+          subtitle='Também: "bom dia", "oh IA" e "olá, inteligência artificial"'
           trailing={<Switch value={wakeWord} onChange={setWakeWord} />}
         />
         <Row

@@ -1,7 +1,8 @@
+import { stripWakePhrase } from '@goclient/core';
 import type { HavenaDeps } from './tools';
 
 /**
- * Comandos fixos da Havena: funcionam sem internet (e respondem na hora mesmo com internet,
+ * Comandos fixos do Lucas: funcionam sem internet (e respondem na hora mesmo com internet,
  * por serem simples). Pedidos que precisam entender mais (ex.: "coloca o Marcos na rota")
  * ficam para o modelo na nuvem.
  */
@@ -14,7 +15,7 @@ const norm = (t: string) =>
     .trim();
 
 export function fixedCommand(text: string, d: HavenaDeps): string | null {
-  const t = norm(text).replace(/^(havena|oi havena|ei havena)\s*/, '');
+  const t = norm(stripWakePhrase(text)).replace(/^(lucas)\s*/, '');
   if (/^(passa|pula|proxima|avanca)( a)?( (musica|faixa))?$|^proxima (musica|faixa)$/.test(t)) {
     d.proto.next();
     return 'Próxima música.';

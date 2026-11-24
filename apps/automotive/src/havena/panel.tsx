@@ -8,7 +8,7 @@ import { useBlurTarget } from '../ui/blur-target';
 import { Button } from '../ui/primitives';
 import { HavenaCaption } from './caption';
 import { HavenaOrb, type OrbState } from './orb';
-import { useHavenaSession } from './session';
+import { useHavenaSession, type WakeStart } from './session';
 
 const DURATION = 420;
 const ORB = 300;
@@ -29,11 +29,18 @@ const HAZE_H = 1600;
 const OFFSCREEN_PHONE = BOTTOM_PHONE + ORB_PHONE + 60;
 
 /**
- * Havena: só o círculo, no canto direito da tela. Atrás dele, um desfoque que nasce na
- * borda direita e esvanece para a esquerda. Abaixo dele, uma legenda de exemplo mostra as
- * palavras surgindo uma a uma. Tocar fora fecha. Protótipo: a Havena não fala de verdade.
+ * Lucas: só o círculo, no canto direito da tela (embaixo, no celular). Atrás dele, um
+ * desfoque. A legenda mostra o que a pessoa fala e a resposta dele. Tocar fora fecha; até lá
+ * ele continua ouvindo. No Preview (web) fica a demonstração com falas de exemplo.
  */
-export function HavenaPanel({ onClose }: { onClose: () => void }) {
+export function HavenaPanel({
+  onClose,
+  wakeStart,
+}: {
+  onClose: () => void;
+  /** Aberto pela voz ("olá Lucas, …"): responde já ao que veio junto. */
+  wakeStart?: WakeStart;
+}) {
   const enter = useRef(new Animated.Value(0)).current;
   const closing = useRef(false);
   const [leaving, setLeaving] = useState(false);
@@ -43,7 +50,7 @@ export function HavenaPanel({ onClose }: { onClose: () => void }) {
   // Havena de verdade (app instalado): ouve, entende, age e responde. No Preview (web) fica
   // a demonstração com falas de exemplo.
   const live = Platform.OS !== 'web';
-  const session = useHavenaSession(live && !leaving);
+  const session = useHavenaSession(live && !leaving, wakeStart);
   const state: OrbState = live
     ? session.phase === 'listening'
       ? 'listen'
@@ -53,10 +60,16 @@ export function HavenaPanel({ onClose }: { onClose: () => void }) {
           ? 'speak'
           : 'idle'
     : demoState;
+  // Ouvindo: a fala da pessoa, palavra por palavra, assim que é ouvida. Pensando: a frase
+  // dela continua na tela (o círculo mostra que ele está pensando). Falando: a resposta.
+  const userLine =
+    live && (session.phase === 'listening' || session.phase === 'thinking') && !!session.heard;
   const text = live
-    ? session.phase === 'listening'
-      ? session.heard || session.caption
-      : session.caption
+    ? userLine
+      ? session.heard
+      : session.phase === 'listening'
+        ? 'Pode falar…'
+        : session.caption
     : undefined;
   const confirm = live && session.awaiting && session.phase !== 'thinking' && (
     <View style={styles.confirm}>
@@ -89,7 +102,7 @@ export function HavenaPanel({ onClose }: { onClose: () => void }) {
   return (
     <View style={StyleSheet.absoluteFill}>
       <Pressable
-        accessibilityLabel="Fechar Havena"
+        accessibilityLabel="Fechar Lucas"
         onPress={close}
         style={StyleSheet.absoluteFill}
       />
@@ -119,13 +132,14 @@ export function HavenaPanel({ onClose }: { onClose: () => void }) {
             <HavenaCaption
               width={CAPTION_PHONE}
               text={text}
+              instant={userLine}
               onSpeaking={(on) => !live && setDemoState(on ? 'speak' : 'listen')}
             />
           </View>
           {confirm}
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Havena (toque para falar)"
+            accessibilityLabel="Lucas (toque para falar)"
             onPress={session.talk}
           >
             <HavenaOrb size={ORB_PHONE} state={state} />
@@ -153,10 +167,10 @@ export function HavenaPanel({ onClose }: { onClose: () => void }) {
             },
           ]}
         >
-          <View accessibilityLabel="Havena">
+          <View accessibilityLabel="Lucas">
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Havena (toque para falar)"
+              accessibilityLabel="Lucas (toque para falar)"
               onPress={session.talk}
             >
               <HavenaOrb size={ORB} state={state} />
@@ -166,6 +180,7 @@ export function HavenaPanel({ onClose }: { onClose: () => void }) {
               <HavenaCaption
                 width={CAPTION}
                 text={text}
+                instant={userLine}
                 onSpeaking={(on) => !live && setDemoState(on ? 'speak' : 'listen')}
               />
               {confirm}
