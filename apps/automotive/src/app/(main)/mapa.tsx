@@ -409,7 +409,7 @@ function NowPlayingCard({
   artSize: number;
 }) {
   const router = useRouter();
-  const { togglePlaying, next, previous } = usePrototype();
+  const { togglePlaying, next, previous, nowPlaying: chosen } = usePrototype();
   const np = useNowPlaying();
   const { track, playing } = np;
   // Troca de música: capa e nome deslizam para o lado da troca (próxima → para a esquerda,
@@ -427,6 +427,30 @@ function NowPlayingCard({
   const headCover = expand.interpolate({ inputRange: [0, 1], outputRange: [80 + spacing[4], 0] });
   const headCoverO = expand.interpolate({ inputRange: [0, 0.5], outputRange: [1, 0] });
   const artScale = expand.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1] });
+  // Nada escolhido ainda: o cartão convida a escolher uma música e abre o Spotify.
+  if (!chosen) {
+    return (
+      <Touchable
+        accessibilityRole="button"
+        accessibilityLabel="Selecione uma música no Spotify"
+        onPress={() => router.push('/musica')}
+        scaleTo={0.98}
+        style={[styles.now, styles.nowEmpty]}
+      >
+        <View style={styles.nowEmptyIcon}>
+          <Icon name="musical-notes" size={44} color="rgba(255,255,255,0.72)" />
+        </View>
+        <View style={{ alignItems: 'center', gap: 2 }}>
+          <Text variant="headline" color="#FFFFFF">
+            Selecione uma música
+          </Text>
+          <Text variant="callout" color="rgba(255,255,255,0.6)">
+            Toque para abrir o Spotify
+          </Text>
+        </View>
+      </Touchable>
+    );
+  }
   return (
     <View style={styles.now}>
       <Backdrop id={track.id} source={track.backdrop} blur={track.backdropBlur} />
@@ -1341,6 +1365,15 @@ const styles = StyleSheet.create({
   nowBackdrop: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' },
   nowControls: { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center' },
   nowHead: { height: 80 },
+  nowEmpty: { alignItems: 'center', justifyContent: 'center', gap: spacing[4] },
+  nowEmptyIcon: {
+    width: 88,
+    height: 88,
+    borderRadius: NOW_INNER,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   nowHeadRow: { flex: 1, flexDirection: 'row', alignItems: 'center' },
   // Capa grande: ocupa o espaço que sobra em cima quando o cartão da música cresce.
   nowArt: { flex: 1, minHeight: 0, alignItems: 'center', justifyContent: 'center' },

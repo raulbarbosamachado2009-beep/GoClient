@@ -5,7 +5,7 @@ Leia este arquivo antes de começar qualquer trabalho.
 
 ## Estado atual do app
 
-_Última atualização: 2026-11-24 15:14 — troca de música animada e fila de clientes reordenável na multimídia._
+_Última atualização: 2026-11-24 15:28 — cartão da música no Mapa pede para escolher uma música._
 
 - **Automotive (`apps/automotive`)** é onde está quase todo o produto: Mapa (OSM + OpenRouteService,
   navegação com voz), Kyte (telas próprias sobre a janela do Kyte), Música (Spotify App Remote) e
@@ -14,6 +14,11 @@ _Última atualização: 2026-11-24 15:14 — troca de música animada e fila de 
 - Regras de negócio em `packages/core` (com testes); visual só com `@goclient/design-tokens`.
 
 ## Mudanças
+
+### 2026-11-24 15:28 — Cartão da música vazio no Mapa
+
+- Multimídia, Mapa: antes de escolher uma música, o cartão da música mostra "Selecione uma
+  música" e, ao tocar nele, abre a página do Spotify (`/musica`).
 
 ### 2026-11-24 15:14 — Troca de música animada e fila reordenável na multimídia
 
