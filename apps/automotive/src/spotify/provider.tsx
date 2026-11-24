@@ -9,9 +9,8 @@ import {
   useState,
 } from 'react';
 import { AppState } from 'react-native';
-import { SpotifyRemote } from '../../modules/spotify-remote';
+import { type RemotePlayerState, SpotifyRemote } from '../../modules/spotify-remote';
 import { SPOTIFY_CLIENT_ID, SPOTIFY_ENABLED } from '../integrations/env';
-import type { MockTrack } from '../mocks/data';
 import { REDIRECT_URI, refreshTokens } from './auth';
 import { type SpTrack, toTrack } from './mapping';
 import {
@@ -21,6 +20,21 @@ import {
   saveAccount,
   saveActive,
 } from './storage';
+import {
+  acceptReading,
+  EMPTY_PLAYBACK,
+  type Playback,
+  type PlayRequest,
+  pickDevice,
+  planRemotePlay,
+  type RepeatMode,
+  remoteTrack,
+  repeatFromRemote,
+  repeatToRemote,
+  samePlayback,
+  type WebDevice,
+  webPlayBody,
+} from './transport';
 
 /** Erro de uma chamada à Web API, com o status HTTP e o motivo informado pelo Spotify. */
 export class SpotifyError extends Error {
@@ -33,23 +47,7 @@ export class SpotifyError extends Error {
   }
 }
 
-export interface PlayRequest {
-  /** Playlist, álbum ou programa inteiro. */
-  contextUri?: string;
-  /** Lista avulsa de faixas (ex.: Músicas Curtidas). */
-  uris?: string[];
-  /** Faixa por onde começar. */
-  offsetUri?: string;
-  /** Faixa já conhecida, para o player mostrar na hora (antes da confirmação do Spotify). */
-  hint?: MockTrack;
-}
-
-interface Playback {
-  track: MockTrack | null;
-  isPlaying: boolean;
-  upNext: MockTrack | null;
-  device: string | null;
-}
+export type { Playback, PlayRequest, RepeatMode } from './transport';
 
 interface SpotifyState {
   /** Há Client ID nesta compilação (app Android). */
@@ -72,6 +70,11 @@ interface SpotifyState {
   toggle: () => Promise<void>;
   next: () => Promise<void>;
   previous: () => Promise<void>;
+  seek: (ms: number) => Promise<void>;
+  setShuffle: (on: boolean) => Promise<void>;
+  setRepeat: (mode: RepeatMode) => Promise<void>;
+  /** Põe uma faixa na fila (SDK do aparelho ou Web API). */
+  addToQueue: (uri: string) => Promise<void>;
   /** Aviso para a pessoa (ex.: nenhum aparelho com o Spotify aberto). */
   notice: string | null;
   clearNotice: () => void;
@@ -79,7 +82,7 @@ interface SpotifyState {
 
 const Ctx = createContext<SpotifyState | null>(null);
 const API = 'https://api.spotify.com/v1';
-const EMPTY: Playback = { track: null, isPlaying: false, upNext: null, device: null };
+const EMPTY = EMPTY_PLAYBACK;
 
 export function SpotifyProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(!SPOTIFY_ENABLED);
@@ -166,58 +169,181 @@ export function SpotifyProvider({ children }: { children: ReactNode }) {
   );
 
   // --- Reprodução -----------------------------------------------------------------------
+  //
+  // Caminho principal (multimídia Android com o app do Spotify): SDK oficial App Remote. Os
+  // comandos vão direto para o Spotify deste aparelho (o som sai daqui, nunca de outro
+  // aparelho da conta) e o estado chega por evento, na hora. A Web API completa os dados
+  // (capa grande, artistas, fila). Sem o app do Spotify, tudo vai pela Web API (Connect).
 
-  const lastItem = useRef<{ id: string | null; next: SpTrack | null | undefined }>({
-    id: null,
-    next: null,
-  });
+  const playbackRef = useRef(playback);
+  playbackRef.current = playback;
+  /** Faixa esperada depois de um "tocar" (leituras antigas são ignoradas até lá). */
+  const expected = useRef<{ uri: string; until: number } | null>(null);
+  /** Nomes dos contextos que o próprio GoClient mandou tocar. */
+  const titles = useRef(new Map<string, string>());
+  const enriched = useRef<string | null>(null);
+
+  const setIfChanged = useCallback((next: Playback) => {
+    setPlayback((p) => (samePlayback(p, next) ? p : next));
+  }, []);
+
+  /**
+   * Fila do Spotify. A Web API demora um pouco para refletir a troca de faixa ou o
+   * aleatório: por isso é lida um instante depois.
+   */
+  const refreshQueue = useCallback(
+    (uri: string, delay = 1200) => {
+      setTimeout(() => {
+        call<{ currently_playing?: SpTrack | null; queue: SpTrack[] }>('/me/player/queue')
+          .then((q) =>
+            setPlayback((p) =>
+              p.track?.id === uri
+                ? { ...p, queue: (q?.queue ?? []).slice(0, 5).map((t) => toTrack(t)) }
+                : p,
+            ),
+          )
+          .catch(() => {});
+      }, delay);
+    },
+    [call],
+  );
+
+  /** Dados completos da faixa (Web API) e a fila, só quando a faixa muda. */
+  const enrich = useCallback(
+    async (uri: string) => {
+      if (enriched.current === uri) return;
+      enriched.current = uri;
+      refreshQueue(uri);
+      const [kind, id] = uri.split(':').slice(1);
+      if (kind !== 'track' && kind !== 'episode') return;
+      const item = await call<SpTrack>(`/${kind}s/${id}`).catch(() => null);
+      if (!item) return;
+      setPlayback((p) =>
+        p.track?.id !== uri
+          ? p
+          : {
+              ...p,
+              track: toTrack(item),
+              artists: item.artists?.map((a) => ({ name: a.name, uri: a.uri })) ?? p.artists,
+            },
+      );
+    },
+    [call, refreshQueue],
+  );
+
+  /** Estado vindo do SDK do aparelho. */
+  const onRemoteState = useCallback(
+    (s: RemotePlayerState) => {
+      const uri = s.track?.uri ?? null;
+      if (!acceptReading(expected.current, uri, Date.now())) return;
+      if (uri && expected.current?.uri === uri) expected.current = null;
+      const p = playbackRef.current;
+      const same = !!uri && p.track?.id === uri;
+      const track = s.track ? (same && p.track ? p.track : remoteTrack(s.track)) : null;
+      setIfChanged({
+        ...p,
+        track,
+        isPlaying: !s.isPaused && !!s.track,
+        positionMs: s.position,
+        durationMs: s.track?.duration ?? 0,
+        at: Date.now(),
+        shuffle: s.shuffle,
+        repeat: repeatFromRemote(s.repeat),
+        artists: same && p.artists.length ? p.artists : (s.track?.artists ?? []),
+        queue: same ? p.queue : [],
+        source: 'remote',
+        device: 'Este aparelho',
+      });
+      if (uri && enriched.current !== uri) enrich(uri);
+    },
+    [enrich, setIfChanged],
+  );
+
+  // Escuta o SDK do aparelho e tenta conectar em silêncio (sem abrir tela do Spotify).
+  useEffect(() => {
+    const r = SpotifyRemote;
+    if (!SPOTIFY_ENABLED || !activeId || !r) return;
+    const subs = [
+      r.addListener('onPlayerState', onRemoteState),
+      r.addListener('onPlayerContext', (c) => {
+        if (!c.uri) return;
+        const title = c.title || titles.current.get(c.uri) || '';
+        setPlayback((p) =>
+          p.context?.uri === c.uri && p.context.title === title
+            ? p
+            : { ...p, context: { uri: c.uri, title } },
+        );
+      }),
+      r.addListener('onDisconnected', () => setPlayback((p) => ({ ...p, source: null }))),
+    ];
+    const silent = () => {
+      if (r.isInstalled() && !r.isConnected()) {
+        r.connect(SPOTIFY_CLIENT_ID, REDIRECT_URI, false)
+          .then(() => r.getPlayerState().then(onRemoteState))
+          .catch(() => {});
+      }
+    };
+    silent();
+    const app = AppState.addEventListener('change', (st) => st === 'active' && silent());
+    return () => {
+      for (const s of subs) s.remove();
+      app.remove();
+    };
+  }, [activeId, onRemoteState]);
+
+  /** Estado pela Web API (quando o SDK do aparelho não está conectado). */
   const refreshPlayback = useCallback(async () => {
     if (!activeRef.current) return;
+    if (SpotifyRemote?.isConnected()) return;
     try {
       const state = await call<{
         is_playing: boolean;
+        progress_ms?: number | null;
+        shuffle_state?: boolean;
+        repeat_state?: RepeatMode;
         item: SpTrack | null;
         device?: { name: string };
+        context?: { uri: string } | null;
       }>('/me/player?additional_types=episode');
+      const p = playbackRef.current;
+      const device = state?.device?.name ?? null;
       if (!state?.item) {
-        const device = state?.device?.name ?? null;
-        setPlayback((p) =>
-          !p.isPlaying && p.device === device ? p : { ...p, isPlaying: false, device },
-        );
+        setIfChanged({ ...p, isPlaying: false, device, source: 'web' });
         return;
       }
-      // A fila só muda quando a faixa muda: não pede de novo a cada ciclo.
-      const itemId = state.item.id ?? state.item.name;
-      let nextItem: SpTrack | undefined | null;
-      if (itemId !== lastItem.current.id) {
-        const queue = await call<{ queue: SpTrack[] }>('/me/player/queue').catch(() => null);
-        nextItem = queue?.queue?.[0] ?? null;
-        lastItem.current = { id: itemId, next: nextItem };
-      } else {
-        nextItem = lastItem.current.next;
-      }
-      const isPlaying = state.is_playing;
-      const device = state.device?.name ?? null;
-      // Só atualiza a tela quando algo mudou (o app inteiro fica dentro deste provedor).
-      setPlayback((p) =>
-        p.track?.id === toTrack(state.item as SpTrack).id &&
-        p.isPlaying === isPlaying &&
-        p.device === device &&
-        (p.upNext?.id ?? null) === (nextItem ? toTrack(nextItem).id : null)
-          ? p
-          : {
-              track: toTrack(state.item as SpTrack),
-              isPlaying,
-              upNext: nextItem ? toTrack(nextItem) : null,
-              device,
-            },
-      );
+      const item = state.item;
+      if (!acceptReading(expected.current, item.uri, Date.now())) return;
+      if (expected.current?.uri === item.uri) expected.current = null;
+      const same = p.track?.id === item.uri;
+      const ctxUri = state.context?.uri ?? null;
+      setIfChanged({
+        ...p,
+        track: same && p.track ? p.track : toTrack(item),
+        isPlaying: state.is_playing,
+        positionMs: state.progress_ms ?? 0,
+        durationMs: item.duration_ms,
+        at: Date.now(),
+        shuffle: !!state.shuffle_state,
+        repeat: state.repeat_state ?? 'off',
+        device,
+        context: ctxUri
+          ? {
+              uri: ctxUri,
+              title:
+                titles.current.get(ctxUri) ?? (p.context?.uri === ctxUri ? p.context.title : ''),
+            }
+          : null,
+        artists: item.artists?.map((a) => ({ name: a.name, uri: a.uri })) ?? [],
+        queue: same ? p.queue : [],
+        source: 'web',
+      });
+      if (enriched.current !== item.uri) enrich(item.uri);
     } catch {
       // Falha de rede momentânea: tenta de novo no próximo ciclo.
     }
-  }, [call]);
+  }, [call, enrich, setIfChanged]);
 
-  // Acompanha o que está tocando a cada 4 s enquanto o app está em primeiro plano.
+  // Web API a cada 4 s enquanto o app está em primeiro plano (pula quando o SDK conecta).
   useEffect(() => {
     if (!SPOTIFY_ENABLED || !activeId) {
       setPlayback(EMPTY);
@@ -253,103 +379,199 @@ export function SpotifyProvider({ children }: { children: ReactNode }) {
       } else {
         setNotice(e.message);
       }
+    } else if (
+      e instanceof Error &&
+      /SPOTIFY_|Spotify/.test(`${(e as { code?: string }).code ?? ''}${e.message}`)
+    ) {
+      setNotice(remoteProblem(e));
     } else {
       setNotice('Sem conexão com o Spotify. Confira a internet da multimídia.');
     }
   }, []);
 
   /**
-   * Comando de reprodução. O som sai do app do Spotify (Spotify Connect). Se nenhum aparelho
-   * estiver ativo, o GoClient liga o app do Spotify **por trás** (SDK oficial App Remote, sem
-   * trocar de tela), espera ele aparecer como aparelho e manda o comando para ele.
+   * SDK do aparelho pronto para comandos? Liga o app do Spotify por trás se preciso (na
+   * primeira vez o Spotify pode pedir para autorizar o GoClient). `false` = usar a Web API.
    */
-  const command = useCallback(
+  const remoteReady = useCallback(async (): Promise<boolean> => {
+    const r = SpotifyRemote;
+    if (!r?.isInstalled()) return false;
+    if (r.isConnected()) return true;
+    try {
+      await r.connect(SPOTIFY_CLIENT_ID, REDIRECT_URI, true);
+      return r.isConnected();
+    } catch (err) {
+      setNotice(remoteProblem(err as Error));
+      return false;
+    }
+  }, []);
+
+  /** Comando pela Web API, no aparelho ativo (ou no primeiro disponível). */
+  const webCommand = useCallback(
     async (path: string, method: 'PUT' | 'POST', body?: object) => {
-      const run = (devicePath: string) =>
-        call(devicePath, { method, body: body ? JSON.stringify(body) : undefined });
-      const withDevice = (id: string) => `${path}${path.includes('?') ? '&' : '?'}device_id=${id}`;
-      const findDevice = async () => {
-        const list = await call<{ devices: { id: string; is_restricted: boolean }[] }>(
-          '/me/player/devices',
-        );
-        return list?.devices.find((d) => !d.is_restricted) ?? null;
-      };
-      // App do Spotify instalado aqui: liga ele por trás antes do comando, para este aparelho
-      // estar vivo como player (senão o Spotify manda o som para um aparelho parado).
-      if (SpotifyRemote?.isInstalled() && !SpotifyRemote.isConnected()) {
-        await wakeSpotify().catch((err: Error) => setNotice(remoteProblem(err)));
-      }
+      const run = (p: string) => call(p, { method, body: body ? JSON.stringify(body) : undefined });
       try {
         await run(path);
       } catch (e) {
         if (!(e instanceof SpotifyError) || e.status !== 404) throw e;
-        let device = await findDevice();
+        const list = await call<{ devices: WebDevice[] }>('/me/player/devices');
+        const device = pickDevice(list?.devices ?? []);
         if (!device) {
-          const woke = await wakeSpotify().catch((err: Error) => {
-            setNotice(remoteProblem(err));
-            return null;
-          });
-          if (woke === null) return;
-          if (!woke) {
-            setNotice('Instale o app do Spotify neste aparelho e entre na sua conta nele uma vez.');
-            return;
-          }
-          // O Spotify leva alguns segundos para aparecer como aparelho depois de ligado.
-          for (let i = 0; i < 8 && !device; i++) {
-            await new Promise((r) => setTimeout(r, 800));
-            device = await findDevice().catch(() => null);
-          }
-          if (!device) {
-            // Não apareceu: manda direto pelo SDK.
-            await remoteFallback(path, body);
-            setTimeout(refreshPlayback, 800);
-            return;
-          }
+          setNotice(
+            'Nenhum aparelho com o Spotify aberto. Abra o app do Spotify neste aparelho e entre na sua conta.',
+          );
+          return;
         }
-        await run(withDevice(device.id));
+        await run(`${path}${path.includes('?') ? '&' : '?'}device_id=${device.id}`);
       }
-      setTimeout(refreshPlayback, 600);
+      setTimeout(refreshPlayback, 700);
     },
     [call, refreshPlayback],
   );
 
   const play = useCallback(
     async (req: PlayRequest) => {
-      if (req.hint) setPlayback((p) => ({ ...p, track: req.hint ?? p.track, isPlaying: true }));
-      const body: Record<string, unknown> = {};
-      if (req.contextUri) body.context_uri = req.contextUri;
-      // O Spotify aceita até 100 faixas por pedido: manda uma janela em volta da escolhida.
-      if (req.uris) {
-        const at = req.offsetUri ? Math.max(0, req.uris.indexOf(req.offsetUri)) : 0;
-        const start = Math.max(0, Math.min(at - 10, req.uris.length - 100));
-        body.uris = req.uris.slice(start, start + 100);
-      }
-      if (
-        req.offsetUri &&
-        (req.contextUri?.includes(':playlist:') || req.contextUri?.includes(':album:') || req.uris)
-      ) {
-        body.offset = { uri: req.offsetUri };
-      }
+      if (req.contextUri && req.contextTitle) titles.current.set(req.contextUri, req.contextTitle);
+      const target = req.offsetUri ?? req.hint?.id;
+      enriched.current = null;
+      expected.current = target ? { uri: target, until: Date.now() + 6000 } : null;
+      setPlayback((p) => ({
+        ...p,
+        track: req.hint ?? p.track,
+        isPlaying: true,
+        positionMs: 0,
+        at: Date.now(),
+        shuffle: req.shuffle ?? p.shuffle,
+        artists: req.hint && req.hint.id !== p.track?.id ? [] : p.artists,
+        queue: req.hint && req.hint.id !== p.track?.id ? [] : p.queue,
+        context:
+          req.contextUri && req.contextTitle
+            ? { uri: req.contextUri, title: req.contextTitle }
+            : p.context,
+      }));
       try {
-        await command('/me/player/play', 'PUT', body);
+        if (await remoteReady()) {
+          const r = SpotifyRemote as NonNullable<typeof SpotifyRemote>;
+          if (req.shuffle !== undefined) await r.setShuffle(req.shuffle).catch(() => {});
+          const plan = planRemotePlay(req, activeRef.current ?? undefined);
+          if (plan.kind === 'index') await r.skipToIndex(plan.uri, plan.index);
+          else if (plan.kind === 'play') await r.play(plan.uri);
+          else await r.resume();
+          return;
+        }
+        if (req.shuffle !== undefined) {
+          await webCommand(`/me/player/shuffle?state=${req.shuffle}`, 'PUT').catch(() => {});
+        }
+        await webCommand('/me/player/play', 'PUT', webPlayBody(req));
       } catch (e) {
+        expected.current = null;
         explain(e);
+        refreshPlayback();
       }
     },
-    [command, explain],
+    [remoteReady, webCommand, explain, refreshPlayback],
   );
 
+  /** Comando simples: SDK do aparelho se conectado; senão, Web API. */
   const simple = useCallback(
-    (path: string, method: 'PUT' | 'POST', optimistic?: (p: Playback) => Playback) => async () => {
+    async (
+      remote: (r: NonNullable<typeof SpotifyRemote>) => Promise<unknown>,
+      path: string,
+      method: 'PUT' | 'POST',
+      optimistic?: (p: Playback) => Playback,
+    ) => {
       if (optimistic) setPlayback(optimistic);
       try {
-        await command(path, method);
+        if (await remoteReady()) await remote(SpotifyRemote as NonNullable<typeof SpotifyRemote>);
+        else await webCommand(path, method);
       } catch (e) {
         explain(e);
         refreshPlayback();
       }
     },
-    [command, explain, refreshPlayback],
+    [remoteReady, webCommand, explain, refreshPlayback],
+  );
+
+  const toggle = useCallback(() => {
+    const p = playbackRef.current;
+    const now = Date.now();
+    // Congela/retoma a posição estimada para a barra de progresso não pular.
+    const pos = p.isPlaying ? Math.min(p.durationMs, p.positionMs + (now - p.at)) : p.positionMs;
+    return p.isPlaying
+      ? simple(
+          (r) => r.pause(),
+          '/me/player/pause',
+          'PUT',
+          (x) => ({
+            ...x,
+            isPlaying: false,
+            positionMs: pos,
+            at: now,
+          }),
+        )
+      : simple(
+          (r) => r.resume(),
+          '/me/player/play',
+          'PUT',
+          (x) => ({
+            ...x,
+            isPlaying: true,
+            positionMs: pos,
+            at: now,
+          }),
+        );
+  }, [simple]);
+  const next = useCallback(() => simple((r) => r.skipNext(), '/me/player/next', 'POST'), [simple]);
+  const previous = useCallback(
+    () => simple((r) => r.skipPrevious(), '/me/player/previous', 'POST'),
+    [simple],
+  );
+  const seek = useCallback(
+    (ms: number) => {
+      const at = Math.max(0, Math.round(ms));
+      return simple(
+        (r) => r.seekTo(at),
+        `/me/player/seek?position_ms=${at}`,
+        'PUT',
+        (x) => ({
+          ...x,
+          positionMs: at,
+          at: Date.now(),
+        }),
+      );
+    },
+    [simple],
+  );
+  const setShuffle = useCallback(
+    (on: boolean) =>
+      simple(
+        (r) => r.setShuffle(on),
+        `/me/player/shuffle?state=${on}`,
+        'PUT',
+        (x) => ({
+          ...x,
+          shuffle: on,
+        }),
+      ),
+    [simple],
+  );
+  const addToQueue = useCallback(
+    async (uri: string) => {
+      await simple((r) => r.queue(uri), `/me/player/queue?uri=${encodeURIComponent(uri)}`, 'POST');
+      const cur = playbackRef.current.track?.id;
+      if (cur) refreshQueue(cur, 800);
+    },
+    [simple, refreshQueue],
+  );
+  const setRepeat = useCallback(
+    (mode: RepeatMode) =>
+      simple(
+        (r) => r.setRepeat(repeatToRemote(mode)),
+        `/me/player/repeat?state=${mode}`,
+        'PUT',
+        (x) => ({ ...x, repeat: mode }),
+      ),
+    [simple],
   );
 
   const value = useMemo<SpotifyState>(() => {
@@ -389,15 +611,33 @@ export function SpotifyProvider({ children }: { children: ReactNode }) {
       call,
       playback,
       play,
-      toggle: playback.isPlaying
-        ? simple('/me/player/pause', 'PUT', (p) => ({ ...p, isPlaying: false }))
-        : simple('/me/player/play', 'PUT', (p) => ({ ...p, isPlaying: true })),
-      next: simple('/me/player/next', 'POST'),
-      previous: simple('/me/player/previous', 'POST'),
+      toggle,
+      next,
+      previous,
+      seek,
+      setShuffle,
+      setRepeat,
+      addToQueue,
       notice,
       clearNotice: () => setNotice(null),
     };
-  }, [accounts, activeId, ready, loginOpen, call, playback, play, simple, notice]);
+  }, [
+    accounts,
+    activeId,
+    ready,
+    loginOpen,
+    call,
+    playback,
+    play,
+    toggle,
+    next,
+    previous,
+    seek,
+    setShuffle,
+    setRepeat,
+    addToQueue,
+    notice,
+  ]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
@@ -412,35 +652,6 @@ export function useSpotify(): SpotifyState {
 export function useSpotifyLive(): boolean {
   const s = useSpotify();
   return s.enabled && s.active !== null;
-}
-
-/**
- * Liga o app do Spotify em segundo plano. `true` = conectado; `false` = não há app do
- * Spotify (ou o módulo não existe nesta compilação). Lança erro se a conexão falhar.
- */
-async function wakeSpotify(): Promise<boolean> {
-  if (!SpotifyRemote?.isInstalled()) return false;
-  if (SpotifyRemote.isConnected()) return true;
-  // Na primeira vez o Spotify pode mostrar a tela "Permitir o GoClient?"; depois, não.
-  await SpotifyRemote.connect(SPOTIFY_CLIENT_ID, REDIRECT_URI, true);
-  return true;
-}
-
-/** O mesmo comando, direto pelo SDK (quando o Spotify não aparece na lista de aparelhos). */
-async function remoteFallback(path: string, body?: object) {
-  const r = SpotifyRemote;
-  if (!r) return;
-  const b = (body ?? {}) as { context_uri?: string; uris?: string[] };
-  if (path.startsWith('/me/player/play')) {
-    const uri = b.context_uri ?? b.uris?.[0];
-    await (uri ? r.play(uri) : r.resume());
-  } else if (path.startsWith('/me/player/pause')) await r.pause();
-  else if (path.startsWith('/me/player/next')) await r.skipNext();
-  else if (path.startsWith('/me/player/previous')) await r.skipPrevious();
-  else if (path.startsWith('/me/player/queue')) {
-    const uri = new URLSearchParams(path.split('?')[1] ?? '').get('uri');
-    if (uri) await r.queue(uri);
-  }
 }
 
 /** Mensagem para os erros do SDK do Spotify. */

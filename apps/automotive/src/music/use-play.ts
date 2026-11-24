@@ -1,6 +1,6 @@
 import { usePathname, useRouter } from 'expo-router';
 import type { MockTrack } from '../mocks/data';
-import { usePrototype } from '../prototype/state';
+import { type PlayOptions, usePrototype } from '../prototype/state';
 
 /**
  * Toca uma faixa (com a fila opcional) e abre o player. No Spotify, `context` é a
@@ -9,8 +9,14 @@ import { usePrototype } from '../prototype/state';
 export function usePlay() {
   const { playTrack } = usePrototype();
   const router = useRouter();
-  return (trackId = 't1', queue?: string[], context?: string, hint?: MockTrack) => {
-    playTrack(trackId, queue, context, hint);
+  return (
+    trackId = 't1',
+    queue?: string[],
+    context?: string,
+    hint?: MockTrack,
+    opts?: PlayOptions,
+  ) => {
+    playTrack(trackId, queue, context, hint, opts);
     router.push('/player');
   };
 }
@@ -19,9 +25,8 @@ export function usePlay() {
 export function usePlayContext() {
   const { playContext } = usePrototype();
   const router = useRouter();
-  return (uri?: string) => {
-    if (uri) playContext(uri);
-    else playContext('');
+  return (uri?: string, opts?: PlayOptions) => {
+    playContext(uri ?? '', opts);
     router.push('/player');
   };
 }

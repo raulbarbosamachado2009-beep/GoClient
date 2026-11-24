@@ -1,13 +1,14 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { type ReactNode, useRef, useState } from 'react';
-import { Animated, type ImageSourcePropType, StyleSheet, View } from 'react-native';
+import { Animated, StyleSheet, View } from 'react-native';
 import { useSystemInsets } from '../layout/form-factor';
-import { COVERS, NOW_PLAYING } from '../mocks/data';
 import { usePrototype } from '../prototype/state';
 import { Cover, shade } from '../ui/brand';
 import { Appear } from '../ui/motion';
-import { Avatar, Icon, IconButton, Text, Touchable } from '../ui/primitives';
+import { Icon, IconButton, Text } from '../ui/primitives';
+import { useNowPlaying, useTrackArtists } from './now-playing';
+import { ProgressBar, RepeatButton, ShuffleButton } from './player-parts';
 
 const W = '#FFFFFF';
 const W2 = 'rgba(255,255,255,0.7)';
@@ -21,8 +22,12 @@ const PAD = 40;
  */
 export function PhonePlayer() {
   const router = useRouter();
-  const { nowPlaying, upNext, playing, togglePlaying, next, previous } = usePrototype();
-  const track = nowPlaying ?? NOW_PLAYING;
+  const { togglePlaying, next, previous } = usePrototype();
+  // Faixa, fila, artistas e progresso vêm todos do mesmo estado (sempre a música tocando).
+  const np = useNowPlaying();
+  const { track, playing, queue } = np;
+  const artists = useTrackArtists(np);
+  const lead = artists[0];
   const system = useSystemInsets();
   const scrollY = useRef(new Animated.Value(0)).current;
   const [compact, setCompact] = useState(false);
@@ -66,7 +71,7 @@ export function PhonePlayer() {
             onPress={minimize}
           />
           <Text variant="headline" color={W} numberOfLines={1} style={styles.context}>
-            “{track.album}” na Biblioteca
+            {np.source}
           </Text>
           <IconButton
             icon="ellipsis-horizontal"
@@ -102,28 +107,11 @@ export function PhonePlayer() {
         </View>
 
         <View style={styles.progress}>
-          <View style={styles.track}>
-            <View style={styles.trackFill} />
-            <View style={styles.thumb} />
-          </View>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-            <Text variant="caption" color={W2}>
-              1:16
-            </Text>
-            <Text variant="caption" color={W2}>
-              -2:26
-            </Text>
-          </View>
+          <ProgressBar np={np} height={8} thumb={24} labelColor={W2} labelVariant="caption" />
         </View>
 
         <View style={styles.controls}>
-          <IconButton
-            icon="shuffle"
-            size={84}
-            iconSize={48}
-            color={W}
-            accessibilityLabel="Aleatório"
-          />
+          <ShuffleButton np={np} size={84} iconSize={48} />
           <IconButton
             icon="play-skip-back"
             size={96}
@@ -149,13 +137,7 @@ export function PhonePlayer() {
             accessibilityLabel="Próxima"
             onPress={next}
           />
-          <IconButton
-            icon="repeat"
-            size={84}
-            iconSize={48}
-            color={W}
-            accessibilityLabel="Repetir"
-          />
+          <RepeatButton np={np} size={84} iconSize={48} />
         </View>
 
         <View style={styles.utility}>
@@ -175,100 +157,64 @@ export function PhonePlayer() {
           <IconButton icon="list" iconSize={42} color={W} accessibilityLabel="Fila" />
         </View>
 
-        {/* Cartões */}
+        {/* Cartões: só dados reais da faixa tocando (vídeos, ouvintes mensais e "Conheça"
+            não existem na API do Spotify para este app). */}
         <View style={{ gap: 32, marginTop: 24 }}>
-          <View
-            style={[styles.card, { backgroundColor: '#242424', padding: 0, overflow: 'hidden' }]}
-          >
-            <View style={{ height: 400 }}>
-              <Cover color="#333" image={COVERS.piscina} size={640} height={400} radius={0} />
-              <LinearGradient
-                colors={['rgba(0,0,0,0.6)', 'rgba(0,0,0,0)']}
-                style={[StyleSheet.absoluteFill, { height: 160 }]}
-              />
-              <Text variant="headline" color={W} style={styles.overLabel}>
-                Sobre o artista
-              </Text>
-            </View>
-            <View style={{ padding: 36, gap: 8 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <View style={{ flex: 1 }}>
-                  <Text variant="title2" color={W} style={{ fontSize: 40, lineHeight: 46 }}>
-                    {track.artists.split(',')[0]}
-                  </Text>
-                  <Text variant="callout" color={W2}>
-                    1,2 mi ouvintes mensais
-                  </Text>
-                </View>
-                <OutlinePill label="Seguindo" />
+          {lead && (
+            <View
+              style={[styles.card, { backgroundColor: '#242424', padding: 0, overflow: 'hidden' }]}
+            >
+              <View style={{ height: 400 }}>
+                <Cover color={track.cover} image={lead.image} size={640} height={400} radius={0} />
+                <LinearGradient
+                  colors={['rgba(0,0,0,0.6)', 'rgba(0,0,0,0)']}
+                  style={[StyleSheet.absoluteFill, { height: 160 }]}
+                />
+                <Text variant="headline" color={W} style={styles.overLabel}>
+                  Sobre o artista
+                </Text>
               </View>
-              <Text variant="callout" color={W2} numberOfLines={3} style={{ marginTop: 12 }}>
-                Artista do funk de São Paulo. As informações do artista aparecem aqui quando
-                disponíveis no Spotify.
-              </Text>
-            </View>
-          </View>
-
-          <PlayerCard title="Vídeos relacionados" color="#242424">
-            <View style={{ flexDirection: 'row', gap: 24 }}>
-              {(
-                [
-                  ['Donos da Capital', 'MC Kevin e outros', COVERS.donos, '04:12'],
-                  ['Piscina de Diamante', 'MC Kevin', COVERS.piscina, '03:13'],
-                ] as [string, string, ImageSourcePropType, string][]
-              ).map(([t, a, img, d]) => (
-                <View key={t} style={{ width: 400, gap: 12 }}>
-                  <View>
-                    <Cover color="#222" image={img} size={400} height={226} radius={12} />
-                    <Text variant="footnote" color={W} style={styles.duration}>
-                      {d}
-                    </Text>
-                  </View>
-                  <Text variant="headline" color={W} numberOfLines={1}>
-                    {t}
+              <View style={{ padding: 36, gap: 8 }}>
+                <Text variant="title2" color={W} style={{ fontSize: 40, lineHeight: 46 }}>
+                  {lead.name}
+                </Text>
+                {lead.genres.length > 0 && (
+                  <Text variant="callout" color={W2} numberOfLines={2}>
+                    {lead.genres.slice(0, 3).join(' • ')}
                   </Text>
-                  <Text variant="callout" color={W2} numberOfLines={1}>
-                    {a}
-                  </Text>
-                </View>
-              ))}
+                )}
+              </View>
             </View>
-          </PlayerCard>
+          )}
 
           <PlayerCard title="Artistas na faixa" color={card}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-around' }}>
-              {[
-                ['MC Kevin', 'Artista principal'],
-                ['DJ Nene MPC', 'Artista'],
-              ].map(([n, r]) => (
-                <View key={n} style={{ alignItems: 'center', gap: 6 }}>
-                  {n === 'MC Kevin' ? (
-                    <Cover color="#8A7A55" image={COVERS.piscina} size={200} radius={100} />
-                  ) : (
-                    <Avatar name={n as string} size={200} />
-                  )}
-                  <Text variant="headline" color={W}>
-                    {n}
+              {artists.slice(0, 3).map((a) => (
+                <View key={a.name} style={{ alignItems: 'center', gap: 6, maxWidth: 220 }}>
+                  <Cover color={track.cover} image={a.image} size={200} radius={100} />
+                  <Text variant="headline" color={W} numberOfLines={1}>
+                    {a.name}
                   </Text>
                   <Text variant="caption" color={W2}>
-                    {r}
+                    {a.role}
                   </Text>
                 </View>
               ))}
             </View>
           </PlayerCard>
 
-          <PlayerCard
-            title="Próximas"
-            color="#242424"
-            action={
-              <Text variant="headline" color={GREEN}>
-                Abrir fila
+          <PlayerCard title="Próximas" color="#242424">
+            {queue.length === 0 && (
+              <Text variant="callout" color={W2}>
+                A fila aparece aqui assim que o Spotify informar.
               </Text>
-            }
-          >
-            {(upNext ? [upNext] : []).map((q) => (
-              <View key={q.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 24 }}>
+            )}
+            {queue.slice(0, 4).map((q, i) => (
+              <View
+                // biome-ignore lint/suspicious/noArrayIndexKey: a fila pode repetir a mesma faixa
+                key={`${q.id}-${i}`}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 24 }}
+              >
                 <Cover color={q.cover} image={q.image} size={112} radius={6} />
                 <View style={{ flex: 1 }}>
                   <Text variant="body" color={W} numberOfLines={1} style={{ fontSize: 30 }}>
@@ -282,54 +228,20 @@ export function PhonePlayer() {
             ))}
           </PlayerCard>
 
-          <PlayerCard
-            title="Créditos"
-            color="#242424"
-            action={
-              <Text variant="headline" color={GREEN}>
-                Mostrar tudo
-              </Text>
-            }
-          >
-            {[
-              ['MC Kevin', 'Artista principal', 'Seguindo'],
-              ['DJ Nene MPC', 'Artista principal', 'Seguir'],
-            ].map(([n, r, f]) => (
-              <View key={n} style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-                <View style={{ flex: 1 }}>
-                  <Text variant="body" color={W} style={{ fontSize: 30 }}>
-                    {n}
-                  </Text>
-                  <Text variant="callout" color={W2}>
-                    {r}
-                  </Text>
-                </View>
-                <OutlinePill label={f as string} />
+          <PlayerCard title="Créditos" color="#242424">
+            {[...artists.map((a) => [a.name, a.role]), [track.album, 'Álbum']].map(([n, r]) => (
+              <View
+                key={`${n}-${r}`}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}
+              >
+                <Text variant="body" color={W} numberOfLines={1} style={{ flex: 1, fontSize: 30 }}>
+                  {n}
+                </Text>
+                <Text variant="callout" color={W2}>
+                  {r}
+                </Text>
               </View>
             ))}
-          </PlayerCard>
-
-          <PlayerCard title={`Conheça ${track.artists.split(',')[0]}`} color="#242424">
-            <View style={{ flexDirection: 'row', gap: 20 }}>
-              {(
-                [
-                  ['Músicas do artista', COVERS.piscina],
-                  ['Parecidas', COVERS.donos],
-                  [`Parecidas com ${track.title}`, COVERS.ninguem],
-                ] as [string, ImageSourcePropType][]
-              ).map(([label, img]) => (
-                <View key={label} style={{ flex: 1 }}>
-                  <Cover
-                    color="#222"
-                    image={img}
-                    size={184}
-                    height={300}
-                    radius={14}
-                    title={label}
-                  />
-                </View>
-              ))}
-            </View>
           </PlayerCard>
         </View>
       </Animated.ScrollView>
@@ -392,16 +304,6 @@ function PlayerCard({
   );
 }
 
-function OutlinePill({ label }: { label: string }) {
-  return (
-    <Touchable accessibilityRole="button" style={styles.pill}>
-      <Text variant="headline" color={W}>
-        {label}
-      </Text>
-    </Touchable>
-  );
-}
-
 const styles = StyleSheet.create({
   topBar: { flexDirection: 'row', alignItems: 'center', paddingTop: 24, gap: 8 },
   context: { flex: 1, textAlign: 'center', fontSize: 26 },
@@ -424,22 +326,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   progress: { marginTop: 40, gap: 12 },
-  track: {
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: 'rgba(255,255,255,0.3)',
-    justifyContent: 'center',
-  },
-  trackFill: { width: '34%', height: 8, borderRadius: 4, backgroundColor: W },
-  thumb: {
-    position: 'absolute',
-    left: '34%',
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    marginLeft: -12,
-    backgroundColor: W,
-  },
   controls: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -449,24 +335,6 @@ const styles = StyleSheet.create({
   utility: { flexDirection: 'row', alignItems: 'center', marginTop: 24, gap: 12 },
   card: { borderRadius: 28, padding: 36, gap: 20 },
   overLabel: { position: 'absolute', top: 30, left: 36 },
-  duration: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    paddingHorizontal: 10,
-    borderRadius: 6,
-    overflow: 'hidden',
-  },
-  pill: {
-    height: 68,
-    paddingHorizontal: 32,
-    borderRadius: 34,
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.7)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   compact: {
     position: 'absolute',
     top: 0,

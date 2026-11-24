@@ -6,15 +6,29 @@ import { requireOptionalNativeModule } from 'expo';
  */
 export interface RemotePlayerState {
   isPaused: boolean;
+  /** Posição em ms no momento do evento. */
   position: number;
+  shuffle: boolean;
+  /** 0 = desligado, 1 = faixa, 2 = lista. */
+  repeat: number;
   track: {
     uri: string;
     name: string;
     artist: string;
+    artists: { name: string; uri: string }[];
     album: string;
+    albumUri: string;
     duration: number;
+    /** `spotify:image:<id>` (convertido para https em spotify/transport.ts). */
     imageUri: string;
+    isEpisode: boolean;
   } | null;
+}
+
+export interface RemotePlayerContext {
+  uri: string;
+  title: string;
+  type: string;
 }
 
 interface SpotifyRemoteModule {
@@ -30,7 +44,11 @@ interface SpotifyRemoteModule {
   skipPrevious(): Promise<boolean>;
   skipToIndex(uri: string, index: number): Promise<boolean>;
   seekTo(ms: number): Promise<boolean>;
+  setShuffle(on: boolean): Promise<boolean>;
+  setRepeat(mode: number): Promise<boolean>;
+  getPlayerState(): Promise<RemotePlayerState>;
   addListener(event: 'onPlayerState', cb: (s: RemotePlayerState) => void): { remove(): void };
+  addListener(event: 'onPlayerContext', cb: (c: RemotePlayerContext) => void): { remove(): void };
   addListener(event: 'onDisconnected', cb: (e: { reason: string }) => void): { remove(): void };
 }
 
