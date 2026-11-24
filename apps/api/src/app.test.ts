@@ -91,6 +91,7 @@ describe('API', () => {
     expect(body.permissions.customer?.read).toBe(true);
     expect(body.permissions.customer?.create).toBe(true);
     expect(body.permissions.route?.update).toBe(false);
+    expect(body.permissions.route?.reorder).toBe(true);
   });
 
   it('GET /v1/me libera a edição no Mobile', async () => {

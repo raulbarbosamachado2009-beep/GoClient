@@ -14,7 +14,11 @@ export const RESOURCES = [
 ] as const;
 export type Resource = (typeof RESOURCES)[number];
 
-export const ACTIONS = ['read', 'create', 'update', 'delete'] as const;
+/**
+ * `reorder` muda só a ordem de uma lista já montada (ex.: paradas da rota), sem pôr nem tirar
+ * itens. Fica separado de `update` porque a multimídia pode reordenar mas não montar rotas.
+ */
+export const ACTIONS = ['read', 'create', 'update', 'delete', 'reorder'] as const;
 export type Action = (typeof ACTIONS)[number];
 
 export interface AccessContext {
@@ -25,7 +29,7 @@ export interface AccessContext {
 
 export type DenialReason =
   | 'role_not_allowed'
-  /** Regra 3: rotas são montadas no celular; no Automotive só são lidas e iniciadas. */
+  /** Regra 3: rotas são montadas no celular; no Automotive só são lidas, reordenadas e iniciadas. */
   | 'automotive_route_build_blocked';
 
 export type AccessDecision =
@@ -48,7 +52,7 @@ const ROLE_MATRIX: Record<Role, Partial<Record<Resource, readonly Action[]>>> = 
     product: ['read', 'create', 'update'],
     region: ['read'],
     visit: ['read', 'create', 'update', 'delete'],
-    route: ['read', 'create', 'update', 'delete'],
+    route: ['read', 'create', 'update', 'delete', 'reorder'],
     settings: ['read'],
     integration: ['read'],
   },
@@ -72,8 +76,9 @@ export function can(ctx: AccessContext, resource: Resource, action: Action): Acc
   // Regra 2 — escritas pela Havena (canal `havena`) exigem confirmação (ver o retorno).
 
   // Regra 3 — rotas só são montadas (criadas, alteradas, excluídas) no celular. Na
-  // multimídia o usuário só escolhe e começa uma rota já montada (leitura).
-  if (isWrite && ctx.platform === 'automotive' && resource === 'route') {
+  // multimídia o usuário escolhe, começa e reordena as paradas de uma rota já montada
+  // (reordenar liberado em 2026-11-24 a pedido do dono do produto); pôr ou tirar paradas, não.
+  if (isWrite && action !== 'reorder' && ctx.platform === 'automotive' && resource === 'route') {
     return { allowed: false, reason: 'automotive_route_build_blocked' };
   }
 

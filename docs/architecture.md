@@ -153,7 +153,7 @@ Colunas comuns às tabelas sincronizáveis: `id` (UUID gerado no cliente, permit
   - Regra 1 (retirada em 2026-11-24 a pedido do usuário): o Automotive também cadastra e edita
     clientes e produtos à mão.
   - Regra 2: canal `havena` → permitido se o papel permitir, **com confirmação**.
-  - Regra 3: `automotive` + escrita em `route` → negado (rotas são montadas no celular).
+  - Regra 3: `automotive` + escrita em `route` → negado (rotas são montadas no celular), exceto `reorder` (mudar a ordem das paradas, liberado em 2026-11-24).
 - `GET /v1/me` devolve a matriz efetiva para a interface decidir o que mostrar.
 
 Limitação honesta: a plataforma é **declarada pelo app**. A Regra 3 é uma regra de produto, não

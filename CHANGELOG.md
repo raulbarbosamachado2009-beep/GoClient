@@ -5,7 +5,7 @@ Leia este arquivo antes de começar qualquer trabalho.
 
 ## Estado atual do app
 
-_Última atualização: 2026-11-24 14:53 — coluna da direita do Mapa sempre cheia: a música cresce quando o destino encolhe._
+_Última atualização: 2026-11-24 15:14 — troca de música animada e fila de clientes reordenável na multimídia._
 
 - **Automotive (`apps/automotive`)** é onde está quase todo o produto: Mapa (OSM + OpenRouteService,
   navegação com voz), Kyte (telas próprias sobre a janela do Kyte), Música (Spotify App Remote) e
@@ -14,6 +14,15 @@ _Última atualização: 2026-11-24 14:53 — coluna da direita do Mapa sempre ch
 - Regras de negócio em `packages/core` (com testes); visual só com `@goclient/design-tokens`.
 
 ## Mudanças
+
+### 2026-11-24 15:14 — Troca de música animada e fila reordenável na multimídia
+
+- Cartão da música (Mapa da multimídia): ao trocar de música, capa e nome deslizam para o lado
+  da troca (próxima ou anterior) e o fundo desfocado faz fade entre as capas.
+- "Ver lista" na multimídia: a fila de clientes agora se reordena arrastando pela alça (≡),
+  como no celular (`RouteQueue` ganhou o visual `car`). Tocar numa parada continua indo até ela.
+- Regra 3 ajustada: nova ação `reorder` em `can()`. Na multimídia a rota pode ser reordenada,
+  mas continua sem pôr nem tirar paradas. Testes do núcleo e da API atualizados.
 
 ### 2026-11-24 14:53 — Coluna da direita do Mapa sempre cheia
 

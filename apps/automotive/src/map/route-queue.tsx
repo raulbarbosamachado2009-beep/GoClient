@@ -8,7 +8,9 @@ import { Avatar, Icon, Text } from '../ui/primitives';
 import { SheetLock, Tap } from './sheet-context';
 
 /** Altura fixa de cada linha (o arrasto calcula a posição por ela). */
-const ROW = 116;
+const ROW_BASE = 116;
+/** Multimídia: linhas um pouco mais baixas, sem foto, no estilo da lista do cartão. */
+const ROW_CAR = 108;
 const SPRING = {
   stiffness: 320,
   damping: 30,
@@ -34,13 +36,22 @@ export function RouteQueue({
   currentId,
   onReorder,
   onPick,
+  car = false,
+  radius = 30,
+  background,
 }: {
   clients: MockClient[];
   currentId?: string;
-  onReorder: (ids: string[]) => void;
+  /** Sem ele, a lista não mostra a alça de arrastar (só leitura). */
+  onReorder?: (ids: string[]) => void;
   onPick: (id: string) => void;
+  /** Visual da multimídia: número em círculo, nome e endereço maiores, sem foto. */
+  car?: boolean;
+  radius?: number;
+  background?: string;
 }) {
   const c = useColors();
+  const ROW = car ? ROW_CAR : ROW_BASE;
   const lockSheet = useContext(SheetLock);
   const scale = useFrameScale();
   const scaleRef = useRef(scale);
@@ -137,7 +148,7 @@ export function RouteQueue({
       settling.current = { id, rest };
       const next = moveItem(idsRef.current, from, to);
       setIds(next);
-      onReorderRef.current(next);
+      onReorderRef.current?.(next);
     });
   };
   const onReorderRef = useRef(onReorder);
@@ -163,7 +174,12 @@ export function RouteQueue({
   }
 
   return (
-    <View style={[styles.list, { height: ids.length * ROW, backgroundColor: c.fill }]}>
+    <View
+      style={[
+        styles.list,
+        { height: ids.length * ROW, borderRadius: radius, backgroundColor: background ?? c.fill },
+      ]}
+    >
       {ids.map((id, i) => {
         const client = byId.get(id);
         if (!client) return null;
@@ -180,6 +196,10 @@ export function RouteQueue({
             lift={isActive ? lift : null}
             handlers={handlers}
             onPress={() => onPick(id)}
+            row={ROW}
+            car={car}
+            radius={radius}
+            draggable={!!onReorder}
           />
         );
       })}
@@ -197,6 +217,10 @@ function QueueRow({
   lift,
   handlers,
   onPress,
+  row,
+  car,
+  radius,
+  draggable,
 }: {
   client: MockClient;
   index: number;
@@ -209,8 +233,14 @@ function QueueRow({
     current: { begin: (id: string) => void; move: (dy: number) => void; end: () => void };
   };
   onPress: () => void;
+  row: number;
+  car: boolean;
+  radius: number;
+  draggable: boolean;
 }) {
   const c = useColors();
+  const soft = c.mode === 'dark' ? 'rgba(10,132,255,0.2)' : 'rgba(0,122,255,0.12)';
+  const name = client.tradeName || client.name;
   const idRef = useRef(client.id);
   idRef.current = client.id;
   const pan = useRef(
@@ -240,12 +270,18 @@ function QueueRow({
     <Animated.View
       style={[
         styles.row,
-        { top: index * ROW, zIndex: active ? 10 : 1 },
+        { top: index * row, height: row, zIndex: active ? 10 : 1 },
         active && styles.rowLifted,
         lifted,
       ]}
     >
-      <View style={[styles.rowInner, active && { backgroundColor: c.elevated }]}>
+      <View
+        style={[
+          styles.rowInner,
+          { borderRadius: radius },
+          active && { backgroundColor: c.elevated },
+        ]}
+      >
         <Tap
           accessibilityRole="button"
           accessibilityLabel={`Parada ${index + 1}: ${client.tradeName || client.name}`}
@@ -253,32 +289,68 @@ function QueueRow({
           scaleTo={0.98}
           style={styles.rowTap}
         >
-          <View style={[styles.badge, { backgroundColor: current ? c.accent : c.fillStrong }]}>
-            <Text variant="headline" color={current ? '#FFFFFF' : c.text}>
-              {index + 1}
-            </Text>
-          </View>
-          <Avatar name={client.name} size={64} square />
-          <View style={{ flex: 1, gap: 2 }}>
-            <Text variant="headline" numberOfLines={1}>
-              {client.tradeName || client.name}
-            </Text>
-            <Text variant="callout" tone={current ? 'accent' : 'secondary'} numberOfLines={1}>
-              {current ? 'Destino atual' : [client.address, district].filter(Boolean).join(' · ')}
-            </Text>
-          </View>
+          {car ? (
+            <>
+              <View style={[styles.badgeCar, { backgroundColor: current ? c.accent : soft }]}>
+                <Text
+                  variant="headline"
+                  style={{ fontSize: 26, color: current ? '#FFFFFF' : c.accent }}
+                >
+                  {index + 1}
+                </Text>
+              </View>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text variant="headline" numberOfLines={1} style={{ fontSize: 28, lineHeight: 34 }}>
+                  {name}
+                </Text>
+                <Text
+                  variant="callout"
+                  tone="secondary"
+                  numberOfLines={1}
+                  style={{ fontSize: 22, lineHeight: 28 }}
+                >
+                  {current ? 'Parada atual' : client.address}
+                </Text>
+              </View>
+            </>
+          ) : (
+            <>
+              <View style={[styles.badge, { backgroundColor: current ? c.accent : c.fillStrong }]}>
+                <Text variant="headline" color={current ? '#FFFFFF' : c.text}>
+                  {index + 1}
+                </Text>
+              </View>
+              <Avatar name={client.name} size={64} square />
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text variant="headline" numberOfLines={1}>
+                  {client.tradeName || client.name}
+                </Text>
+                <Text variant="callout" tone={current ? 'accent' : 'secondary'} numberOfLines={1}>
+                  {current
+                    ? 'Destino atual'
+                    : [client.address, district].filter(Boolean).join(' · ')}
+                </Text>
+              </View>
+            </>
+          )}
         </Tap>
-        <View
-          {...pan.panHandlers}
-          {...HANDLE_DATA}
-          accessibilityRole="adjustable"
-          accessibilityLabel={`Mover ${client.tradeName || client.name}`}
-          style={[styles.handle, HANDLE_WEB]}
-        >
-          <Icon name="reorder-three" size={44} color={c.textTertiary} />
-        </View>
+        {draggable && (
+          <View
+            {...pan.panHandlers}
+            {...HANDLE_DATA}
+            accessibilityRole="adjustable"
+            accessibilityLabel={`Mover ${client.tradeName || client.name}`}
+            style={[styles.handle, HANDLE_WEB]}
+          >
+            <Icon name="reorder-three" size={car ? 40 : 44} color={c.textTertiary} />
+          </View>
+        )}
       </View>
-      {!last && !active && <View style={[styles.sep, { backgroundColor: c.separator }]} />}
+      {!last && !active && (
+        <View
+          style={[styles.sep, { backgroundColor: c.separator }, car && { left: spacing[4] + 76 }]}
+        />
+      )}
     </Animated.View>
   );
 }
@@ -290,7 +362,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    height: ROW,
+    height: ROW_BASE,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
     shadowRadius: 24,
@@ -311,6 +383,13 @@ const styles = StyleSheet.create({
     gap: spacing[4],
     paddingLeft: spacing[4],
     height: '100%',
+  },
+  badgeCar: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   badge: {
     width: 48,

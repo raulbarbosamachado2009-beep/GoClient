@@ -1,6 +1,14 @@
+import { can } from '@goclient/core';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { type ComponentRef, type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, Image, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import {
+  Animated,
+  type ImageSourcePropType,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  View,
+} from 'react-native';
 import { callPhone, openWhatsApp } from '../../integrations/contact';
 import { MAPS_ENABLED } from '../../integrations/env';
 import { usePhone, useSystemInsets } from '../../layout/form-factor';
@@ -11,6 +19,7 @@ import { useMapNav } from '../../map/map-nav';
 import { type Guidance as TurnGuidance, useTurnByTurn } from '../../map/navigation';
 import { PannableMap } from '../../map/pannable-map';
 import { ExploreSheet, RouteSheet, type TripInfo } from '../../map/phone-sheet';
+import { RouteQueue } from '../../map/route-queue';
 import {
   formatArrival,
   formatDuration,
@@ -19,6 +28,7 @@ import {
   type LatLng,
 } from '../../map/routing';
 import { OptionGroup, OptionRow, SavedRoutes } from '../../map/saved-routes';
+import { SheetLock } from '../../map/sheet-context';
 import { useStops } from '../../map/stops';
 import { useCarPosition, useClientPlaces, useLiveRoute } from '../../map/use-live-map';
 import { CLIENT_FOCUS, DAY_FOCUS, type MapMode, USER } from '../../map/world';
@@ -57,6 +67,12 @@ export default function MapScreen() {
 
   // Rota do dia: os clientes planejados + os postos na rota pelo Kyte ou pela Havena.
   const stops = useStops();
+  // Regra 3: na multimídia a rota não é montada, mas as paradas podem ser reordenadas.
+  const canReorder = can(
+    { role: 'seller', platform: phone ? 'mobile' : 'automotive', channel: 'manual' },
+    'route',
+    'reorder',
+  ).allowed;
   const plannedDay = stops.dayIds
     .map((cid) => stops.find(cid))
     .filter((x): x is MockClient => x !== null);
@@ -346,6 +362,14 @@ export default function MapScreen() {
                 queue={mode === 'day' ? routeClients : []}
                 current={wrap(stop, routeClients.length)}
                 onPick={setStop}
+                onReorder={
+                  mode === 'day' && canReorder
+                    ? (ids) => {
+                        stops.reorder(ids);
+                        setStop(Math.max(0, ids.indexOf(client.id)));
+                      }
+                    : undefined
+                }
                 // Setas só na rota do dia com mais de uma parada (destino único não tem).
                 onNext={
                   mode === 'day' && routeClients.length > 1
@@ -388,18 +412,24 @@ function NowPlayingCard({
   const { togglePlaying, next, previous } = usePrototype();
   const np = useNowPlaying();
   const { track, playing } = np;
-  const back = () => (np.positionMs() > 3000 ? np.seek(0) : previous());
+  // Troca de música: capa e nome deslizam para o lado da troca (próxima → para a esquerda,
+  // anterior → para a direita) e o fundo desfocado faz fade entre as capas.
+  const dir = useRef<1 | -1>(1);
+  const back = () => {
+    if (np.positionMs() > 3000) return np.seek(0);
+    dir.current = -1;
+    previous();
+  };
+  const forward = () => {
+    dir.current = 1;
+    next();
+  };
   const headCover = expand.interpolate({ inputRange: [0, 1], outputRange: [80 + spacing[4], 0] });
   const headCoverO = expand.interpolate({ inputRange: [0, 0.5], outputRange: [1, 0] });
   const artScale = expand.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1] });
   return (
     <View style={styles.now}>
-      <Image
-        source={track.backdrop}
-        blurRadius={track.backdropBlur}
-        resizeMode="cover"
-        style={[styles.nowBackdrop, { transform: [{ scale: 1.3 }] }]}
-      />
+      <Backdrop id={track.id} source={track.backdrop} blur={track.backdropBlur} />
       <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.42)' }]} />
       <Touchable
         accessibilityRole="button"
@@ -409,7 +439,9 @@ function NowPlayingCard({
       >
         {artSize > 0 && (
           <Animated.View style={{ opacity: expand, transform: [{ scale: artScale }] }}>
-            <Cover color={track.cover} image={track.image} size={artSize} radius={NOW_INNER} />
+            <Swap id={track.id} dir={dir.current}>
+              <Cover color={track.cover} image={track.image} size={artSize} radius={NOW_INNER} />
+            </Swap>
           </Animated.View>
         )}
       </Touchable>
@@ -419,17 +451,19 @@ function NowPlayingCard({
         onPress={() => router.push('/player')}
         style={styles.nowHead}
       >
-        <Animated.View style={{ width: headCover, opacity: headCoverO, overflow: 'hidden' }}>
-          <Cover color={track.cover} image={track.image} size={80} radius={NOW_INNER} />
-        </Animated.View>
-        <View style={{ flex: 1, gap: 2 }}>
-          <Text variant="headline" color="#FFFFFF" numberOfLines={1}>
-            {track.title}
-          </Text>
-          <Text variant="callout" color="rgba(255,255,255,0.72)" numberOfLines={1}>
-            {track.artists}
-          </Text>
-        </View>
+        <Swap id={track.id} dir={dir.current} style={styles.nowHeadRow}>
+          <Animated.View style={{ width: headCover, opacity: headCoverO, overflow: 'hidden' }}>
+            <Cover color={track.cover} image={track.image} size={80} radius={NOW_INNER} />
+          </Animated.View>
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text variant="headline" color="#FFFFFF" numberOfLines={1}>
+              {track.title}
+            </Text>
+            <Text variant="callout" color="rgba(255,255,255,0.72)" numberOfLines={1}>
+              {track.artists}
+            </Text>
+          </View>
+        </Swap>
       </Touchable>
       <ProgressBar
         np={np}
@@ -461,10 +495,57 @@ function NowPlayingCard({
           iconSize={42}
           color="#FFFFFF"
           accessibilityLabel="Próxima"
-          onPress={next}
+          onPress={forward}
         />
       </View>
     </View>
+  );
+}
+
+/**
+ * Fundo do cartão da música: a capa ampliada e desfocada. Na troca de música, a capa nova
+ * aparece por cima da antiga com fade (a antiga sai quando a nova termina de entrar).
+ */
+function Backdrop({
+  id,
+  source,
+  blur,
+}: {
+  id: string;
+  source: ImageSourcePropType;
+  blur?: number;
+}) {
+  const [layers, setLayers] = useState([{ id, source }]);
+  const fade = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    setLayers((cur) => (cur[cur.length - 1]?.id === id ? cur : [...cur.slice(-1), { id, source }]));
+  }, [id, source]);
+  useEffect(() => {
+    if (layers.length < 2) return;
+    fade.setValue(0);
+    Animated.timing(fade, {
+      toValue: 1,
+      duration: 520,
+      easing: appleEase,
+      useNativeDriver: false,
+    }).start(({ finished }) => finished && setLayers((cur) => cur.slice(-1)));
+  }, [layers, fade]);
+  return (
+    <>
+      {layers.map((l, i) => (
+        <Animated.Image
+          key={l.id}
+          source={l.source}
+          blurRadius={blur}
+          resizeMode="cover"
+          style={[
+            styles.nowBackdrop,
+            { transform: [{ scale: 1.3 }] },
+            i === layers.length - 1 && layers.length > 1 && { opacity: fade },
+          ]}
+        />
+      ))}
+    </>
   );
 }
 
@@ -879,6 +960,7 @@ function ClientCard({
   queue,
   current,
   onPick,
+  onReorder,
   onNext,
   onPrevious,
   trip,
@@ -891,6 +973,8 @@ function ClientCard({
   queue: MockClient[];
   current: number;
   onPick: (index: number) => void;
+  /** Reordenar as paradas (só na rota do dia e se `can()` deixar). */
+  onReorder?: (ids: string[]) => void;
   onNext?: () => void;
   onPrevious?: () => void;
   /** Chegada, tempo e distância (o botão "Ir" fica no canto do mapa). */
@@ -899,6 +983,8 @@ function ClientCard({
 }) {
   const c = useColors();
   const [list, setList] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const lockScroll = useCallback((locked: boolean) => setDragging(locked), []);
   const tile = c.mode === 'dark' ? 'rgba(255,255,255,0.1)' : '#FFFFFF';
   const district = client.district.split(' · ')[0];
   const hasQueue = queue.length > 1;
@@ -949,58 +1035,28 @@ function ClientCard({
       </View>
       <Swap id={list ? 'list' : 'card'} dir={list ? 1 : -1} style={{ flex: 1 }}>
         {list ? (
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: spacing[2] }}
-          >
-            <View style={[styles.queue, { backgroundColor: tile }]}>
-              {queue.map((q, i) => {
-                const on = i === current;
-                return (
-                  <Touchable
-                    key={q.id}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Parada ${i + 1}: ${q.tradeName}`}
-                    scaleTo={0.98}
-                    onPress={() => (on ? setList(false) : onPick(i))}
-                    style={[
-                      styles.queueRow,
-                      i > 0 && {
-                        borderTopWidth: StyleSheet.hairlineWidth,
-                        borderTopColor: c.separator,
-                      },
-                    ]}
-                  >
-                    <View style={[styles.queueDot, { backgroundColor: on ? c.accent : soft }]}>
-                      <Text
-                        variant="headline"
-                        style={{ fontSize: 26, color: on ? '#FFFFFF' : c.accent }}
-                      >
-                        {i + 1}
-                      </Text>
-                    </View>
-                    <View style={{ flex: 1, minWidth: 0 }}>
-                      <Text
-                        variant="headline"
-                        numberOfLines={1}
-                        style={{ fontSize: 28, lineHeight: 34 }}
-                      >
-                        {q.tradeName || q.name}
-                      </Text>
-                      <Text
-                        variant="callout"
-                        tone="secondary"
-                        numberOfLines={1}
-                        style={{ fontSize: 22, lineHeight: 28 }}
-                      >
-                        {on ? 'Parada atual' : q.address}
-                      </Text>
-                    </View>
-                  </Touchable>
-                );
-              })}
-            </View>
-          </ScrollView>
+          // Fila da rota: tocar vai para a parada; a alça (≡) arrasta para mudar a ordem.
+          <SheetLock.Provider value={lockScroll}>
+            <ScrollView
+              scrollEnabled={!dragging}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: spacing[2] }}
+            >
+              <RouteQueue
+                car
+                clients={queue}
+                currentId={client.id}
+                radius={COMPACT_INNER}
+                background={tile}
+                onReorder={onReorder}
+                onPick={(id) => {
+                  const i = queue.findIndex((q) => q.id === id);
+                  if (i === current) setList(false);
+                  else if (i >= 0) onPick(i);
+                }}
+              />
+            </ScrollView>
+          </SheetLock.Provider>
         ) : !hasQueue ? (
           // Destino único: tudo centrado e distribuído pelo cartão inteiro.
           <View style={styles.compactBody}>
@@ -1284,7 +1340,8 @@ const styles = StyleSheet.create({
   },
   nowBackdrop: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' },
   nowControls: { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center' },
-  nowHead: { flexDirection: 'row', alignItems: 'center', height: 80 },
+  nowHead: { height: 80 },
+  nowHeadRow: { flex: 1, flexDirection: 'row', alignItems: 'center' },
   // Capa grande: ocupa o espaço que sobra em cima quando o cartão da música cresce.
   nowArt: { flex: 1, minHeight: 0, alignItems: 'center', justifyContent: 'center' },
   maneuver: { flexDirection: 'row', alignItems: 'center', gap: spacing[6] },

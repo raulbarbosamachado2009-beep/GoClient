@@ -12,7 +12,7 @@ describe('can()', () => {
     ).toEqual({ allowed: true, requiresConfirmation: false });
   });
 
-  it('Regra 3: rotas só são montadas no celular; a multimídia só lê', () => {
+  it('Regra 3: rotas só são montadas no celular; a multimídia lê e reordena', () => {
     for (const action of ['create', 'update', 'delete'] as const) {
       for (const channel of ['manual', 'havena'] as const) {
         expect(can({ role: 'owner', platform: 'automotive', channel }, 'route', action)).toEqual({
@@ -27,6 +27,16 @@ describe('can()', () => {
     expect(
       can({ role: 'seller', platform: 'mobile', channel: 'manual' }, 'route', 'create'),
     ).toEqual({ allowed: true, requiresConfirmation: false });
+    // Reordenar as paradas é liberado no carro (com confirmação se vier da Havena).
+    expect(
+      can({ role: 'seller', platform: 'automotive', channel: 'manual' }, 'route', 'reorder'),
+    ).toEqual({ allowed: true, requiresConfirmation: false });
+    expect(
+      can({ role: 'seller', platform: 'automotive', channel: 'havena' }, 'route', 'reorder'),
+    ).toEqual({ allowed: true, requiresConfirmation: true });
+    expect(
+      can({ role: 'viewer', platform: 'automotive', channel: 'manual' }, 'route', 'reorder'),
+    ).toEqual({ allowed: false, reason: 'role_not_allowed' });
   });
 
   it('permite leitura no Automotive', () => {
