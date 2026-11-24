@@ -138,9 +138,16 @@ function SpotifyLogin() {
                 }
                 return true;
               }}
-              // Garantia extra: alguns Android só avisam do retorno ao iniciar a carga.
+              // Garantia extra: alguns Android só avisam do retorno ao iniciar a carga, ou só
+              // quando a página de retorno falha (não há servidor em 127.0.0.1, de propósito).
               onLoadStart={(e) => {
                 if (e.nativeEvent.url.startsWith(REDIRECT_URI)) finish(e.nativeEvent.url);
+              }}
+              onNavigationStateChange={(e) => {
+                if (e.url.startsWith(REDIRECT_URI)) finish(e.url);
+              }}
+              onError={(e) => {
+                if (e.nativeEvent.url?.startsWith(REDIRECT_URI)) finish(e.nativeEvent.url);
               }}
               startInLoadingState
               renderLoading={() => (

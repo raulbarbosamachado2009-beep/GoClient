@@ -1,9 +1,9 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
-import { Animated, StyleSheet, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Animated, AppState, StyleSheet, View } from 'react-native';
 import { usePhone } from '../../layout/form-factor';
 import { OnboardingLayout, PillButton } from '../../onboarding/layout';
-import { requestPermission } from '../../onboarding/permissions';
+import { hasPermission, requestPermission } from '../../onboarding/permissions';
 import { PermissionHero } from '../../onboarding/scenes';
 import { concentric, spacing, useColors } from '../../theme';
 import { usePageTransition } from '../../ui/motion';
@@ -56,12 +56,66 @@ export default function Permissions() {
   const router = useRouter();
   const phone = usePhone();
   const [step, setStep] = useState(0);
+  // 'settings': o Android não mostra mais o pop-up (recusado antes); mandamos para os Ajustes.
+  const [state, setState] = useState<'idle' | 'asking' | 'granted' | 'settings'>('idle');
   const cur = STEPS[Math.min(step, STEPS.length - 1)] as Step;
   const page = usePageTransition();
-  const next = () =>
-    step + 1 < STEPS.length
-      ? setStep(step + 1)
-      : page.leave(() => router.replace('/onboarding/login'));
+  const next = () => {
+    setState('idle');
+    if (step + 1 < STEPS.length) setStep(step + 1);
+    else page.leave(() => router.replace('/onboarding/login'));
+  };
+  const grantedThenNext = () => {
+    setState('granted');
+    setTimeout(next, 700);
+  };
+
+  // Já liberada (ex.: instalou por cima): mostra "Permitido" em vez de pedir de novo.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: refaz só ao trocar de etapa
+  useEffect(() => {
+    let alive = true;
+    hasPermission(cur.kind).then((ok) => alive && ok && setState('granted'));
+    return () => {
+      alive = false;
+    };
+  }, [cur.kind]);
+
+  // Voltou dos Ajustes do aparelho: confere de novo e segue se a pessoa liberou.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: depende só do estado da etapa
+  useEffect(() => {
+    if (state !== 'settings') return;
+    const sub = AppState.addEventListener('change', (st) => {
+      if (st === 'active') hasPermission(cur.kind).then((ok) => ok && grantedThenNext());
+    });
+    return () => sub.remove();
+  }, [state, cur.kind]);
+
+  const onAllow = () => {
+    if (state === 'asking') return;
+    if (state === 'granted') return next();
+    setState('asking');
+    requestPermission(cur.kind).then((r) => {
+      if (r === 'granted') grantedThenNext();
+      else if (r === 'settings') setState('settings');
+      else setState('idle');
+    });
+  };
+
+  const text =
+    state === 'settings'
+      ? 'O Android não mostra mais o pedido porque ele foi recusado antes. Abrimos os Ajustes do GoClient: toque em Permissões e libere. Depois é só voltar.'
+      : state === 'granted'
+        ? 'Permitido. Tudo certo.'
+        : cur.text;
+  const label =
+    state === 'granted'
+      ? 'Continuar'
+      : state === 'settings'
+        ? 'Abrir Ajustes de novo'
+        : state === 'asking'
+          ? 'Aguardando…'
+          : 'Permitir';
+
   return (
     <Animated.View style={[{ flex: 1 }, page.style]}>
       <OnboardingLayout
@@ -75,20 +129,15 @@ export default function Permissions() {
             </View>
           )
         }
-        hero={<PermissionHero icon={cur.icon} />}
+        hero={<PermissionHero icon={state === 'granted' ? 'checkmark-circle' : cur.icon} />}
         title={cur.title}
-        text={cur.text}
+        text={text}
         body={phone ? <Perks perks={cur.perks} /> : undefined}
         dots={{ index: step, count: STEPS.length }}
         actions={
           <>
-            <PillButton
-              label="Permitir"
-              onPress={() => {
-                requestPermission(cur.kind).finally(next);
-              }}
-            />
-            <PillButton label="Agora não" variant="plain" onPress={next} />
+            <PillButton label={label} onPress={onAllow} />
+            {state !== 'granted' && <PillButton label="Agora não" variant="plain" onPress={next} />}
           </>
         }
       />

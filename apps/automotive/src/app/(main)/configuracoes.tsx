@@ -182,6 +182,13 @@ export default function SettingsScreen() {
           onPress={() => {}}
         />
         <Row
+          leading={<AppIcon icon="pulse" color="#8E8E93" size={ic} />}
+          title="Diagnóstico das integrações"
+          value="Testar no aparelho"
+          chevron
+          onPress={() => router.push('/diagnostico')}
+        />
+        <Row
           leading={<AppIcon icon="information-circle" color="#8E8E93" size={ic} />}
           title="Sobre"
           value="Versão 0.1.0"

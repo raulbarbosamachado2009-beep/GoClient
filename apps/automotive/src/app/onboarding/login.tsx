@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Animated, Platform, StyleSheet, TextInput, View } from 'react-native';
 import Svg, { Rect } from 'react-native-svg';
 import { usePhone } from '../../layout/form-factor';
+import { markOnboardingDone } from '../../onboarding/done';
 import { FloatingLogos } from '../../onboarding/floating-logos';
 import { OnboardingLayout, PillButton } from '../../onboarding/layout';
 import { concentric, spacing, type, useColors } from '../../theme';
@@ -29,7 +30,10 @@ export default function Login() {
         <LoginStage
           stage={stage}
           setStage={setStage}
-          enter={() => page.leave(() => router.replace('/mapa'))}
+          enter={() => {
+            markOnboardingDone();
+            page.leave(() => router.replace('/mapa'));
+          }}
         />
       </Swap>
     </Animated.View>

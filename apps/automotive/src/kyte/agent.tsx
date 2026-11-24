@@ -54,7 +54,9 @@ let ready = false;
 let logged = false;
 /** Recebeu da janela invisível se está logada (desde que ela abriu). */
 let routeSeen = false;
-const LOGGED_KEY = 'kyte.logged';
+// v2: a versão anterior marcava "logado" na página "/" antes de o Kyte mandar para o login,
+// e o app nunca mais mostrava a tela de entrar. A chave nova começa do zero.
+const LOGGED_KEY = 'kyte.logged.v2';
 // Lembra entre aberturas do app se a pessoa entrou no Kyte (a janela invisível só abre
 // quando a Havena precisa, então não dá para perguntar a ela antes).
 let remembered = false;
@@ -71,6 +73,16 @@ export function noteKyteLogged(v: boolean) {
   if (v === remembered) return;
   remembered = v;
   SecureStore.setItemAsync(LOGGED_KEY, v ? '1' : '0').catch(() => {});
+  for (const l of loggedListeners) l(v);
+}
+
+const loggedListeners = new Set<(v: boolean) => void>();
+/** Avisa a aba Kyte quando a janela invisível descobre que o login caiu (ou voltou). */
+export function onKyteLoggedChange(l: (v: boolean) => void) {
+  loggedListeners.add(l);
+  return () => {
+    loggedListeners.delete(l);
+  };
 }
 const pending = new Map<number, Pending>();
 let seq = 0;
@@ -200,10 +212,12 @@ function AgentWindow() {
               ok?: boolean;
               data?: unknown;
               error?: string;
-              logged?: boolean;
+              logged?: boolean | null;
             };
-            if (m.type === 'route') {
-              logged = !!m.logged;
+            // logged null = página ainda carregando (o Kyte abre "/" antes de mandar para o
+            // login): só decide com a resposta certa.
+            if (m.type === 'route' && m.logged != null) {
+              logged = m.logged;
               routeSeen = true;
               noteKyteLogged(logged);
             }

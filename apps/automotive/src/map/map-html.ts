@@ -159,7 +159,7 @@ export function mapHtml(dark: boolean): string {
   function load(src, alt, done) {
     var s = document.createElement('script'); s.src = src; s.onload = done;
     s.onerror = function () { var b = document.createElement('script'); b.src = alt; b.onload = done;
-      b.onerror = function () { post({ type: 'error', message: 'Não foi possível carregar o mapa' }); };
+      b.onerror = function () { post({ type: 'error', fatal: true, message: 'Não foi possível carregar o mapa' }); };
       document.head.appendChild(b); };
     document.head.appendChild(s);
   }
@@ -174,12 +174,15 @@ export function mapHtml(dark: boolean): string {
   var STYLE_KEY = 'gc-style-v1';
   var styleJson = null, libReady = false;
   try { styleJson = JSON.parse(localStorage.getItem(STYLE_KEY) || 'null'); } catch (e) {}
+  // Sem resposta do estilo em 8 s, segue com o endereço (o MapLibre tenta de novo sozinho).
+  var styleTimer = setTimeout(function () { if (!styleJson) { styleJson = '${style}'; start(); } }, 8000);
   fetch('${style}').then(function (r) { return r.json(); })
     .then(function (st) {
+      clearTimeout(styleTimer);
       try { localStorage.setItem(STYLE_KEY, JSON.stringify(st)); } catch (e) {}
       if (!styleJson) { styleJson = st; start(); }
     })
-    .catch(function () { if (!styleJson) { styleJson = '${style}'; start(); } });
+    .catch(function () { clearTimeout(styleTimer); if (!styleJson) { styleJson = '${style}'; start(); } });
   load('https://unpkg.com/maplibre-gl@${VERSION}/dist/maplibre-gl.js',
        'https://cdn.jsdelivr.net/npm/maplibre-gl@${VERSION}/dist/maplibre-gl.js',
        function () { libReady = true; start(); });

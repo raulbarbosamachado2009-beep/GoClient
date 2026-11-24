@@ -33,7 +33,8 @@ export type KyteSectionKey = (typeof KYTE_SECTIONS)[number]['key'];
 
 /** Mensagens que a página do Kyte manda para o app. */
 export type KyteMessage =
-  | { type: 'route'; host: string; path: string; logged: boolean }
+  /** `logged`: true = menu do Kyte visível; false = tela de login; null = ainda carregando. */
+  | { type: 'route'; host: string; path: string; logged: boolean | null }
   | { type: 'nav'; hidden: boolean }
   /** Pílula Início aberta: o app busca os números e devolve com `__gcHomeData`. */
   | { type: 'home' }
@@ -122,7 +123,27 @@ export function kyteScript({
   var PHONE = ${phone ? 'true' : 'false'};
   var SECTIONS = ${JSON.stringify(sections)};
   function post(m){ try { window.ReactNativeWebView.postMessage(JSON.stringify(m)); } catch(e){} }
-  function logged(){ return location.hostname === 'web.kyteapp.com' && !/^\\/(login|external-login)/.test(location.pathname); }
+  // Login de verdade: não basta estar em web.kyteapp.com (a página "/" abre antes de o Kyte
+  // mandar para a tela de login). Só conta como logado quando o menu do Kyte aparece; e conta
+  // como deslogado só na tela de login ou com campo de senha. No meio disso: null (sem saber).
+  var sessionOk = false;
+  function onLoginPage(){
+    return location.hostname !== 'web.kyteapp.com' || /^\\/(login|external-login|signin)/.test(location.pathname) || !!document.querySelector('input[type=password]');
+  }
+  function hasMenu(){
+    var seen = {};
+    Array.prototype.forEach.call(document.querySelectorAll('a,button,li,span,p'), function(e){
+      if (e.children.length > 4) return;
+      var t = (e.textContent || '').trim(); if (LABELS.test(t)) seen[t.toLowerCase()] = 1;
+    });
+    return Object.keys(seen).length >= 3;
+  }
+  function loginState(){
+    if (onLoginPage()) { sessionOk = false; return false; }
+    if (!sessionOk && (document.querySelector('[data-goclient-nav]') || hasMenu())) sessionOk = true;
+    return sessionOk ? true : null;
+  }
+  function logged(){ return loginState() === true; }
   function style(){
     if (CSS && !document.getElementById('goclient-style')) {
       var s = document.createElement('style'); s.id = 'goclient-style'; s.textContent = CSS;
@@ -269,9 +290,10 @@ export function kyteScript({
   }
   var last = '';
   function report(){
-    var key = location.host + location.pathname;
+    var state = loginState();
+    var key = location.host + location.pathname + '|' + state;
     if (key === last) return; last = key;
-    post({ type: 'route', host: location.hostname, path: location.pathname, logged: logged() });
+    post({ type: 'route', host: location.hostname, path: location.pathname, logged: state });
   }
   function tidy(){ style(); report(); hideNav(); ensureBar(); ensureRoute(); paintBar(); }
   if (!window.__goclient) {

@@ -5,7 +5,7 @@ Leia este arquivo antes de começar qualquer trabalho.
 
 ## Estado atual do app
 
-_Última atualização: 2026-11-24 15:44 — Lucas atende a qualquer cumprimento com o nome; fala da pessoa aparece mais rápido; tudo junto na main (PR #6)._
+_Última atualização: 2026-11-24 16:42 — correções de funcionamento no Android (permissões, Kyte, Lucas, mapa, Spotify) e tela de Diagnóstico; em teste no branch `claude/project-thread-z0osgq`, ainda fora da main._
 
 - **Automotive (`apps/automotive`)** é onde está quase todo o produto: Mapa (OSM + OpenRouteService,
   navegação com voz), Kyte (telas próprias sobre a janela do Kyte), Música (Spotify App Remote) e
@@ -14,6 +14,39 @@ _Última atualização: 2026-11-24 15:44 — Lucas atende a qualquer cumprimento
 - Regras de negócio em `packages/core` (com testes); visual só com `@goclient/design-tokens`.
 
 ## Mudanças
+
+### 2026-11-24 16:42 — Fazer o app funcionar de verdade no Android (em teste, fora da main)
+
+Pedido do usuário depois de instalar o APK 35: permissões, Spotify, Kyte, mapa e Lucas falhando.
+Conferido no APK instalado: as chaves de mapa, IA e Spotify estão dentro dele, as permissões
+estão no manifesto e a assinatura bate com a SHA-1 documentada. Causas achadas no código:
+
+- **Permissões (onboarding):** o Android para de mostrar o pedido depois de duas recusas (o APK
+  instala por cima e mantém o estado). O "Permitir" parecia não fazer nada. Agora o app confere
+  o estado antes, abre os Ajustes do GoClient quando o pedido não aparece mais, mostra
+  "Permitido" quando já está liberado e segue sozinho ao voltar dos Ajustes
+  (`onboarding/permissions.ts`, `app/onboarding/permissoes.tsx`).
+- **Onboarding só na primeira vez:** depois de entrar, o app abre direto no Mapa
+  (`onboarding/done.ts`, `app/index.tsx`).
+- **Kyte:** a página "/" do Kyte abre antes de mandar para o login, e o app a tomava como
+  "logado": escondia a página de entrar e mostrava as telas vazias, e lembrava isso para
+  sempre. Agora só conta como logado quando o menu do Kyte aparece, e "deslogado" só na tela de
+  login ou com campo de senha (`kyte/bridge.ts`). A marca antiga foi descartada
+  (`kyte.logged.v2`) e a aba Kyte volta para a página de entrar se a sessão cair.
+- **Lucas:** depois de seis erros seguidos do reconhecimento ("ocupado", rede) a escuta
+  desligava de vez sem avisar. Agora ela nunca desiste sozinha (espera crescente de 0,4 s a 5 s)
+  e reabre também quando o aparelho não manda o fim. Se o motor de voz não avisar que terminou
+  de falar, o Lucas volta a ouvir mesmo assim (antes ficava "falando" para sempre). Tempo máximo
+  de espera da IA por modelo: 25 s → 12 s.
+- **Mapa:** quando a biblioteca do mapa não chegava na primeira abertura, ficava vazio. Agora
+  recarrega sozinho (sem resposta em 15 s, erro de carga ou WebView caída, até 3 vezes) e depois
+  mostra "Tentar de novo"; o estilo tem limite de 8 s.
+- **Spotify:** a janela de login captura o retorno também pela mudança de endereço e pelo erro
+  de carga da página de retorno.
+- **Diagnóstico (Ajustes → Diagnóstico das integrações):** testa no aparelho permissões,
+  reconhecimento de voz, vozes em português, IA da NVIDIA, mapa, OpenRouteService, Spotify
+  (Client ID, conta, plano e conexão com o app) e Kyte, com o erro exato e um botão para
+  compartilhar o relatório (sem chaves nem senhas).
 
 ### 2026-11-24 15:44 — Lucas atende a qualquer cumprimento e tudo vai para a main
 

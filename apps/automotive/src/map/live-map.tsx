@@ -5,6 +5,8 @@ import { MAPS_ENABLED } from '../integrations/env';
 import { usePhone, useSystemInsets, useTabBarSpace } from '../layout/form-factor';
 import { useFrameScale } from '../preview/automotive-frame';
 import { layout } from '../theme';
+import { Button, Text } from '../ui/primitives';
+import { Spinner } from '../ui/spinner';
 import { type MapState, mapHtml, warmupHtml } from './map-html';
 import type { LatLng } from './routing';
 
@@ -75,6 +77,25 @@ export function LiveMap({
   const json = JSON.stringify(state);
   const send = () => ref.current?.injectJavaScript(`window.__gc && window.__gc(${json});true;`);
 
+  // Primeira abertura: a biblioteca do mapa vem da internet e às vezes não chega (rede lenta
+  // da multimídia, CDN fora). Antes o mapa ficava vazio para sempre. Agora, sem "pronto" em
+  // 15 s, com erro de carga ou se a WebView cair, a página é recarregada (até 3 vezes) e
+  // depois aparece "Tentar de novo".
+  const [attempt, setAttempt] = useState(0);
+  const [status, setStatus] = useState<'loading' | 'ready' | 'failed'>('loading');
+  const retry = (manual = false) => {
+    ready.current = false;
+    if (!manual && attempt >= 2) return setStatus('failed');
+    setStatus('loading');
+    setAttempt((a) => (manual ? 0 : a + 1));
+  };
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reinicia a contagem a cada tentativa
+  useEffect(() => {
+    if (status !== 'loading') return;
+    const id = setTimeout(() => !ready.current && retry(), 15000);
+    return () => clearTimeout(id);
+  }, [attempt, status]);
+
   // biome-ignore lint/correctness/useExhaustiveDependencies: envia sempre que o estado muda
   useEffect(() => {
     if (ready.current) send();
@@ -92,6 +113,7 @@ export function LiveMap({
       >
         <WebView
           ref={ref}
+          key={`map-${attempt}`}
           source={{ html, baseUrl: 'https://goclient.local/' }}
           originWhitelist={['*']}
           javaScriptEnabled
@@ -105,15 +127,32 @@ export function LiveMap({
           style={{ flex: 1, backgroundColor: dark ? '#1b1b1d' : '#e9e9ec' }}
           onMessage={(e) => {
             try {
-              const m = JSON.parse(e.nativeEvent.data) as { type: string };
+              const m = JSON.parse(e.nativeEvent.data) as { type: string; fatal?: boolean };
               if (m.type === 'ready') {
                 ready.current = true;
+                setStatus('ready');
                 send();
-              }
+              } else if (m.type === 'error' && m.fatal && !ready.current) retry();
             } catch {}
           }}
+          onError={() => !ready.current && retry()}
+          onRenderProcessGone={() => retry()}
         />
       </View>
+      {status !== 'ready' && (
+        <View style={styles.overlay} pointerEvents={status === 'failed' ? 'auto' : 'none'}>
+          {status === 'loading' ? (
+            <Spinner />
+          ) : (
+            <>
+              <Text variant="headline" style={{ textAlign: 'center' }}>
+                O mapa não carregou. Confira a internet da multimídia.
+              </Text>
+              <Button label="Tentar de novo" icon="refresh" onPress={() => retry(true)} />
+            </>
+          )}
+        </View>
+      )}
     </View>
   );
 }
@@ -134,6 +173,13 @@ function sized(scale: number) {
 
 const styles = StyleSheet.create({
   unscale: { position: 'absolute' },
+  overlay: {
+    ...StyleSheet.absoluteFill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 24,
+    padding: 48,
+  },
   warmup: { position: 'absolute', width: 1, height: 1, opacity: 0, left: -10, top: -10 },
 });
 

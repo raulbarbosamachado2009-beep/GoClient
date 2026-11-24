@@ -2,7 +2,7 @@ import { useLocalSearchParams } from 'expo-router';
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 import { HavenaPanel } from '../../havena/panel';
-import { kyteLogged, noteKyteLogged, reloadKyteAgent } from '../../kyte/agent';
+import { kyteLogged, noteKyteLogged, onKyteLoggedChange, reloadKyteAgent } from '../../kyte/agent';
 import { AGENT_HELPERS, JOBS } from '../../kyte/agent-page';
 import type { KyteMessage } from '../../kyte/bridge';
 import { KyteConnect } from '../../kyte/connect';
@@ -50,6 +50,9 @@ export default function KyteScreen() {
   const [sell, setSell] = useState<SellPlan | null>(null);
   const [sellMsg, setSellMsg] = useState<string | null>(null);
   const filled = useRef(false);
+  // O login lembrado pode ter caído (sessão vencida): a janela invisível avisa e a página de
+  // entrar volta a aparecer.
+  useEffect(() => onKyteLoggedChange((v) => Platform.OS !== 'web' && setLogged(v)), []);
 
   useEffect(() => {
     if (!secao) return;
@@ -112,7 +115,8 @@ export default function KyteScreen() {
       );
       return;
     }
-    if (m.type !== 'route') return;
+    // Ainda carregando (sem saber se há login): espera a próxima mensagem.
+    if (m.type !== 'route' || m.logged === null) return;
     if (m.logged) fill();
     noteKyteLogged(m.logged);
     if (m.logged && !logged) {

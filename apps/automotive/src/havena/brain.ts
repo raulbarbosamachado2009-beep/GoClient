@@ -44,7 +44,8 @@ export async function ask(messages: Message[], tools: ToolSpec[]): Promise<Model
   for (const model of MODELS) {
     try {
       const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 25000);
+      // Dirigindo, esperar mais que isso parece que o Lucas não ouviu: tenta o modelo reserva.
+      const timer = setTimeout(() => ctrl.abort(), 12000);
       const res = await fetch(`${BASE}/chat/completions`, {
         method: 'POST',
         signal: ctrl.signal,

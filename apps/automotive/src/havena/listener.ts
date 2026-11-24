@@ -15,8 +15,15 @@ import { type MicUser, mic } from './mic';
  *   então "bom dia" chega inteiro, e não só "bom".
  */
 const SILENCE_MS = 1100;
-const RESTART_MS = 250;
-const MAX_FAILS = 6;
+/**
+ * Espera antes de reabrir o microfone. Reabrir rápido demais dá "reconhecedor ocupado" no
+ * Android; antes, seis erros seguidos desligavam a escuta de vez e o Lucas parava de ouvir
+ * sem avisar. Agora a espera cresce (0,4 s → 5 s) e a escuta nunca desiste sozinha.
+ */
+const RESTART_MS = 400;
+const MAX_WAIT_MS = 5000;
+/** Erros que não passam com o tempo: avisa a pessoa (a escuta continua tentando). */
+const HARD_ERRORS = new Set(['language-not-supported', 'service-not-allowed', 'bad-grammar']);
 
 export type MicProblem = 'permission' | 'unavailable';
 
@@ -68,7 +75,10 @@ export function useContinuousListener(
     if (!wanted.current || running.current || !mic.owns(user)) return;
     // Marca já como ligado: duas chamadas seguidas não abrem o microfone duas vezes.
     running.current = true;
-    const perm = await ExpoSpeechRecognitionModule.requestPermissionsAsync().catch(() => null);
+    // Confere sem pedir (é chamado a cada reabertura do microfone); só pede se faltar.
+    let perm = await ExpoSpeechRecognitionModule.getPermissionsAsync().catch(() => null);
+    if (!perm?.granted)
+      perm = await ExpoSpeechRecognitionModule.requestPermissionsAsync().catch(() => null);
     if (!perm?.granted) {
       running.current = false;
       wanted.current = false;
@@ -102,6 +112,7 @@ export function useContinuousListener(
       });
     } catch {
       running.current = false;
+      fails.current += 1;
       retry.current();
     }
   }, [user]);
@@ -110,7 +121,7 @@ export function useContinuousListener(
     (delay?: number) => {
       if (!wanted.current || restart.current) return;
       // Depois de vários erros seguidos (sem internet, serviço ocupado), espera mais.
-      const wait = delay ?? RESTART_MS * (fails.current > 2 ? 8 : 1);
+      const wait = delay ?? Math.min(MAX_WAIT_MS, RESTART_MS * 2 ** Math.min(fails.current, 4));
       restart.current = setTimeout(() => {
         restart.current = null;
         void begin();
@@ -192,6 +203,7 @@ export function useContinuousListener(
 
   useSpeechRecognitionEvent('error', (e) => {
     if (!mic.owns(user)) return;
+    running.current = false;
     if (e.error === 'not-allowed') {
       wanted.current = false;
       h.current.onProblem?.('permission');
@@ -200,10 +212,10 @@ export function useContinuousListener(
     // Silêncio e cancelamento não são falhas: o 'end' reabre o microfone.
     if (e.error === 'no-speech' || e.error === 'speech-timeout' || e.error === 'aborted') return;
     fails.current += 1;
-    if (fails.current >= MAX_FAILS) {
-      wanted.current = false;
-      h.current.onProblem?.('unavailable');
-    }
+    if (HARD_ERRORS.has(e.error) && fails.current === 3) h.current.onProblem?.('unavailable');
+    // Alguns aparelhos não mandam 'end' depois do erro: reabre por aqui também (a função
+    // ignora a segunda chamada).
+    scheduleRestart();
   });
 
   useEffect(
