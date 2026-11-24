@@ -1,11 +1,12 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Animated, StyleSheet, View } from 'react-native';
 import { usePhone } from '../../layout/form-factor';
 import { OnboardingLayout, PillButton } from '../../onboarding/layout';
 import { requestPermission } from '../../onboarding/permissions';
 import { PermissionHero } from '../../onboarding/scenes';
 import { concentric, spacing, useColors } from '../../theme';
+import { usePageTransition } from '../../ui/motion';
 import { Icon, type IconName, Text } from '../../ui/primitives';
 
 interface Step {
@@ -56,37 +57,42 @@ export default function Permissions() {
   const phone = usePhone();
   const [step, setStep] = useState(0);
   const cur = STEPS[Math.min(step, STEPS.length - 1)] as Step;
+  const page = usePageTransition();
   const next = () =>
-    step + 1 < STEPS.length ? setStep(step + 1) : router.replace('/onboarding/login');
+    step + 1 < STEPS.length
+      ? setStep(step + 1)
+      : page.leave(() => router.replace('/onboarding/login'));
   return (
-    <OnboardingLayout
-      sceneKey={cur.kind}
-      // Celular: tudo numa coluna. Multimídia: a lista vai no quadro da esquerda (não cabe
-      // embaixo do texto na altura da tela).
-      scene={
-        phone ? null : (
-          <View style={styles.sceneCar}>
-            <Perks perks={cur.perks} plain />
-          </View>
-        )
-      }
-      hero={<PermissionHero icon={cur.icon} />}
-      title={cur.title}
-      text={cur.text}
-      body={phone ? <Perks perks={cur.perks} /> : undefined}
-      dots={{ index: step, count: STEPS.length }}
-      actions={
-        <>
-          <PillButton
-            label="Permitir"
-            onPress={() => {
-              requestPermission(cur.kind).finally(next);
-            }}
-          />
-          <PillButton label="Agora não" variant="plain" onPress={next} />
-        </>
-      }
-    />
+    <Animated.View style={[{ flex: 1 }, page.style]}>
+      <OnboardingLayout
+        sceneKey={cur.kind}
+        // Celular: tudo numa coluna. Multimídia: a lista vai no quadro da esquerda (não cabe
+        // embaixo do texto na altura da tela).
+        scene={
+          phone ? null : (
+            <View style={styles.sceneCar}>
+              <Perks perks={cur.perks} plain />
+            </View>
+          )
+        }
+        hero={<PermissionHero icon={cur.icon} />}
+        title={cur.title}
+        text={cur.text}
+        body={phone ? <Perks perks={cur.perks} /> : undefined}
+        dots={{ index: step, count: STEPS.length }}
+        actions={
+          <>
+            <PillButton
+              label="Permitir"
+              onPress={() => {
+                requestPermission(cur.kind).finally(next);
+              }}
+            />
+            <PillButton label="Agora não" variant="plain" onPress={next} />
+          </>
+        }
+      />
+    </Animated.View>
   );
 }
 

@@ -5,7 +5,7 @@ Leia este arquivo antes de começar qualquer trabalho.
 
 ## Estado atual do app
 
-_Última atualização: 2026-11-24 12:41 — cartão do cliente sem o resumo do Kyte, com "Ver lista" da rota, e transições ao entrar e sair de uma rota._
+_Última atualização: 2026-11-24 13:51 — Encerrar que se recolhe em "×", endereço em carrossel, Ajustes maiores, nova transição entre páginas e logos flutuando no login._
 
 - **Automotive (`apps/automotive`)** é onde está quase todo o produto: Mapa (OSM + OpenRouteService,
   navegação com voz), Kyte (telas próprias sobre a janela do Kyte), Música (Spotify App Remote) e
@@ -14,6 +14,29 @@ _Última atualização: 2026-11-24 12:41 — cartão do cliente sem o resumo do 
 - Regras de negócio em `packages/core` (com testes); visual só com `@goclient/design-tokens`.
 
 ## Mudanças
+
+### 2026-11-24 13:51 — 8ª rodada: Encerrar recolhível, endereço em carrossel, Ajustes e transição de páginas
+
+Pedido do usuário (thread "Melhorar o design e o onboarding do app", 8ª rodada).
+
+- **Encerrar (multimídia):** 3 s depois de começar a navegação, o botão se recolhe num
+  quadrado só com o "×". A forma muda suavemente (largura, texto e ícone juntos) com desfoque
+  de movimento no meio da troca, como a busca. Tocar no quadrado encerra a navegação.
+- **Cartão do cliente:** o endereço fica numa linha só e, quando não cabe, passa como um
+  carrossel de tempos em tempos (`ui/marquee.tsx`). Com isso a faixa de chegada, tempo e km
+  não é mais cortada pelo fim do cartão.
+- **Ajustes na multimídia maiores:** linhas de 168, títulos de 38, ícones de 104, avatar de
+  140, interruptor de 152 × 92, seletor de tema mais largo, títulos de seção de 32.
+- **Nova transição entre páginas** (boas-vindas → permissões → login → mapa,
+  `usePageTransition` em `ui/motion.tsx`): a página que sai recua, desfoca e some; a nova chega
+  de perto, desfocada, e entra em foco.
+- **Login por e-mail:** a logo do GoClient espalhada pelo fundo, desfocada e com profundidade
+  (as de perto grandes, as de longe pequenas), entrando com fade e flutuando devagar
+  (`onboarding/floating-logos.tsx`).
+- Arquivos: `app/(main)/mapa.tsx`, `ui/marquee.tsx` (novo), `ui/motion.tsx`,
+  `ui/primitives.tsx`, `app/(main)/configuracoes.tsx`, `app/(main)/_layout.tsx`,
+  `app/onboarding/index.tsx`, `app/onboarding/permissoes.tsx`, `app/onboarding/login.tsx`,
+  `onboarding/layout.tsx`, `onboarding/floating-logos.tsx` (novo).
 
 ### 2026-11-24 12:41 — 7ª rodada: cartão do cliente, "Ver lista" e transições de rota
 

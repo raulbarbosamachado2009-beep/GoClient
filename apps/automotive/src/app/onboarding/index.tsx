@@ -6,7 +6,7 @@ import { OnboardingLayout, PillButton } from '../../onboarding/layout';
 import { ClientsScene, RouteScene, VoiceScene } from '../../onboarding/scenes';
 import { nativeDriver, useColors } from '../../theme';
 import { LogoMark } from '../../ui/brand';
-import { appleEase } from '../../ui/motion';
+import { appleEase, usePageTransition } from '../../ui/motion';
 import { Text } from '../../ui/primitives';
 
 /**
@@ -16,8 +16,17 @@ import { Text } from '../../ui/primitives';
 export default function Welcome() {
   const router = useRouter();
   const [phase, setPhase] = useState<'logo' | 'content'>('logo');
-  if (phase === 'logo') return <Intro onDone={() => setPhase('content')} />;
-  return <Pages onDone={() => router.push('/onboarding/permissoes')} />;
+  // Sair para as permissões: a página recua e desfoca antes de trocar (ver usePageTransition).
+  const page = usePageTransition();
+  return (
+    <Animated.View style={[{ flex: 1 }, page.style]}>
+      {phase === 'logo' ? (
+        <Intro onDone={() => setPhase('content')} />
+      ) : (
+        <Pages onDone={() => page.leave(() => router.push('/onboarding/permissoes'))} />
+      )}
+    </Animated.View>
+  );
 }
 
 /**

@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { type ComponentRef, useCallback, useEffect, useRef, useState } from 'react';
-import { Image, ScrollView, StyleSheet, View } from 'react-native';
+import { Animated, Image, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { callPhone, openWhatsApp } from '../../integrations/contact';
 import { MAPS_ENABLED } from '../../integrations/env';
 import { usePhone, useSystemInsets } from '../../layout/form-factor';
@@ -29,9 +29,11 @@ import { usePrototype } from '../../prototype/state';
 import { concentric, layout, spacing, useColors } from '../../theme';
 import { BlurArea, BlurTargetProvider } from '../../ui/blur-target';
 import { Cover } from '../../ui/brand';
-import { Appear, Presence, Swap } from '../../ui/motion';
+import { Marquee } from '../../ui/marquee';
+import { Appear, appleEase, Presence, Swap } from '../../ui/motion';
 import {
   Avatar,
+  Blur,
   Button,
   Icon,
   IconButton,
@@ -614,19 +616,101 @@ function TripBar({
       <Material style={styles.trip}>
         <Swap id={navigating ? 'stop' : 'go'} dir={navigating ? 1 : -1}>
           {navigating ? (
-            <Button
-              label="Encerrar"
-              icon="stop-circle"
-              variant="destructive"
-              style={styles.tripButton}
-              onPress={onStop}
-            />
+            <StopButton onPress={onStop} />
           ) : (
             <Button label="Ir" icon="navigate" style={styles.tripButton} onPress={onNavigate} />
           )}
         </Swap>
       </Material>
     </Appear>
+  );
+}
+
+/**
+ * "Encerrar" da navegação: depois de 3 s se recolhe num quadrado só com o "×". A forma muda
+ * suavemente (largura e conteúdo juntos, como a busca) e passa um desfoque no estilo da Apple
+ * durante a troca. Tocar (grande ou recolhido) encerra a navegação.
+ */
+const STOP_W = 280;
+const STOP_H = 84;
+function StopButton({ onPress }: { onPress: () => void }) {
+  const c = useColors();
+  const p = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const t = setTimeout(() => {
+      Animated.timing(p, {
+        toValue: 1,
+        duration: 620,
+        easing: appleEase,
+        // Largura não anda no driver nativo.
+        useNativeDriver: false,
+      }).start();
+    }, 3000);
+    return () => {
+      clearTimeout(t);
+      p.stopAnimation();
+    };
+  }, [p]);
+  const fg = c.danger;
+  const bg = c.mode === 'dark' ? 'rgba(255,69,58,0.2)' : 'rgba(255,59,48,0.12)';
+  const width = p.interpolate({ inputRange: [0, 1], outputRange: [STOP_W, STOP_H] });
+  const labelW = p.interpolate({
+    inputRange: [0, 0.7],
+    outputRange: [150, 0],
+    extrapolate: 'clamp',
+  });
+  const labelO = p.interpolate({
+    inputRange: [0, 0.35],
+    outputRange: [1, 0],
+    extrapolate: 'clamp',
+  });
+  const gap = p.interpolate({ inputRange: [0, 0.7], outputRange: [12, 0], extrapolate: 'clamp' });
+  const stopO = p.interpolate({ inputRange: [0, 0.5], outputRange: [1, 0], extrapolate: 'clamp' });
+  const xO = p.interpolate({ inputRange: [0.5, 1], outputRange: [0, 1], extrapolate: 'clamp' });
+  const iconScale = p.interpolate({ inputRange: [0, 0.5, 1], outputRange: [1, 0.7, 1] });
+  // Desfoque de movimento: máximo no meio da troca de forma, nenhum nas pontas.
+  const blurO = p.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 1, 0] });
+  const webBlur =
+    Platform.OS === 'web'
+      ? {
+          filter: p.interpolate({
+            inputRange: [0, 0.5, 1],
+            outputRange: ['blur(0px)', 'blur(5px)', 'blur(0px)'],
+          }),
+        }
+      : null;
+  return (
+    <Touchable
+      accessibilityRole="button"
+      accessibilityLabel="Encerrar navegação"
+      onPress={onPress}
+      scaleTo={0.96}
+    >
+      <Animated.View
+        style={[styles.stop, { width, backgroundColor: bg, borderRadius: TRIP_INNER }]}
+      >
+        <Animated.View style={[styles.stopRow, webBlur as object]}>
+          <Animated.View style={{ width: 34, height: 34, transform: [{ scale: iconScale }] }}>
+            <Animated.View style={[StyleSheet.absoluteFill, styles.center, { opacity: stopO }]}>
+              <Icon name="stop-circle" size={32} color={fg} />
+            </Animated.View>
+            <Animated.View style={[StyleSheet.absoluteFill, styles.center, { opacity: xO }]}>
+              <Icon name="close" size={40} color={fg} />
+            </Animated.View>
+          </Animated.View>
+          <Animated.View
+            style={{ width: labelW, marginLeft: gap, opacity: labelO, overflow: 'hidden' }}
+          >
+            <Text variant="headline" color={fg} numberOfLines={1} style={{ width: 150 }}>
+              Encerrar
+            </Text>
+          </Animated.View>
+        </Animated.View>
+        <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { opacity: blurO }]}>
+          <Blur radius={12} tint={c.material.tint} />
+        </Animated.View>
+      </Animated.View>
+    </Touchable>
   );
 }
 
@@ -778,14 +862,12 @@ function ClientCard({
                 <Text variant="title" numberOfLines={2} style={{ fontSize: 40, lineHeight: 46 }}>
                   {client.tradeName || client.name}
                 </Text>
-                <Text
-                  variant="subhead"
-                  tone="secondary"
-                  numberOfLines={3}
-                  style={{ fontSize: 24, lineHeight: 30 }}
-                >
-                  {[client.address, district].filter(Boolean).join(' · ')}
-                </Text>
+                {/* Endereço numa linha só: quando não cabe, passa como um carrossel. */}
+                <Marquee
+                  text={[client.address, district].filter(Boolean).join(' · ')}
+                  lineHeight={30}
+                  style={{ fontSize: 24 }}
+                />
               </View>
               <IconButton
                 icon="close"
@@ -1024,14 +1106,17 @@ const styles = StyleSheet.create({
     borderRadius: layout.radius.xl,
   },
   trip: { padding: spacing[4], borderRadius: TRIP_R },
-  tripButton: { borderRadius: TRIP_INNER, minWidth: 280, paddingHorizontal: spacing[8] },
+  stop: { height: STOP_H, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
+  stopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  center: { alignItems: 'center', justifyContent: 'center' },
+  tripButton: { borderRadius: TRIP_INNER, width: STOP_W },
   card: { flex: 1, borderRadius: 40, padding: spacing[8] },
   compact: { flex: 1, borderRadius: COMPACT_R, padding: spacing[6] },
   tripStats: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     borderRadius: COMPACT_INNER,
-    paddingVertical: spacing[4],
+    paddingVertical: spacing[3],
   },
   compactTop: {
     flexDirection: 'row',

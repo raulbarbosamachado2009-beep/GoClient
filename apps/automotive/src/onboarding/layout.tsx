@@ -26,6 +26,7 @@ export function OnboardingLayout({
   centered = false,
   hero,
   body,
+  backdrop,
 }: {
   /** Ilustração; `null` = tela só com marca, texto e ações (ex.: login). */
   scene: ReactNode | null;
@@ -44,6 +45,8 @@ export function OnboardingLayout({
   hero?: ReactNode;
   /** Conteúdo logo abaixo do texto (ex.: lista do que a permissão libera). */
   body?: ReactNode;
+  /** Fundo decorativo atrás de tudo (ex.: logos flutuando na tela de e-mail). */
+  backdrop?: ReactNode;
 }) {
   const c = useColors();
   const phone = usePhone();
@@ -125,6 +128,7 @@ export function OnboardingLayout({
             : styles.pageCar,
       ]}
     >
+      {backdrop}
       {scene === null ? (
         // Sem ilustração: tudo numa coluna centrada, com espaço para os campos respirarem.
         <View

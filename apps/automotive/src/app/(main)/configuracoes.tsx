@@ -38,8 +38,8 @@ export default function SettingsScreen() {
   const { kyteOpen, setKyteOpen } = usePrototype();
   const phone = usePhone();
   // Multimídia: ícones, linhas e recuos maiores (alvos de toque com o carro em movimento).
-  const ic = phone ? 68 : 88;
-  const inset = phone ? 128 : 160;
+  const ic = phone ? 68 : 104;
+  const inset = phone ? 128 : 184;
   const spotifyValue = !sp.enabled
     ? 'Demonstração (sem Client ID)'
     : sp.active
@@ -47,9 +47,9 @@ export default function SettingsScreen() {
       : 'Não conectado';
 
   const sections = [
-    <Group key="perfil" inset={phone ? 148 : 184}>
+    <Group key="perfil" inset={phone ? 148 : 212}>
       <Row
-        leading={<Avatar name="Raul Barbosa" size={phone ? 96 : 120} />}
+        leading={<Avatar name="Raul Barbosa" size={phone ? 96 : 140} />}
         title="Raul Barbosa"
         subtitle="Perfil, conta e plano Pro"
         chevron
@@ -67,7 +67,7 @@ export default function SettingsScreen() {
             <Segmented<ThemePreference>
               value={preference}
               onChange={setPreference}
-              segmentWidth={phone ? 118 : 210}
+              segmentWidth={phone ? 118 : 240}
               options={[
                 { value: 'light', label: 'Claro' },
                 { value: 'dark', label: 'Escuro' },

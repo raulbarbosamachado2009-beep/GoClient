@@ -1,11 +1,12 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Platform, StyleSheet, TextInput, View } from 'react-native';
+import { Animated, Platform, StyleSheet, TextInput, View } from 'react-native';
 import Svg, { Rect } from 'react-native-svg';
 import { usePhone } from '../../layout/form-factor';
+import { FloatingLogos } from '../../onboarding/floating-logos';
 import { OnboardingLayout, PillButton } from '../../onboarding/layout';
 import { concentric, spacing, type, useColors } from '../../theme';
-import { Appear, Swap } from '../../ui/motion';
+import { Appear, Swap, usePageTransition } from '../../ui/motion';
 import { Icon, type IconName, Text, Touchable } from '../../ui/primitives';
 
 /**
@@ -19,25 +20,40 @@ type Stage = 'start' | 'email' | 'qr';
 
 export default function Login() {
   const [stage, setStage] = useState<Stage>('start');
+  const router = useRouter();
+  const page = usePageTransition();
   // Trocar de etapa tem a mesma transição da aba "Rotas" do celular (sai e entra deslizando).
   return (
-    <Swap id={stage} dir={stage === 'start' ? -1 : 1} style={{ flex: 1 }}>
-      <LoginStage stage={stage} setStage={setStage} />
-    </Swap>
+    <Animated.View style={[{ flex: 1 }, page.style]}>
+      <Swap id={stage} dir={stage === 'start' ? -1 : 1} style={{ flex: 1 }}>
+        <LoginStage
+          stage={stage}
+          setStage={setStage}
+          enter={() => page.leave(() => router.replace('/mapa'))}
+        />
+      </Swap>
+    </Animated.View>
   );
 }
 
-function LoginStage({ stage, setStage }: { stage: Stage; setStage: (s: Stage) => void }) {
+function LoginStage({
+  stage,
+  setStage,
+  enter,
+}: {
+  stage: Stage;
+  setStage: (s: Stage) => void;
+  enter: () => void;
+}) {
   const c = useColors();
-  const router = useRouter();
   const phone = usePhone();
-  const enter = () => router.replace('/mapa');
 
   if (stage === 'email') {
     return (
       <OnboardingLayout
         sceneKey="email"
         scene={null}
+        backdrop={<FloatingLogos />}
         centered
         title="Entre com seu e-mail"
         text="Use a mesma conta do GoClient no celular e no carro."

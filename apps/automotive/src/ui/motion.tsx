@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useRef, useState } from 'react';
-import { Animated, Easing, type StyleProp, type ViewStyle } from 'react-native';
+import { Animated, Easing, Platform, type StyleProp, type ViewStyle } from 'react-native';
 import { nativeDriver } from '../theme';
 
 /** Curva padrão da Apple para entradas (ease-out suave). */
@@ -281,4 +281,53 @@ export function Presence({
       {show ? children : last.current}
     </Animated.View>
   );
+}
+
+/**
+ * Transição entre páginas (boas-vindas → permissões → login → mapa): a página nova chega de
+ * perto, desfocada, e entra em foco; ao sair, a página recua, desfoca e some. `leave(go)` toca
+ * a saída e então navega. Terminada a entrada, o filtro sai do estilo (um filtro ligado
+ * desligaria o desfoque dos cartões de vidro da página na Web).
+ */
+export function usePageTransition() {
+  const v = useRef(new Animated.Value(0)).current;
+  const [settled, setSettled] = useState(false);
+  const leaving = useRef(false);
+  useEffect(() => {
+    Animated.timing(v, {
+      toValue: 1,
+      duration: 760,
+      easing: appleEase,
+      useNativeDriver: false,
+    }).start(({ finished }) => finished && setSettled(true));
+    return () => v.stopAnimation();
+  }, [v]);
+  const leave = (go: () => void) => {
+    if (leaving.current) return;
+    leaving.current = true;
+    setSettled(false);
+    Animated.timing(v, {
+      toValue: 2,
+      duration: 420,
+      easing: Easing.in(Easing.cubic),
+      useNativeDriver: false,
+    }).start(() => go());
+  };
+  const style = settled
+    ? null
+    : {
+        opacity: v.interpolate({ inputRange: [0, 1, 2], outputRange: [0, 1, 0] }),
+        transform: [
+          { scale: v.interpolate({ inputRange: [0, 1, 2], outputRange: [1.08, 1, 0.94] }) },
+        ],
+        ...(Platform.OS === 'web'
+          ? {
+              filter: v.interpolate({
+                inputRange: [0, 1, 2],
+                outputRange: ['blur(18px)', 'blur(0px)', 'blur(14px)'],
+              }),
+            }
+          : null),
+      };
+  return { leave, style: style as StyleProp<ViewStyle> };
 }

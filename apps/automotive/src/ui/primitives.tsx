@@ -441,7 +441,7 @@ export function Segmented<T extends string>({
               style={
                 segmentWidth < 150
                   ? { fontSize: 21, lineHeight: 26 }
-                  : { fontSize: 27, lineHeight: 33 }
+                  : { fontSize: 31, lineHeight: 37 }
               }
             >
               {o.label}
@@ -458,7 +458,7 @@ export function Switch({ value, onChange }: { value: boolean; onChange: (v: bool
   const c = useColors();
   const phone = usePhone();
   // Multimídia: interruptor maior (132 × 80).
-  const x = useSpring(value ? (phone ? 44 : 52) : 0);
+  const x = useSpring(value ? (phone ? 44 : 60) : 0);
   return (
     <Pressable
       accessibilityRole="switch"
@@ -556,7 +556,7 @@ export function Row({
         </Text>
       )}
       {trailing}
-      {chevron && <Icon name="chevron-forward" size={phone ? 32 : 40} color={c.textTertiary} />}
+      {chevron && <Icon name="chevron-forward" size={phone ? 32 : 46} color={c.textTertiary} />}
     </>
   );
   // Sem ação, a linha é só um contêiner: controles dentro dela (interruptor, seletor)
@@ -583,7 +583,7 @@ export function SectionHeader({ title, action }: { title: string; action?: React
       <Text
         variant="subhead"
         tone="secondary"
-        style={phone ? { fontSize: 25, lineHeight: 31 } : { fontSize: 28, lineHeight: 34 }}
+        style={phone ? { fontSize: 25, lineHeight: 31 } : { fontSize: 32, lineHeight: 38 }}
       >
         {title}
       </Text>
@@ -718,8 +718,8 @@ function lighten(hex: string, amount: number): string {
 
 /** Textos das linhas de lista, maiores para tocar e ler no carro. */
 const rowText = StyleSheet.create({
-  title: { fontSize: 34, lineHeight: 42 },
-  subtitle: { fontSize: 26, lineHeight: 32 },
+  title: { fontSize: 38, lineHeight: 46 },
+  subtitle: { fontSize: 29, lineHeight: 36 },
 });
 /** Celular em pé: medidas do iOS (corpo 17 pt, legenda 15 pt) na tela de 720. */
 const rowTextPhone = StyleSheet.create({
@@ -772,8 +772,8 @@ const styles = StyleSheet.create({
     gap: spacing[2],
   },
   switch: { width: 112, height: 68, borderRadius: 34, padding: 4 },
-  switchCar: { width: 132, height: 80, borderRadius: 40 },
-  knobCar: { width: 72, height: 72, borderRadius: 36 },
+  switchCar: { width: 152, height: 92, borderRadius: 46 },
+  knobCar: { width: 84, height: 84, borderRadius: 42 },
   knob: {
     width: 60,
     height: 60,
@@ -793,7 +793,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing[4],
   },
   // Multimídia: linhas mais altas (Ajustes e listas).
-  rowCar: { minHeight: 144, paddingHorizontal: spacing[8] },
+  rowCar: { minHeight: 168, paddingHorizontal: spacing[8] },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',

@@ -1,6 +1,6 @@
 import { Slot, usePathname } from 'expo-router';
 import { type ComponentRef, useEffect, useRef } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Animated, StyleSheet, View } from 'react-native';
 import { warmVoice } from '../../havena/voice';
 import { WakeListener } from '../../havena/wake';
 import { KyteAgentHost } from '../../kyte/agent';
@@ -12,7 +12,7 @@ import { Sidebar } from '../../shell/sidebar';
 import { TabBar } from '../../shell/tab-bar';
 import { layout, useColors } from '../../theme';
 import { BlurArea, BlurTargetProvider } from '../../ui/blur-target';
-import { ScreenTransition } from '../../ui/motion';
+import { ScreenTransition, usePageTransition } from '../../ui/motion';
 
 /**
  * Estrutura das telas principais. Multimídia (ou celular deitado): barra lateral do CarPlay
@@ -38,9 +38,11 @@ export default function MainLayout() {
   const tabSpace = useTabBarSpace();
   // Liga o motor de voz logo ao abrir o app: a primeira resposta do Lucas já sai na hora.
   useEffect(warmVoice, []);
+  const page = usePageTransition();
   return (
     <StopsProvider>
-      <View style={[styles.root, { backgroundColor: c.background }]}>
+      {/* Ao chegar do login, o painel entra em foco (mesma transição das páginas). */}
+      <Animated.View style={[styles.root, { backgroundColor: c.background }, page.style]}>
         {/* Janela invisível do Kyte, usada pelo Lucas e pelo Início (só no app Android). */}
         <KyteAgentHost />
         {/* Ativação por voz ("olá Lucas", "bom dia", "oh IA"…), com o Lucas fechado. */}
@@ -75,7 +77,7 @@ export default function MainLayout() {
             <View style={StyleSheet.absoluteFill}>{overlay}</View>
           </BlurTargetProvider>
         )}
-      </View>
+      </Animated.View>
     </StopsProvider>
   );
 }
