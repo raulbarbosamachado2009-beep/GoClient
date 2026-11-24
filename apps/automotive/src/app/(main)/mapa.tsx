@@ -1,15 +1,15 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { type ComponentRef, useCallback, useEffect, useRef, useState } from 'react';
-import { Image, StyleSheet, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, View } from 'react-native';
 import { callPhone, openWhatsApp } from '../../integrations/contact';
 import { MAPS_ENABLED } from '../../integrations/env';
 import { usePhone, useSystemInsets } from '../../layout/form-factor';
+import { CarSearch } from '../../map/car-search';
 import { ClientPicker } from '../../map/client-picker';
 import { LiveMap, type MapPin } from '../../map/live-map';
 import { type Guidance as TurnGuidance, useTurnByTurn } from '../../map/navigation';
 import { PannableMap } from '../../map/pannable-map';
 import { ExploreSheet, RouteSheet, type TripInfo } from '../../map/phone-sheet';
-import { RoutePlanner } from '../../map/route-planner';
 import {
   formatArrival,
   formatDuration,
@@ -18,6 +18,7 @@ import {
   type LatLng,
   type LiveRoute,
 } from '../../map/routing';
+import { OptionGroup, OptionRow, SavedRoutes } from '../../map/saved-routes';
 import { useStops } from '../../map/stops';
 import { useCarPosition, useClientPlaces, useLiveRoute } from '../../map/use-live-map';
 import { CLIENT_FOCUS, DAY_FOCUS, type MapMode, USER } from '../../map/world';
@@ -287,7 +288,7 @@ export default function MapScreen() {
       <View pointerEvents="box-none" style={styles.mapOverlay}>
         <BlurTargetProvider value={mapArea}>
           {mode === 'explore' ? (
-            <SearchPill />
+            <CarSearch maxHeight={layout.height - layout.gutter * 4} />
           ) : live ? (
             <LiveGuidance to={client?.tradeName ?? ''} status={liveStatus} guidance={guidance} />
           ) : (
@@ -411,26 +412,6 @@ function NowPlayingCard() {
         />
       </View>
     </View>
-  );
-}
-
-function SearchPill() {
-  const phone = usePhone();
-  const system = useSystemInsets();
-  const c = useColors();
-  return (
-    <Appear
-      delay={60}
-      fade={false}
-      style={phone ? [PHONE.top, { top: layout.gutter + system.top }] : styles.topLeft}
-    >
-      <Material style={[styles.search, phone && { width: '100%' }]}>
-        <Icon name="search" size={28} color={c.textSecondary} />
-        <Text variant="body" tone="secondary">
-          Buscar cliente ou endereço
-        </Text>
-      </Material>
-    </Appear>
   );
 }
 
@@ -778,113 +759,91 @@ function ClientCard({
   );
 }
 
-/** Cartão inicial: nenhum cliente selecionado ainda. */
+/**
+ * Cartão inicial (multimídia), no estilo dos cartões do Apple Maps: título e uma lista
+ * agrupada com linhas grandes, todas no azul do app. Regra 3: a multimídia não monta rotas —
+ * só escolhe um cliente ou começa uma rota montada no celular.
+ */
 function WelcomeCard() {
-  const c = useColors();
-  const router = useRouter();
   const stops = useStops();
-  const tile = c.mode === 'dark' ? 'rgba(255,255,255,0.08)' : '#FFFFFF';
-  // "Escolher cliente" abre a lista dentro do próprio cartão (sem trocar de tela).
-  const [picking, setPicking] = useState(false);
-  const [planning, setPlanning] = useState(false);
-  if (planning)
+  const [view, setView] = useState<'home' | 'pick' | 'routes'>('home');
+  if (view === 'pick')
     return (
       <Material style={[styles.welcome, { justifyContent: 'flex-start' }]}>
-        <RoutePlanner big onClose={() => setPlanning(false)} />
+        <ClientPicker onClose={() => setView('home')} />
       </Material>
     );
-  if (picking)
+  if (view === 'routes')
     return (
-      <Material style={[styles.welcome, { justifyContent: 'flex-start' }]}>
-        <ClientPicker onClose={() => setPicking(false)} />
+      <Material style={styles.welcome}>
+        <Appear distance={12} style={{ flex: 1, gap: spacing[5] }}>
+          <View style={styles.welcomeHead}>
+            <Text variant="largeTitle" style={{ fontSize: 40, lineHeight: 48 }}>
+              Rotas
+            </Text>
+            <IconButton
+              icon="close"
+              size={80}
+              iconSize={36}
+              accessibilityLabel="Voltar"
+              onPress={() => setView('home')}
+            />
+          </View>
+          <ScrollView showsVerticalScrollIndicator={false}>
+            <SavedRoutes outerRadius={WELCOME_R} outerPadding={spacing[6]} />
+          </ScrollView>
+        </Appear>
       </Material>
     );
-  // Estilo dos cartões do Apple Maps: título e, embaixo, uma lista agrupada com ícones
-  // redondos coloridos, linhas altas (fáceis de tocar dirigindo) e seta à direita.
-  const options: {
-    icon: IconName;
-    color: string;
-    title: string;
-    sub: string;
-    onPress: () => void;
-  }[] = [
-    {
-      icon: 'storefront',
-      color: '#0A84FF',
-      title: 'Escolher cliente',
-      sub: 'Traçar o caminho até um cliente',
-      onPress: () => setPicking(true),
-    },
-    {
-      icon: 'trail-sign',
-      color: '#30D158',
-      title: 'Montar rota do dia',
-      sub: 'O GoClient organiza a ordem',
-      onPress: () => setPlanning(true),
-    },
-    ...(stops.dayIds.length > 0
-      ? [
-          {
-            icon: 'map' as IconName,
-            color: '#FF9F0A',
-            title: 'Rota de hoje',
-            sub: stops.dayIds.length === 1 ? '1 parada' : `${stops.dayIds.length} paradas`,
-            onPress: () => router.replace({ pathname: '/mapa', params: { rota: 'dia' } }),
-          },
-        ]
-      : []),
-  ];
+  const count = stops.saved.length;
   return (
     <Material style={styles.welcome}>
-      <View style={{ gap: spacing[1] }}>
-        <Text variant="largeTitle" style={{ fontSize: 40, lineHeight: 48 }}>
-          Para onde vamos?
-        </Text>
-        <Text variant="body" tone="secondary">
-          Escolha um destino ou monte o dia.
-        </Text>
-      </View>
-      <View style={[styles.optionGroup, { backgroundColor: tile }]}>
-        {options.map((o, i) => (
-          <Touchable
-            key={o.title}
-            accessibilityRole="button"
-            accessibilityLabel={o.title}
-            onPress={o.onPress}
-            scaleTo={0.98}
-            style={[
-              styles.option,
-              i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.separator },
-            ]}
-          >
-            <View style={[styles.optionIcon, { backgroundColor: o.color }]}>
-              <Icon name={o.icon} size={36} color="#FFFFFF" />
-            </View>
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <Text variant="headline" numberOfLines={1} style={{ fontSize: 28, lineHeight: 34 }}>
-                {o.title}
-              </Text>
-              <Text variant="callout" tone="secondary" numberOfLines={1}>
-                {o.sub}
-              </Text>
-            </View>
-            <Icon name="chevron-forward" size={30} color={c.textTertiary} />
-          </Touchable>
-        ))}
-      </View>
+      <Appear distance={12} style={{ gap: spacing[6] }}>
+        <View style={{ gap: spacing[1] }}>
+          <Text variant="largeTitle" style={{ fontSize: 42, lineHeight: 50 }}>
+            Para onde vamos?
+          </Text>
+          <Text variant="body" tone="secondary" style={{ fontSize: 26, lineHeight: 32 }}>
+            Escolha um cliente ou uma rota montada.
+          </Text>
+        </View>
+        <OptionGroup outerRadius={WELCOME_R} outerPadding={spacing[6]}>
+          <OptionRow
+            first
+            big
+            strong
+            icon="storefront"
+            title="Escolher cliente"
+            sub="Traçar o caminho até ele"
+            onPress={() => setView('pick')}
+          />
+          <OptionRow
+            big
+            icon="trail-sign"
+            title="Rotas montadas"
+            sub={
+              count === 0
+                ? 'Monte no celular'
+                : count === 1
+                  ? '1 rota do celular'
+                  : `${count} rotas do celular`
+            }
+            onPress={() => setView('routes')}
+          />
+        </OptionGroup>
+      </Appear>
     </Material>
   );
 }
 
 /**
  * Bordas concêntricas dos cartões da multimídia: raio de dentro = raio de fora − espaçamento.
- * Cartão grande ("Para onde vamos?"): 56 − 32 = 24. Cartão do cliente: 48 − 24 = 24.
+ * Cartão grande ("Para onde vamos?"): 56 − 24 = 32. Cartão do cliente: 48 − 24 = 24.
  * Barra da viagem: 32 − 16 = 16.
  */
 const WELCOME_R = 56;
 const COMPACT_R = 48;
 const TRIP_R = layout.radius.xl;
-const WELCOME_INNER = concentric(WELCOME_R, spacing[8]);
 const COMPACT_INNER = concentric(COMPACT_R, spacing[6]);
 const TRIP_INNER = concentric(TRIP_R, spacing[4]);
 
@@ -942,15 +901,6 @@ const styles = StyleSheet.create({
   nowBackdrop: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' },
   nowControls: { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center' },
   nowHead: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
-  search: {
-    height: 80,
-    width: 500,
-    borderRadius: 40,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[3],
-    paddingHorizontal: spacing[6],
-  },
   maneuver: { flexDirection: 'row', alignItems: 'center', gap: spacing[6] },
   // Celular: manobra em cima e a faixa de chegada/tempo/distância embaixo.
   guidanceStack: {
@@ -1006,24 +956,10 @@ const styles = StyleSheet.create({
   welcome: {
     flex: 1,
     borderRadius: WELCOME_R,
-    padding: spacing[8],
+    padding: spacing[6],
     gap: spacing[6],
   },
-  optionGroup: { borderRadius: WELCOME_INNER, paddingLeft: spacing[5] },
-  option: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[4],
-    minHeight: 116,
-    paddingRight: spacing[5],
-  },
-  optionIcon: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  welcomeHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   avatarTile: {
     width: 112,
     height: 112,

@@ -26,7 +26,9 @@ export interface AccessContext {
 export type DenialReason =
   | 'role_not_allowed'
   /** Regra 1: no Automotive, clientes e produtos não são criados/editados manualmente. */
-  | 'automotive_manual_edit_blocked';
+  | 'automotive_manual_edit_blocked'
+  /** Regra 3: rotas são montadas no celular; no Automotive só são lidas e iniciadas. */
+  | 'automotive_route_build_blocked';
 
 export type AccessDecision =
   | {
@@ -79,6 +81,12 @@ export function can(ctx: AccessContext, resource: Resource, action: Action): Acc
     AUTOMOTIVE_MANUAL_LOCKED.includes(resource)
   ) {
     return { allowed: false, reason: 'automotive_manual_edit_blocked' };
+  }
+
+  // Regra 3 — rotas só são montadas (criadas, alteradas, excluídas) no celular. Na
+  // multimídia o usuário só escolhe e começa uma rota já montada (leitura).
+  if (isWrite && ctx.platform === 'automotive' && resource === 'route') {
+    return { allowed: false, reason: 'automotive_route_build_blocked' };
   }
 
   return { allowed: true, requiresConfirmation: isWrite && ctx.channel === 'havena' };

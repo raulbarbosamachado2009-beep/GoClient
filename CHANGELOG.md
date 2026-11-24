@@ -5,7 +5,7 @@ Leia este arquivo antes de começar qualquer trabalho.
 
 ## Estado atual do app
 
-_Última atualização: 2026-11-24 11:09 — navegação que funciona no Preview, cartão da música com a capa desfocada, cartão "Para onde vamos?" no estilo Apple e Ajustes maiores na multimídia._
+_Última atualização: 2026-11-24 11:31 — rotas montadas só no celular (Regra 3) e começadas na multimídia, busca do Mapa da multimídia que vira cartão, opções maiores em azul._
 
 - **Automotive (`apps/automotive`)** é onde está quase todo o produto: Mapa (OSM + OpenRouteService,
   navegação com voz), Kyte (telas próprias sobre a janela do Kyte), Música (Spotify App Remote) e
@@ -14,6 +14,31 @@ _Última atualização: 2026-11-24 11:09 — navegação que funciona no Preview
 - Regras de negócio em `packages/core` (com testes); visual só com `@goclient/design-tokens`.
 
 ## Mudanças
+
+### 2026-11-24 11:31 — 5ª rodada: rotas montadas no celular, busca da multimídia e opções em azul
+
+Pedido do usuário (thread "Melhorar o design e o onboarding do app", 5ª rodada).
+
+- **Regra 3 (nova):** rotas são montadas só no celular. Na multimídia elas só são listadas e
+  começadas. Está em `can()` (`packages/core/src/permissions.ts`, motivo
+  `automotive_route_build_blocked`), vale na API e tem testes; o teste antigo que deixava
+  reorganizar rotas no carro foi removido. `CLAUDE.md` atualizado.
+- **"Rotas" na aba puxável (celular):** abre duas opções: **Montar nova rota** e a lista
+  **Rotas montadas** (tocar começa a rota). Toda rota montada fica salva nessa lista.
+- **Multimídia:** "Para onde vamos?" tem Escolher cliente e Rotas montadas; não há mais montar
+  rota no carro, só um aviso para usar o celular.
+- **Busca do Mapa (multimídia) funciona:** a pílula muda de forma suavemente (largura, altura e
+  cantos juntos) até um cartão grande com Atalhos (Clientes, Produtos, Rotas), Recentes e
+  "Começar" a última rota. Busca clientes por nome e endereço. Elementos com fade de entrada e
+  saída e desfoque de movimento enquanto a forma muda, abrindo e fechando.
+- **Opções maiores e em harmonia:** linhas de 140 com ícones de 80 e textos de 30; todas no azul
+  do app (círculo azul translúcido), a principal em azul cheio. Raios concêntricos (cartão 52,
+  padding 24 → grupo 28).
+- **Ainda falta:** a sincronia real das rotas do celular para o carro precisa de um endpoint de
+  rotas na API. No Preview aparecem rotas de exemplo.
+- Arquivos: `packages/core/src/permissions.ts` (+ teste), `CLAUDE.md`, `map/stops.tsx`,
+  `map/saved-routes.tsx` (novo), `map/car-search.tsx` (novo), `map/phone-sheet.tsx`,
+  `app/(main)/mapa.tsx`.
 
 ### 2026-11-24 11:09 — 4ª rodada: navegar, cartão da música, "Para onde vamos?", ícone do Mapa, barra lateral e Ajustes
 

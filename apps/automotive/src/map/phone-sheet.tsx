@@ -23,6 +23,7 @@ import { appleEase } from '../ui/motion';
 import { Avatar, Blur, Icon, type IconName, Text, Touchable } from '../ui/primitives';
 import { RoutePlanner } from './route-planner';
 import { RouteQueue } from './route-queue';
+import { SavedRoutes } from './saved-routes';
 import { DraggedContext, REORDER_HANDLE, SheetLock, Tap } from './sheet-context';
 import { useStops } from './stops';
 
@@ -511,6 +512,8 @@ export function ExploreSheet() {
   const [notice, setNotice] = useState<string | null>(null);
   // Montar a rota do dia dentro da própria aba (sem página separada).
   const [planning, setPlanning] = useState(false);
+  // "Rotas": montar uma nova ou começar uma já montada.
+  const [hub, setHub] = useState(false);
   // Trocar de conteúdo (atalhos → rota do dia / clientes) tem transição: o atual sai
   // deslizando e o novo entra pelo outro lado.
   const swap = useSwap();
@@ -518,8 +521,21 @@ export function ExploreSheet() {
     sheet.current?.snap(2);
     swap.run(1, () => {
       setMode(null);
+      setHub(false);
       setPlanning(true);
     });
+  };
+  const openHub = () => {
+    sheet.current?.snap(2);
+    swap.run(1, () => {
+      setMode(null);
+      setPlanning(false);
+      setHub(true);
+    });
+  };
+  const closeHub = () => {
+    swap.run(-1, () => setHub(false));
+    sheet.current?.snap(1);
   };
   const openClients = () => {
     sheet.current?.snap(2);
@@ -665,6 +681,27 @@ export function ExploreSheet() {
               sheet.current?.snap(1);
             }}
           />
+        ) : hub ? (
+          <View style={{ gap: spacing[5] }}>
+            <View style={styles.hubHead}>
+              <Text variant="title2" style={TYPE.section}>
+                Rotas
+              </Text>
+              <Tap
+                accessibilityRole="button"
+                accessibilityLabel="Fechar"
+                onPress={closeHub}
+                style={[styles.close, { backgroundColor: c.fill }]}
+              >
+                <Icon name="close" size={30} color={c.textSecondary} />
+              </Tap>
+            </View>
+            <SavedRoutes
+              onBuild={openPlanner}
+              outerRadius={SHEET_RADIUS}
+              outerPadding={SHEET_PAD}
+            />
+          </View>
         ) : searching ? (
           <SearchBody
             clientsMode={mode === 'clients'}
@@ -698,17 +735,17 @@ export function ExploreSheet() {
               <Shortcut
                 label="Produtos"
                 sub="no Kyte"
-                color="#FF9F0A"
+                color="#0A84FF"
                 icon={<Icon name="pricetag" size={52} color="#FFFFFF" />}
                 onPress={() => router.replace({ pathname: '/kyte', params: { secao: 'produtos' } })}
               />
               <Shortcut
                 label="Rotas"
-                sub="Montar"
+                sub="Montar ou começar"
                 subTone="accent"
-                color="#30D158"
+                color="#0A84FF"
                 icon={<Icon name="trail-sign" size={52} color="#FFFFFF" />}
-                onPress={openPlanner}
+                onPress={openHub}
               />
             </View>
 
@@ -1551,6 +1588,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   quickRow: { flexDirection: 'row', gap: spacing[3] },
+  hubHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: spacing[4],
+  },
   routeHead: {
     flexDirection: 'row',
     alignItems: 'baseline',

@@ -12,6 +12,23 @@ describe('can()', () => {
     ).toEqual({ allowed: false, reason: 'automotive_manual_edit_blocked' });
   });
 
+  it('Regra 3: rotas só são montadas no celular; a multimídia só lê', () => {
+    for (const action of ['create', 'update', 'delete'] as const) {
+      for (const channel of ['manual', 'havena'] as const) {
+        expect(can({ role: 'owner', platform: 'automotive', channel }, 'route', action)).toEqual({
+          allowed: false,
+          reason: 'automotive_route_build_blocked',
+        });
+      }
+    }
+    expect(
+      can({ role: 'seller', platform: 'automotive', channel: 'manual' }, 'route', 'read'),
+    ).toEqual({ allowed: true, requiresConfirmation: false });
+    expect(
+      can({ role: 'seller', platform: 'mobile', channel: 'manual' }, 'route', 'create'),
+    ).toEqual({ allowed: true, requiresConfirmation: false });
+  });
+
   it('Regra 1: permite leitura no Automotive', () => {
     expect(
       can({ role: 'seller', platform: 'automotive', channel: 'manual' }, 'customer', 'read'),
@@ -40,12 +57,6 @@ describe('can()', () => {
     expect(
       can({ role: 'seller', platform: 'mobile', channel: 'manual' }, 'customer', 'delete'),
     ).toEqual({ allowed: false, reason: 'role_not_allowed' });
-  });
-
-  it('rotas podem ser organizadas manualmente no Automotive', () => {
-    expect(
-      can({ role: 'seller', platform: 'automotive', channel: 'manual' }, 'route', 'update'),
-    ).toEqual({ allowed: true, requiresConfirmation: false });
   });
 });
 
