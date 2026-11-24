@@ -1,10 +1,11 @@
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { useState } from 'react';
-import { ActivityIndicator, Image, Linking, Platform, ScrollView, Share, View } from 'react-native';
+import { Image, Linking, Platform, ScrollView, Share, View } from 'react-native';
 import { callPhone, openWhatsApp } from '../../integrations/contact';
 import { useTabBarSpace } from '../../layout/form-factor';
 import { Touchable } from '../../ui/primitives';
+import { Spinner } from '../../ui/spinner';
 import { kyteAgent } from '../agent';
 import { brl, fmtQty, type KyteSale } from '../model';
 import { type KyteStoreInfo, PREVIEW, patchSale, useKyteList, useKyteStore } from '../store';
@@ -271,7 +272,7 @@ export function SaleDetail({ id }: { id: string }) {
             </Text>
             <View style={{ flexDirection: 'row', gap: 14, justifyContent: 'flex-end' }}>
               {working ? (
-                <ActivityIndicator color={KY.red} />
+                <Spinner size={36} color={KY.red} />
               ) : (
                 <>
                   <SmallButton label="Voltar" onPress={() => setConfirm(false)} />

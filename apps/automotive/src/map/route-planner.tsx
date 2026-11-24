@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, Platform, TextInput, View } from 'react-native';
+import { FlatList, Platform, TextInput, View } from 'react-native';
 import { kyteAgentAvailable, kyteLogged } from '../kyte/agent';
 import { customerAddress, useKyteList } from '../kyte/store';
 import { CLIENTS } from '../mocks/data';
 import { FONT, spacing, useColors } from '../theme';
 import { Button, Icon, Text, Touchable } from '../ui/primitives';
+import { Spinner } from '../ui/spinner';
 import { type ExternalStop, useStops } from './stops';
 
 const norm = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -92,7 +93,7 @@ export function RoutePlanner({ onClose, big = false }: { onClose: () => void; bi
             </Text>
           ) : (
             <>
-              <ActivityIndicator size="large" color={c.accent} />
+              <Spinner color={c.accent} />
               <Text variant="body" tone="secondary">
                 Lendo os clientes do Kyte…
               </Text>

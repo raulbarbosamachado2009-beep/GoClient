@@ -237,11 +237,14 @@ export function Avatar({
   name,
   size = 64,
   square = false,
+  radius,
   colors = ['#A6ABB8', '#858994'],
 }: {
   name: string;
   size?: number;
   square?: boolean;
+  /** Raio dos cantos (para seguir as bordas concêntricas de quem o contém). */
+  radius?: number;
   /** Degradê do fundo (padrão: cinza). */
   colors?: readonly [string, string];
 }) {
@@ -257,7 +260,11 @@ export function Avatar({
       colors={colors}
       style={[
         styles.center,
-        { width: size, height: size, borderRadius: square ? size * 0.26 : size / 2 },
+        {
+          width: size,
+          height: size,
+          borderRadius: radius ?? (square ? size * 0.26 : size / 2),
+        },
       ]}
     >
       <RNText

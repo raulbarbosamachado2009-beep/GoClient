@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, ScrollView, StyleSheet, View } from 'react-native';
+import { Animated, ScrollView, StyleSheet, View } from 'react-native';
 import { usePhone } from '../../layout/form-factor';
 import { CLIENTS, REGIONS } from '../../mocks/data';
 import { usePrototype } from '../../prototype/state';
@@ -20,6 +20,7 @@ import {
   SearchField,
   Text,
 } from '../../ui/primitives';
+import { Spinner } from '../../ui/spinner';
 
 /**
  * Página de Rotas: escolher os clientes do dia (esquerda), revisar a seleção (direita) e
@@ -226,7 +227,7 @@ function Calculating({ count, onDone }: { count: number; onDone: () => void }) {
         }}
       >
         <Material style={styles.hud}>
-          <ActivityIndicator size="large" color={c.text} style={{ transform: [{ scale: 1.8 }] }} />
+          <Spinner size={104} color={c.text} />
           <View style={{ alignItems: 'center', gap: 4 }}>
             <Text variant="title2">Calculando rota</Text>
             <Text variant="callout" tone="secondary">

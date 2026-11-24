@@ -1,13 +1,14 @@
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { useRouter } from 'expo-router';
 import { type ReactNode, useState } from 'react';
-import { ActivityIndicator, Image, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { PHONE_SCROLL_END } from '../layout/form-factor';
 import { BROWSE, type MockPlaylist, type MockShow } from '../mocks/data';
 import { spacing } from '../theme';
 import { Cover, shade } from '../ui/brand';
 import { Appear } from '../ui/motion';
 import { Icon, Text, Touchable } from '../ui/primitives';
+import { Spinner } from '../ui/spinner';
 import { AccountButton } from './accounts';
 import { type Feature, useHomeData, useLibraryData, useTrackSearch } from './library';
 import { useOpenPlaylist, usePlay, usePlayContext } from './use-play';
@@ -330,7 +331,7 @@ export function PhoneSearch() {
 
       {searching ? (
         <View style={{ gap: 8 }}>
-          {search.loading && <ActivityIndicator size="large" color={GREEN} />}
+          {search.loading && <Spinner color={GREEN} />}
           {!search.loading && search.results.length === 0 && (
             <Text variant="headline" color={W2}>
               Nada encontrado para “{query.trim()}”.

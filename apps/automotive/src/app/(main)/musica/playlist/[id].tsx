@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, View } from 'react-native';
+import { FlatList, StyleSheet, View } from 'react-native';
 import { PHONE_SCROLL_END, useBleed, usePhone } from '../../../../layout/form-factor';
 import { GENRES, type Genre } from '../../../../mocks/data';
 import { usePlaylistData } from '../../../../music/library';
@@ -12,6 +12,7 @@ import { spacing, useColors } from '../../../../theme';
 import { Cover } from '../../../../ui/brand';
 import { Appear } from '../../../../ui/motion';
 import { Icon, IconButton, Text, Touchable } from '../../../../ui/primitives';
+import { Spinner } from '../../../../ui/spinner';
 
 /**
  * Página da playlist (referência: imagem 3). Os gêneros filtram a lista (apenas no
@@ -125,7 +126,7 @@ export default function PlaylistScreen() {
         ListEmptyComponent={
           data.loading ? (
             <View style={styles.empty}>
-              <ActivityIndicator size="large" color={c.music.accent} />
+              <Spinner color={c.music.accent} />
             </View>
           ) : (
             <View style={styles.empty}>

@@ -27,7 +27,7 @@ import { useStops } from '../../map/stops';
 import { useCarPosition, useClientPlaces, useLiveRoute } from '../../map/use-live-map';
 import { CLIENT_FOCUS, DAY_FOCUS, type MapMode, USER } from '../../map/world';
 import { CLIENTS, type MockClient } from '../../mocks/data';
-import { layout, spacing, useColors } from '../../theme';
+import { concentric, layout, spacing, useColors } from '../../theme';
 import { BlurArea, BlurTargetProvider } from '../../ui/blur-target';
 import { Appear } from '../../ui/motion';
 import {
@@ -467,6 +467,7 @@ function TripBar({ mode, route }: { mode: MapMode; route?: LiveRoute | null }) {
           label="Encerrar"
           variant="destructive"
           size="md"
+          style={{ borderRadius: TRIP_INNER }}
           onPress={() => router.replace('/mapa')}
         />
         <View style={{ flexDirection: 'row', gap: spacing[8] }}>
@@ -541,7 +542,7 @@ function ClientCard({
           </Text>
         )}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[4] }}>
-          <Avatar name={client.name} size={72} square />
+          <Avatar name={client.name} size={72} radius={COMPACT_INNER} />
           <View style={{ flex: 1, gap: 2 }}>
             <Text variant="title2" numberOfLines={2}>
               {client.tradeName || client.name}
@@ -564,6 +565,7 @@ function ClientCard({
           <Button
             label="IR"
             icon="navigate"
+            style={{ borderRadius: COMPACT_INNER }}
             onPress={() =>
               router.replace({ pathname: '/mapa', params: { rota: 'cliente', id: client.id } })
             }
@@ -624,6 +626,18 @@ function WelcomeCard() {
   );
 }
 
+/**
+ * Bordas concêntricas dos cartões da multimídia: raio de dentro = raio de fora − espaçamento.
+ * Cartão grande ("Para onde vamos?"): 56 − 32 = 24. Cartão do cliente: 48 − 24 = 24.
+ * Barra da viagem: 32 − 16 = 16.
+ */
+const WELCOME_R = 56;
+const COMPACT_R = 48;
+const TRIP_R = layout.radius.xl;
+const WELCOME_INNER = concentric(WELCOME_R, spacing[8]);
+const COMPACT_INNER = concentric(COMPACT_R, spacing[6]);
+const TRIP_INNER = concentric(TRIP_R, spacing[4]);
+
 /** Desloca a câmera para centralizar o conteúdo na área livre entre a barra lateral e o cartão. */
 const FOCUS_SHIFT = 190;
 const LEFT = layout.sidebarWidth + layout.gutter;
@@ -675,17 +689,17 @@ const styles = StyleSheet.create({
     paddingVertical: spacing[4],
     paddingLeft: spacing[4],
     paddingRight: spacing[8],
-    borderRadius: layout.radius.xl,
+    borderRadius: TRIP_R,
   },
   card: { flex: 1, borderRadius: 40, padding: spacing[8] },
-  compact: { marginTop: 'auto', borderRadius: 36, padding: spacing[6] },
+  compact: { marginTop: 'auto', borderRadius: COMPACT_R, padding: spacing[6] },
   welcome: {
     flex: 1,
-    borderRadius: 40,
+    borderRadius: WELCOME_R,
     padding: spacing[8],
     justifyContent: 'space-between',
   },
-  welcomeButton: { height: 128, borderRadius: 28 },
+  welcomeButton: { height: 128, borderRadius: WELCOME_INNER },
   avatarTile: {
     width: 112,
     height: 112,
@@ -703,7 +717,13 @@ const styles = StyleSheet.create({
   },
   next: { height: 96, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
   stepRow: { flexDirection: 'row', gap: spacing[3] },
-  step: { width: 80, height: 96, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
+  step: {
+    width: 96,
+    height: 96,
+    borderRadius: COMPACT_INNER,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });
 
 /** Índice circular (aceita negativos): anterior do primeiro volta para o último. */

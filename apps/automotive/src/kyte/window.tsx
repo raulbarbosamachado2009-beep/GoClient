@@ -1,6 +1,7 @@
 import { type ComponentRef, forwardRef, useImperativeHandle, useMemo, useRef } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { WebView } from 'react-native-webview';
+import { Spinner } from '../ui/spinner';
 import {
   type HomeData,
   KYTE_HOME,
@@ -74,7 +75,7 @@ export const KyteWindow = forwardRef<
       startInLoadingState
       renderLoading={() => (
         <View style={styles.loading}>
-          <ActivityIndicator size="large" />
+          <Spinner />
         </View>
       )}
       style={[styles.web, { backgroundColor: dark ? '#141414' : '#FFFFFF' }]}

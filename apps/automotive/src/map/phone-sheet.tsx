@@ -27,8 +27,8 @@ import { customerAddress, findCustomer, useKyteList } from '../kyte/store';
 import { TAB_BAR_HEIGHT, useSystemInsets, useTabBarSpace } from '../layout/form-factor';
 import { CLIENTS, type MockClient, REGIONS } from '../mocks/data';
 import { useFrameScale } from '../preview/automotive-frame';
-import { layout, spacing, useColors } from '../theme';
-import { Avatar, Icon, type IconName, Text, Touchable } from '../ui/primitives';
+import { concentric, spacing, useColors } from '../theme';
+import { Avatar, Blur, Icon, type IconName, Text, Touchable } from '../ui/primitives';
 import { RoutePlanner } from './route-planner';
 import { useStops } from './stops';
 
@@ -62,6 +62,17 @@ const SPRING = { stiffness: 190, damping: 26 };
 const OVERSCROLL = { overscrollBehavior: 'contain' } as object;
 /** Margem do conteúdo até a borda da tela (fixa: o conteúdo nunca muda de largura). */
 const CONTENT_INSET = 20;
+/**
+ * Bordas concêntricas (raio de dentro = raio de fora − espaçamento). Na altura média — a do
+ * cartão do cliente e dos atalhos — a aba fica a 16 da borda da tela e o conteúdo a 44, ou
+ * seja, 28 de espaço entre a borda da aba e as peças de dentro.
+ */
+const SHEET_RADIUS = 64;
+const SHEET_PAD = 28;
+/** Raio das peças de dentro da aba (cartões, botões, busca): 64 − 28 = 36. */
+export const SHEET_INNER = concentric(SHEET_RADIUS, SHEET_PAD);
+/** Peças dentro dos cartões, que têm 16 de espaçamento interno. */
+const CARD_INNER = concentric(SHEET_INNER, spacing[4]);
 const WILL_MOVE = (Platform.OS === 'web' ? { willChange: 'transform' } : null) as object;
 
 export function DragSheet({
@@ -414,20 +425,21 @@ export function DragSheet({
             pointerEvents="box-none"
             style={[styles.clip, { height: screen }, anim?.clip, WILL_MOVE, NO_SELECT]}
           >
+            {/* Fundo de vidro: desfoca o mapa atrás da aba (no Android sem desfoque ao vivo,
+                vira a cor quase opaca do material). */}
             <Animated.View
               ref={bgRef}
               pointerEvents="none"
               style={[
                 styles.sheetBg,
-                {
-                  height: screen,
-                  borderColor: c.material.border,
-                  backgroundColor: c.mode === 'dark' ? '#1C1C1E' : '#F2F2F7',
-                },
+                { height: screen, borderColor: c.material.border },
                 anim?.bg,
                 WILL_MOVE,
               ]}
-            />
+            >
+              <Blur radius={40} tint={c.material.tint} />
+              <View style={[StyleSheet.absoluteFill, { backgroundColor: c.material.fallback }]} />
+            </Animated.View>
             <Animated.View
               ref={bodyRef}
               style={[
@@ -1025,7 +1037,7 @@ export function RouteSheet({
       header={
         <View style={{ gap: spacing[5] }}>
           <View style={styles.titleRow}>
-            <Avatar name={client.name} size={80} square />
+            <Avatar name={client.name} size={80} radius={SHEET_INNER} />
             <View style={{ flex: 1 }}>
               <Text variant="title2" numberOfLines={1}>
                 {client.tradeName}
@@ -1279,8 +1291,8 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     top: 0,
-    borderBottomLeftRadius: 52,
-    borderBottomRightRadius: 52,
+    borderBottomLeftRadius: SHEET_RADIUS,
+    borderBottomRightRadius: SHEET_RADIUS,
     overflow: 'hidden',
   },
   sheetBg: {
@@ -1288,9 +1300,10 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     top: 0,
-    borderTopLeftRadius: 52,
-    borderTopRightRadius: 52,
+    borderTopLeftRadius: SHEET_RADIUS,
+    borderTopRightRadius: SHEET_RADIUS,
     borderWidth: 1,
+    overflow: 'hidden',
   },
   body: { position: 'absolute', top: 0 },
   grabArea: { height: 40, alignItems: 'center', justifyContent: 'center' },
@@ -1310,7 +1323,7 @@ const styles = StyleSheet.create({
   cancel: {
     width: 84,
     height: 84,
-    borderRadius: 42,
+    borderRadius: SHEET_INNER,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1330,7 +1343,7 @@ const styles = StyleSheet.create({
   search: {
     flex: 1,
     height: 84,
-    borderRadius: 42,
+    borderRadius: SHEET_INNER,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[3],
@@ -1353,7 +1366,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: spacing[2],
   },
-  card: { borderRadius: 30, overflow: 'hidden' },
+  card: { borderRadius: SHEET_INNER, overflow: 'hidden' },
   sep: { height: StyleSheet.hairlineWidth, marginLeft: 104 },
   recent: {
     flexDirection: 'row',
@@ -1363,17 +1376,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[5],
   },
   pin: { width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center' },
-  guide: { width: 300, borderRadius: 30, padding: spacing[4], gap: 2 },
+  guide: { width: 300, borderRadius: SHEET_INNER, padding: spacing[4], gap: 2 },
   guideArt: {
     height: 140,
-    borderRadius: 18,
+    borderRadius: CARD_INNER,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing[4],
   },
   wide: {
     height: 84,
-    borderRadius: 42,
+    borderRadius: SHEET_INNER,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: spacing[8],
@@ -1393,7 +1406,7 @@ const styles = StyleSheet.create({
   go: {
     flex: 1,
     height: 88,
-    borderRadius: layout.radius.md,
+    borderRadius: SHEET_INNER,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1402,7 +1415,7 @@ const styles = StyleSheet.create({
   square: {
     width: 88,
     height: 88,
-    borderRadius: layout.radius.md,
+    borderRadius: SHEET_INNER,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1410,7 +1423,7 @@ const styles = StyleSheet.create({
   quick: {
     flex: 1,
     height: 96,
-    borderRadius: layout.radius.md,
+    borderRadius: SHEET_INNER,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 2,

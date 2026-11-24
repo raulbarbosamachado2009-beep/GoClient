@@ -1,7 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import type { ComponentProps, ReactNode } from 'react';
 import {
-  ActivityIndicator,
   Image,
   Text as RNText,
   type StyleProp,
@@ -14,6 +13,7 @@ import {
 import { usePhone, useSystemInsets, useTabBarSpace } from '../layout/form-factor';
 import { FONT } from '../theme';
 import { Touchable } from '../ui/primitives';
+import { Spinner } from '../ui/spinner';
 
 /**
  * Peças visuais das telas do Kyte no GoClient, no estilo do próprio Kyte (prints enviados):
@@ -422,7 +422,7 @@ export function State({
     <View style={{ alignItems: 'center', justifyContent: 'center', padding: 40, gap: 18, flex: 1 }}>
       {loading ? (
         <>
-          <ActivityIndicator size="large" color={KY.green} />
+          <Spinner color={KY.green} />
           <Text size={s.body} color={KY.sub}>
             Lendo os dados do Kyte…
           </Text>
