@@ -72,10 +72,10 @@ Código: `apps/automotive/src/kyte/bridge.ts` (rotas e script injetado) e `src/a
   quantidades, para ajustar o reconhecimento se o Kyte usar nomes diferentes.
 - **Cancelar venda:** com confirmação, a janela invisível abre a venda no Histórico do Kyte e
   usa o botão "Cancelar venda" dele.
-- **Cadastros:** no celular, o "+" abre "Novo produto" (nome e preço) e "Adicionar cliente"
-  (nome, celular e endereço), e a janela invisível preenche o cadastro no Kyte
-  (`kyte/screens/create.tsx`). Na multimídia, o "+" abre o Lucas (Regra 1: cadastro manual no
-  carro bloqueado em `can()`; pelo Lucas, com confirmação). No Preview nada é gravado.
+- **Cadastros:** o "+" abre "Novo produto" (nome e preço) e "Adicionar cliente" (nome,
+  celular e endereço), no celular e na multimídia, e a janela invisível preenche o cadastro no
+  Kyte (`kyte/screens/create.tsx`). O Lucas também cadastra, com confirmação. No Preview nada é
+  gravado.
 - **Limitações:** sem API pública e sem acesso a uma conta para testar ao vivo, os nomes dos
   campos do Kyte são presumidos; se o reconhecimento não achar algo, a tela diz isso e aponta
   o Diagnóstico. Listas muito longas dependem do Kyte entregá-las à página (a janela rola a

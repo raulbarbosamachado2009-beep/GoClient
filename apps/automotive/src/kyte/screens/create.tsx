@@ -10,8 +10,8 @@ import { GreenButton, Header, KIcon, KY, Tabs, Text, useKySize } from '../ui';
 import { useKyteNav } from './nav';
 
 /**
- * Regra 1 (`can()` em `@goclient/core`): cadastro manual de clientes e produtos só no celular.
- * Na multimídia o "+" continua chamando o Lucas (Regra 2, com confirmação).
+ * Cadastro manual de clientes e produtos, decidido por `can()` (`@goclient/core`). A Regra 1
+ * (bloqueio no carro) foi retirada: o "+" abre o cadastro no celular e na multimídia.
  */
 export function useCanCreate(resource: 'customer' | 'product'): boolean {
   const phone = usePhone();
@@ -123,7 +123,7 @@ function Notice({ text, error }: { text: string; error?: boolean }) {
   );
 }
 
-/** "Novo produto" (celular): cadastro com nome e preço de venda, como no Kyte. */
+/** "Novo produto": cadastro com nome e preço de venda, como no Kyte. */
 export function NewProduct() {
   const s = useKySize();
   const nav = useKyteNav();
@@ -254,7 +254,7 @@ export function NewProduct() {
   );
 }
 
-/** "Adicionar cliente" (celular): nome, celular/WhatsApp e endereço, como no Kyte. */
+/** "Adicionar cliente": nome, celular/WhatsApp e endereço, como no Kyte. */
 export function NewClient() {
   const s = useKySize();
   const nav = useKyteNav();

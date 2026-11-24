@@ -18,7 +18,7 @@ export type Detail =
   | { type: 'product'; id: string }
   | { type: 'receipt'; id: string }
   | { type: 'diagnostico' }
-  /** Cadastros manuais (só no celular, Regra 1). */
+  /** Cadastros manuais de produto e cliente. */
   | { type: 'newProduct' }
   | { type: 'newClient' };
 

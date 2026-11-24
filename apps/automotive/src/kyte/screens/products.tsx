@@ -43,7 +43,7 @@ export function ProductsScreen() {
         title={`Produtos${data.list ? ` (${data.list.length})` : ''}`}
         onMenu={nav.menu}
         right={
-          // Celular: abre o cadastro. Multimídia (Regra 1): cadastro só pelo Lucas.
+          // Abre o cadastro (celular e multimídia); sem permissão, o Lucas faz com confirmação.
           canCreate ? (
             <PlusButton label="Novo produto" onPress={() => nav.open({ type: 'newProduct' })} />
           ) : (

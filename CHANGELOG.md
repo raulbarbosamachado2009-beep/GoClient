@@ -5,7 +5,7 @@ Leia este arquivo antes de começar qualquer trabalho.
 
 ## Estado atual do app
 
-_Última atualização: 2026-11-24 14:35 — cartão da direita que muda de forma, destino único centralizado, cadastros do Kyte no celular e menos logos no login._
+_Última atualização: 2026-11-24 14:45 — Regra 1 retirada: o "+" do Kyte abre os cadastros também na multimídia._
 
 - **Automotive (`apps/automotive`)** é onde está quase todo o produto: Mapa (OSM + OpenRouteService,
   navegação com voz), Kyte (telas próprias sobre a janela do Kyte), Música (Spotify App Remote) e
@@ -14,6 +14,18 @@ _Última atualização: 2026-11-24 14:35 — cartão da direita que muda de form
 - Regras de negócio em `packages/core` (com testes); visual só com `@goclient/design-tokens`.
 
 ## Mudanças
+
+### 2026-11-24 14:45 — Regra 1 retirada: cadastros do Kyte também na multimídia
+
+Decisão do usuário (thread "Melhorar o design e o onboarding do app"): quem usa o app não vai
+cadastrar com o carro andando, então a Regra 1 sai.
+
+- `can()` (`packages/core/src/permissions.ts`) não bloqueia mais escrita manual de clientes e
+  produtos no Automotive (motivo `automotive_manual_edit_blocked` removido). A Regra 2
+  (Havena/Lucas com confirmação) e a Regra 3 (rotas só no celular) continuam. Testes do núcleo e
+  da API atualizados (`GET /v1/me` e `/v1/sync/push` no Automotive).
+- O "+" de Produtos e Clientes abre "Novo produto" e "Adicionar cliente" também na multimídia.
+- `CLAUDE.md`, `docs/architecture.md` e `docs/integrations.md` atualizados.
 
 ### 2026-11-24 14:35 — 9ª rodada: cartão que muda de forma, destino único, cadastros do Kyte
 
