@@ -71,7 +71,11 @@ export function OnboardingLayout({
           <Text
             variant="body"
             tone="secondary"
-            style={[phone ? styles.textPhone : styles.textCar, mid && styles.center, mid && { alignSelf: "center" }]}
+            style={[
+              phone ? styles.textPhone : styles.textCar,
+              mid && styles.center,
+              mid && { alignSelf: 'center' },
+            ]}
           >
             {text}
           </Text>

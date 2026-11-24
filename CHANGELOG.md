@@ -5,7 +5,7 @@ Leia este arquivo antes de começar qualquer trabalho.
 
 ## Estado atual do app
 
-_Última atualização: 2026-11-24 09:28 — lista "Rota" reordenável no cartão do cliente (Mapa, celular)._
+_Última atualização: 2026-11-24 10:11 — Mapa da multimídia em painel (mapa, destino e música lado a lado) e novo player do Spotify na multimídia._
 
 - **Automotive (`apps/automotive`)** é onde está quase todo o produto: Mapa (OSM + OpenRouteService,
   navegação com voz), Kyte (telas próprias sobre a janela do Kyte), Música (Spotify App Remote) e
@@ -14,6 +14,28 @@ _Última atualização: 2026-11-24 09:28 — lista "Rota" reordenável no cartã
 - Regras de negócio em `packages/core` (com testes); visual só com `@goclient/design-tokens`.
 
 ## Mudanças
+
+### 2026-11-24 10:11 — Ajustes pedidos depois do Preview: login, Rota, manobra, mapa e player
+
+Pedido do usuário (thread "Melhorar o design e o onboarding do app", 2ª rodada).
+
+- **Login:** saiu a ilustração dos clientes, que repetia a primeira página do onboarding. A
+  tela de e-mail ficou centrada, com espaço para os campos (antes ficavam espremidos embaixo).
+- **"Rota do dia" na aba puxável (celular):** abrir e fechar agora tem transição (o conteúdo sai
+  deslizando e o novo entra pelo outro lado) e a aba sobe inteira. A lista tem **uma rolagem só**
+  e o botão **Calcular (n)** fica no título, sempre visível (antes ficava atrás das abas).
+- **Chegada, tempo e km (celular):** saíram do cartão de baixo e foram para o cartão da manobra
+  no topo ("vire à direita…"), numa faixa de três colunas que se ajusta à largura.
+- **Mapa na multimídia em painel:** o mapa fica num quadro arredondado à esquerda; à direita,
+  o cartão do destino ("Para onde vamos?" ou o cliente da parada) em cima e o cartão da música
+  tocando embaixo (capa, nome, artista, progresso, anterior / tocar-pausar / próxima; tocar na
+  capa abre o player). Com um cliente escolhido o cartão da música cresce e mostra o tempo.
+- **Player do Spotify na multimídia:** nome (com o selo "E" quando explícita), artista e álbum
+  centrados à esquerda; anterior, pausa numa pílula translúcida e próxima; barra de progresso
+  com tempo decorrido e restante; aleatório, repetir, curtida e mais opções; capa grande e
+  arredondada à direita; fundo da capa desfocado sob um véu cinza. Sem logotipo do Spotify.
+- Arquivos: `app/onboarding/login.tsx`, `onboarding/layout.tsx`, `map/phone-sheet.tsx`,
+  `map/route-planner.tsx`, `app/(main)/mapa.tsx`, `app/player.tsx`.
 
 ### 2026-11-24 09:45 — Spotify: tocar a música certa, player sincronizado e informações reais
 

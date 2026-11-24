@@ -3,12 +3,7 @@ import { type ComponentRef, useCallback, useEffect, useRef, useState } from 'rea
 import { StyleSheet, View } from 'react-native';
 import { callPhone, openWhatsApp } from '../../integrations/contact';
 import { MAPS_ENABLED } from '../../integrations/env';
-import {
-  TAB_BAR_HEIGHT,
-  usePhone,
-  useSystemInsets,
-  useTabBarSpace,
-} from '../../layout/form-factor';
+import { usePhone, useSystemInsets } from '../../layout/form-factor';
 import { ClientPicker } from '../../map/client-picker';
 import { LiveMap, type MapPin } from '../../map/live-map';
 import { type Guidance as TurnGuidance, useTurnByTurn } from '../../map/navigation';
@@ -27,13 +22,18 @@ import { useStops } from '../../map/stops';
 import { useCarPosition, useClientPlaces, useLiveRoute } from '../../map/use-live-map';
 import { CLIENT_FOCUS, DAY_FOCUS, type MapMode, USER } from '../../map/world';
 import { CLIENTS, type MockClient } from '../../mocks/data';
+import { useNowPlaying } from '../../music/now-playing';
+import { ProgressBar } from '../../music/player-parts';
+import { usePrototype } from '../../prototype/state';
 import { concentric, layout, spacing, useColors } from '../../theme';
 import { BlurArea, BlurTargetProvider } from '../../ui/blur-target';
+import { Cover } from '../../ui/brand';
 import { Appear } from '../../ui/motion';
 import {
   Avatar,
   Button,
   Icon,
+  IconButton,
   type IconName,
   Material,
   Text,
@@ -47,7 +47,6 @@ import {
  */
 export default function MapScreen() {
   const phone = usePhone();
-  const tabSpace = useTabBarSpace();
   const { rota, id } = useLocalSearchParams<{ rota?: string; id?: string }>();
   const mode: MapMode = rota === 'dia' ? 'day' : rota === 'cliente' ? 'client' : 'explore';
   const [stop, setStop] = useState(0);
@@ -263,49 +262,52 @@ export default function MapScreen() {
     );
   }
 
+  // Multimídia: painel de bordo — o mapa num quadro arredondado à esquerda e, à direita, a
+  // coluna de cartões (destino/cliente em cima, música tocando embaixo).
   return (
     <View style={{ flex: 1 }}>
-      {/* O foco é deslocado para a direita para que o conteúdo fique centrado na área livre à esquerda do cartão. */}
-      <BlurArea targetRef={mapArea} style={StyleSheet.absoluteFill}>
-        {live ? (
-          <LiveMap
-            dark={c.mode === 'dark'}
-            user={position}
-            heading={heading}
-            path={shownRoute?.path ?? []}
-            pins={pins}
-            follow={navigating}
-          />
-        ) : (
-          <PannableMap
-            mode={mode}
-            focus={
-              phone
-                ? { x: target.x, y: target.y + 280 }
-                : { x: target.x + FOCUS_SHIFT, y: target.y }
-            }
-          />
-        )}
-      </BlurArea>
-      {/* Os cartões por cima desfocam o mapa (no Android, ver ui/blur-target.tsx). */}
-      <BlurTargetProvider value={mapArea}>
-        {mode === 'explore' ? (
-          <SearchPill />
-        ) : live ? (
-          <LiveGuidance
-            to={client?.tradeName ?? ''}
-            status={liveStatus}
-            guidance={guidance}
-            onNavigate={!navigating && located.length > 0 ? navigate : undefined}
-            onStop={navigating ? () => setNavigating(false) : undefined}
-          />
-        ) : (
-          <Guidance />
-        )}
-        {mode !== 'explore' && (
-          <TripBar key={`trip:${mode}`} mode={mode} route={live ? shownRoute : undefined} />
-        )}
+      <View style={[styles.mapPanel, { backgroundColor: c.fill }]}>
+        <BlurArea targetRef={mapArea} style={StyleSheet.absoluteFill}>
+          {live ? (
+            <LiveMap
+              dark={c.mode === 'dark'}
+              user={position}
+              heading={heading}
+              path={shownRoute?.path ?? []}
+              pins={pins}
+              follow={navigating}
+            />
+          ) : (
+            <PannableMap mode={mode} focus={{ x: target.x, y: target.y }} />
+          )}
+        </BlurArea>
+      </View>
+      {/* Os cartões por cima desfocam o mapa (no Android, ver ui/blur-target.tsx). Ficam fora
+          do quadro recortado: o desfoque da Web perde os cantos dentro de um recorte. */}
+      <View pointerEvents="box-none" style={styles.mapOverlay}>
+        <BlurTargetProvider value={mapArea}>
+          {mode === 'explore' ? (
+            <SearchPill />
+          ) : live ? (
+            <LiveGuidance
+              to={client?.tradeName ?? ''}
+              status={liveStatus}
+              guidance={guidance}
+              onNavigate={!navigating && located.length > 0 ? navigate : undefined}
+              onStop={navigating ? () => setNavigating(false) : undefined}
+            />
+          ) : (
+            <Guidance />
+          )}
+          {mode !== 'explore' && (
+            <TripBar key={`trip:${mode}`} mode={mode} route={live ? shownRoute : undefined} />
+          )}
+        </BlurTargetProvider>
+      </View>
 
+      {/* Coluna da direita: o cartão do destino em cima e a música embaixo, que ocupa o resto
+          (com um cliente escolhido o cartão de cima é baixo e a música ganha capa maior). */}
+      <View style={styles.side}>
         <Appear
           key={`${mode}:${client?.id ?? ''}`}
           axis="x"
@@ -313,22 +315,14 @@ export default function MapScreen() {
           delay={80}
           duration={520}
           fade={false}
-          style={
-            phone
-              ? [PHONE.card, { height: client ? 620 : 500, bottom: tabSpace + layout.gutter }]
-              : styles.cardSlot
-          }
+          style={client ? undefined : { flex: 1 }}
         >
           {client ? (
             <ClientCard
               key={client.id}
               client={client}
               mode={mode}
-              stopLabel={
-                mode === 'day' && routeClients.length > 1
-                  ? `Parada ${wrap(stop, routeClients.length) + 1} de ${routeClients.length}`
-                  : undefined
-              }
+              stopLabel={stopLabel}
               onNext={routeClients.length > 1 ? () => setStop((s) => s + 1) : undefined}
               onPrevious={routeClients.length > 1 ? () => setStop((s) => s - 1) : undefined}
             />
@@ -336,8 +330,79 @@ export default function MapScreen() {
             <WelcomeCard />
           )}
         </Appear>
-      </BlurTargetProvider>
+        <Appear
+          delay={160}
+          distance={40}
+          fade={false}
+          style={client ? { flex: 1 } : { height: NOW_H }}
+        >
+          <NowPlayingCard tall={!!client} />
+        </Appear>
+      </View>
     </View>
+  );
+}
+
+/**
+ * Cartão da música tocando (painel de bordo): capa, nome, artista, progresso e os controles
+ * anterior / tocar-pausar / próxima. Tocar na capa ou no nome abre o player.
+ */
+function NowPlayingCard({ tall }: { tall: boolean }) {
+  const c = useColors();
+  const router = useRouter();
+  const { togglePlaying, next, previous } = usePrototype();
+  const np = useNowPlaying();
+  const { track, playing } = np;
+  return (
+    <Material style={[styles.now, tall && { justifyContent: 'space-between' }]}>
+      <Touchable
+        accessibilityRole="button"
+        accessibilityLabel={`Abrir o player: ${track.title}`}
+        onPress={() => router.push('/player')}
+        style={styles.nowHead}
+      >
+        <Cover color={track.cover} image={track.image} size={tall ? 208 : 96} radius={NOW_INNER} />
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text variant={tall ? 'title2' : 'headline'} numberOfLines={tall ? 2 : 1}>
+            {track.title}
+          </Text>
+          <Text variant="callout" tone="secondary" numberOfLines={1}>
+            {track.artists}
+          </Text>
+        </View>
+      </Touchable>
+      <ProgressBar
+        np={np}
+        height={6}
+        thumb={0}
+        labelColor={c.textSecondary}
+        labelVariant="caption"
+        showLabels={tall}
+      />
+      <View style={styles.nowControls}>
+        <IconButton
+          icon="play-back"
+          size={88}
+          iconSize={48}
+          accessibilityLabel="Anterior"
+          onPress={previous}
+        />
+        <IconButton
+          icon={playing ? 'pause' : 'play'}
+          size={88}
+          iconSize={52}
+          accessibilityLabel={playing ? 'Pausar' : 'Tocar'}
+          onPress={togglePlaying}
+        />
+        <IconButton
+          icon="play-forward"
+          size={88}
+          iconSize={48}
+          accessibilityLabel="Próxima"
+          onPress={next}
+        />
+      </View>
+    </Material>
   );
 }
 
@@ -707,32 +772,50 @@ const WELCOME_INNER = concentric(WELCOME_R, spacing[8]);
 const COMPACT_INNER = concentric(COMPACT_R, spacing[6]);
 const TRIP_INNER = concentric(TRIP_R, spacing[4]);
 
-/** Desloca a câmera para centralizar o conteúdo na área livre entre a barra lateral e o cartão. */
-const FOCUS_SHIFT = 190;
 const LEFT = layout.sidebarWidth + layout.gutter;
+/** Coluna de cartões à direita do mapa e o cartão da música (painel de bordo). */
+const SIDE_W = 480;
+const NOW_H = 288;
+const NOW_R = 48;
+const NOW_INNER = concentric(NOW_R, spacing[6]);
+const MAP_R = 48;
 
 /** Celular em pé: busca/orientação no topo, cartão embaixo (acima das abas). */
 const PHONE = StyleSheet.create({
   top: { position: 'absolute', top: layout.gutter, left: layout.gutter, right: layout.gutter },
   trip: { position: 'absolute', top: 150, left: layout.gutter, right: layout.gutter },
-  card: {
-    position: 'absolute',
-    left: layout.gutter,
-    right: layout.gutter,
-    bottom: TAB_BAR_HEIGHT + layout.gutter,
-  },
 });
 
 const styles = StyleSheet.create({
-  topLeft: { position: 'absolute', top: layout.gutter, left: LEFT },
-  bottomLeft: { position: 'absolute', bottom: layout.gutter, left: LEFT },
-  cardSlot: {
+  topLeft: { position: 'absolute', top: layout.gutter, left: layout.gutter },
+  bottomLeft: { position: 'absolute', bottom: layout.gutter, left: layout.gutter },
+  mapPanel: {
+    position: 'absolute',
+    top: layout.gutter,
+    bottom: layout.gutter,
+    left: LEFT,
+    right: SIDE_W + layout.gutter * 2,
+    borderRadius: MAP_R,
+    overflow: 'hidden',
+  },
+  mapOverlay: {
+    position: 'absolute',
+    top: layout.gutter,
+    bottom: layout.gutter,
+    left: LEFT,
+    right: SIDE_W + layout.gutter * 2,
+  },
+  side: {
     position: 'absolute',
     top: layout.gutter,
     right: layout.gutter,
     bottom: layout.gutter,
-    width: 480,
+    width: SIDE_W,
+    gap: layout.gutter,
   },
+  now: { flex: 1, borderRadius: NOW_R, padding: spacing[6], gap: spacing[5] },
+  nowHead: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
+  nowControls: { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center' },
   search: {
     height: 80,
     width: 500,
@@ -774,7 +857,7 @@ const styles = StyleSheet.create({
     borderRadius: TRIP_R,
   },
   card: { flex: 1, borderRadius: 40, padding: spacing[8] },
-  compact: { marginTop: 'auto', borderRadius: COMPACT_R, padding: spacing[6] },
+  compact: { borderRadius: COMPACT_R, padding: spacing[6] },
   welcome: {
     flex: 1,
     borderRadius: WELCOME_R,

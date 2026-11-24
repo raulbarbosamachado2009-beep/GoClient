@@ -10,11 +10,14 @@ import { usePrototype } from '../prototype/state';
 import { layout, spacing } from '../theme';
 import { Cover } from '../ui/brand';
 import { Appear } from '../ui/motion';
-import { Icon, IconButton, SpotifyFontScope, Text } from '../ui/primitives';
+import { Icon, IconButton, SpotifyFontScope, Text, Touchable } from '../ui/primitives';
 
 const W = '#FFFFFF';
 const W2 = 'rgba(255,255,255,0.72)';
+const W3 = 'rgba(255,255,255,0.5)';
 const GREEN = '#1ED760';
+/** Raio da capa grande (como os cantos dos painéis do carro). */
+const ART_R = 28;
 
 /**
  * Player em tela cheia (referências: imagens 4 e 6). Rolando para baixo aparecem mais
@@ -57,11 +60,8 @@ function CarPlayer() {
           style={[styles.backdrop, { transform: [{ scale: 1.25 }] }]}
         />
       </Appear>
-      <LinearGradient
-        colors={['rgba(0,0,0,0.05)', 'rgba(0,0,0,0.25)', 'rgba(0,0,0,0.6)']}
-        locations={[0, 0.55, 1]}
-        style={StyleSheet.absoluteFill}
-      />
+      {/* Véu cinza por cima do desfoque: o fundo fica neutro, qualquer que seja a capa. */}
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(58,58,62,0.62)' }]} />
 
       <Animated.ScrollView
         scrollEventThrottle={16}
@@ -72,117 +72,99 @@ function CarPlayer() {
             setCompactVisible(e.nativeEvent.contentOffset.y > 620),
         })}
       >
-        <Animated.View style={[styles.hero, phone && PHONE.hero, { opacity: heroFade }]}>
+        {/* Tela "Tocando agora" no estilo de painel de carro: informações e controles
+            centrados à esquerda, capa grande à direita, fundo cinza desfocado. */}
+        <Animated.View style={[styles.hero, { opacity: heroFade }]}>
           <View style={styles.topBar}>
             <IconButton
-              icon="chevron-down"
-              iconSize={52}
+              icon="chevron-back"
+              size={96}
+              iconSize={56}
               color={W}
-              accessibilityLabel="Minimizar player"
+              accessibilityLabel="Voltar"
               onPress={minimize}
             />
-            <Text
-              variant="headline"
-              color={W}
-              numberOfLines={1}
-              style={{ flexShrink: 1, textAlign: 'center' }}
-            >
+            <Text variant="callout" color={W2} numberOfLines={1} style={styles.source}>
               {np.source}
             </Text>
-            <IconButton
-              icon="ellipsis-horizontal"
-              iconSize={44}
-              color={W}
-              accessibilityLabel="Mais opções"
-            />
           </View>
 
-          <View style={[styles.main, phone && PHONE.main]}>
-            <Appear key={`art-${track.id}`} axis="x" distance={30} duration={420}>
-              <View style={styles.artShadow}>
-                <Cover
-                  color={track.cover}
-                  image={track.image}
-                  size={phone ? 656 : 600}
-                  radius={20}
-                />
+          <View style={styles.main}>
+            <Appear key={`info-${track.id}`} delay={80} distance={16} style={styles.info}>
+              <View style={styles.titleRow}>
+                <Text variant="largeTitle" color={W} numberOfLines={1} style={styles.title}>
+                  {track.title}
+                </Text>
+                {track.explicit && (
+                  <View style={styles.explicit}>
+                    <Text variant="caption" color="#000" style={styles.explicitText}>
+                      E
+                    </Text>
+                  </View>
+                )}
               </View>
-            </Appear>
-
-            <Appear
-              key={`info-${track.id}`}
-              delay={80}
-              distance={16}
-              style={phone ? { gap: spacing[8] } : { flex: 1, gap: spacing[10] }}
-            >
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[4] }}>
-                <View style={{ flex: 1, gap: spacing[2] }}>
-                  <Text
-                    variant="largeTitle"
-                    color={W}
-                    style={
-                      phone
-                        ? { fontSize: 52, lineHeight: 60, letterSpacing: -0.5 }
-                        : { fontSize: 76, lineHeight: 84, letterSpacing: -1 }
-                    }
-                    numberOfLines={2}
-                  >
-                    {track.title}
-                  </Text>
-                  <Text variant="title2" color={W2} numberOfLines={1}>
-                    {track.artists}
-                  </Text>
-                </View>
-                <Icon name="checkmark-circle" size={phone ? 64 : 84} color={GREEN} />
-              </View>
-
-              <ProgressBar np={np} height={7} thumb={32} labelColor={W2} />
+              <Text variant="body" color={W2} numberOfLines={1} style={styles.artist}>
+                {track.artists}
+              </Text>
+              <Text variant="body" color={W3} numberOfLines={1} style={styles.album}>
+                {track.album}
+              </Text>
 
               <View style={styles.controls}>
-                <ShuffleButton np={np} size={phone ? 80 : 96} iconSize={phone ? 44 : 54} />
                 <IconButton
-                  icon="play-skip-back"
-                  size={phone ? 96 : 110}
-                  iconSize={phone ? 56 : 68}
+                  icon="play-back"
+                  size={140}
+                  iconSize={76}
                   color={W}
                   accessibilityLabel="Anterior"
                   onPress={previous}
                 />
-                <IconButton
-                  icon={playing ? 'pause' : 'play'}
-                  variant="inverse"
-                  size={phone ? 144 : 168}
-                  iconSize={phone ? 68 : 80}
-                  color="#000"
-                  style={{ backgroundColor: W }}
+                <Touchable
+                  accessibilityRole="button"
                   accessibilityLabel={playing ? 'Pausar' : 'Tocar'}
                   onPress={togglePlaying}
-                />
+                  scaleTo={0.94}
+                  style={styles.playPill}
+                >
+                  <Icon name={playing ? 'pause' : 'play'} size={76} color={W} />
+                </Touchable>
                 <IconButton
-                  icon="play-skip-forward"
-                  size={phone ? 96 : 110}
-                  iconSize={phone ? 56 : 68}
+                  icon="play-forward"
+                  size={140}
+                  iconSize={76}
                   color={W}
                   accessibilityLabel="Próxima"
                   onPress={next}
                 />
-                <RepeatButton np={np} size={phone ? 80 : 96} iconSize={phone ? 44 : 54} />
               </View>
 
-              <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: spacing[6] }}>
+              <View style={styles.progress}>
+                <ProgressBar np={np} height={10} thumb={0} labelColor={W2} />
+              </View>
+
+              <View style={styles.extras}>
+                <ShuffleButton np={np} size={88} iconSize={44} />
+                <RepeatButton np={np} size={88} iconSize={44} />
                 <IconButton
-                  icon="phone-portrait-outline"
-                  iconSize={40}
-                  color={W}
-                  accessibilityLabel="Dispositivos"
+                  icon="checkmark-circle"
+                  size={88}
+                  iconSize={46}
+                  color={GREEN}
+                  accessibilityLabel="Nas suas Curtidas"
                 />
                 <IconButton
-                  icon="share-outline"
-                  iconSize={40}
+                  icon="ellipsis-horizontal"
+                  size={88}
+                  iconSize={44}
                   color={W}
-                  accessibilityLabel="Compartilhar"
+                  accessibilityLabel="Mais opções"
                 />
-                <IconButton icon="list" iconSize={44} color={W} accessibilityLabel="Fila" />
+              </View>
+            </Appear>
+
+            <Appear key={`art-${track.id}`} axis="x" distance={30} duration={420}>
+              <View style={styles.artShadow}>
+                <Cover color={track.cover} image={track.image} size={680} radius={ART_R} />
               </View>
             </Appear>
           </View>
@@ -355,28 +337,59 @@ function Card({
   );
 }
 
-const PHONE = StyleSheet.create({
-  hero: { height: 'auto', paddingHorizontal: 32, paddingBottom: 48 },
-  main: { ...NO_FLEX, flexDirection: 'column', alignItems: 'stretch', gap: 56, marginTop: 40 },
-});
-
 const styles = StyleSheet.create({
   artistCard: { flex: 2, height: 300, padding: 0, flexDirection: 'row', overflow: 'hidden' },
   artistPhoto: { flex: 1, overflow: 'hidden' },
   artistInfo: { flex: 1, padding: spacing[8], justifyContent: 'center', gap: spacing[2] },
   fill: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' },
   backdrop: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' },
-  hero: { height: layout.height, paddingHorizontal: 56, paddingTop: 20, paddingBottom: 40 },
-  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  main: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 72 },
+  hero: { height: layout.height, paddingHorizontal: 56, paddingTop: 24, paddingBottom: 56 },
+  topBar: { flexDirection: 'row', alignItems: 'center', gap: spacing[4] },
+  source: { flexShrink: 1 },
+  main: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 64 },
+  info: { flex: 1, alignItems: 'center', gap: spacing[2] },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[3], maxWidth: '100%' },
+  title: { fontSize: 52, lineHeight: 60, letterSpacing: -0.6, flexShrink: 1 },
+  artist: { fontSize: 34, lineHeight: 42, textAlign: 'center' },
+  album: { fontSize: 30, lineHeight: 38, textAlign: 'center' },
+  explicit: {
+    width: 34,
+    height: 34,
+    borderRadius: 6,
+    backgroundColor: 'rgba(255,255,255,0.72)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  explicitText: { fontSize: 20, lineHeight: 24, fontWeight: '700' },
+  controls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing[8],
+    marginTop: spacing[10],
+  },
+  playPill: {
+    width: 220,
+    height: 132,
+    borderRadius: 66,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  progress: { alignSelf: 'stretch', marginTop: spacing[10], paddingHorizontal: spacing[4] },
+  extras: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: spacing[10],
+    marginTop: spacing[4],
+  },
   artShadow: {
-    borderRadius: 20,
+    borderRadius: ART_R,
     shadowColor: '#000',
-    shadowOpacity: 0.45,
+    shadowOpacity: 0.4,
     shadowRadius: 40,
     shadowOffset: { width: 0, height: 24 },
   },
-  controls: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   more: { paddingHorizontal: 56, paddingBottom: 64, gap: spacing[6] },
   row: { flexDirection: 'row', gap: spacing[6] },
   card: {
