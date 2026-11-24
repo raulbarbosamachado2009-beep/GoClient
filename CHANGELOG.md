@@ -1,24 +1,21 @@
 # Registro de mudanças — GoClient
 
-Toda alteração no projeto é registrada aqui, com data e hora (horário de Brasília). Antes de
-começar um trabalho, leia o **Estado atual** e as últimas entradas.
+Toda alteração no projeto é registrada aqui, com data e hora (horário de Brasília, UTC−3).
+Leia este arquivo antes de começar qualquer trabalho.
 
-## Estado atual
+## Estado atual do app
 
-_Última atualização: 24/11/2026, 09:40 (horário de Brasília)._
+_Última atualização: 2026-11-24 09:28 — lista "Rota" reordenável no cartão do cliente (Mapa, celular)._
 
-- **Onde está o trabalho:** quase tudo em `apps/automotive` (Expo), que roda na central
-  multimídia (1600×900, barra lateral) e no celular em pé (barra de abas embaixo). Mobile e Web
-  ainda são telas de diagnóstico.
-- **Integrações:** Kyte por dentro da página (WebView), Spotify App Remote, mapa real
-  OpenFreeMap + OpenRouteService no Android; no Preview (web) o mapa é uma imagem de exemplo.
-- **Design:** linguagem do Apple CarPlay/iOS, escuro por padrão, SF Pro. Regra de **bordas
-  concêntricas** (`concentric()` em `src/theme.tsx`): raio de dentro = raio de fora − espaçamento.
-- **Onboarding e login:** novos (ver entrada de 24/11/2026), com ilustrações animadas.
-- **Em andamento em outras frentes:** opção "Rota" no lugar de "Pedido" no cartão do cliente,
-  assistente de voz renomeado para "Lucas" (voz masculina) e correções do Spotify.
+- **Automotive (`apps/automotive`)** é onde está quase todo o produto: Mapa (OSM + OpenRouteService,
+  navegação com voz), Kyte (telas próprias sobre a janela do Kyte), Música (Spotify App Remote) e
+  assistente de voz. Roda no carro (paisagem) e no celular (em pé, com aba puxável estilo Apple Maps).
+- **Mobile e Web** ainda são telas de diagnóstico; **API** (`apps/api`) com Hono + Drizzle.
+- Regras de negócio em `packages/core` (com testes); visual só com `@goclient/design-tokens`.
 
-## 24/11/2026, 09:40 — Design: bordas concêntricas, vidro, onboarding, Kyte e mapa
+## Mudanças
+
+### 2026-11-24 09:40 — Design: bordas concêntricas, vidro, onboarding, Kyte e mapa
 
 Pedido do usuário (thread "Melhorar o design e o onboarding do app").
 
@@ -44,3 +41,21 @@ Pedido do usuário (thread "Melhorar o design e o onboarding do app").
   assim que o estilo carrega, blocos sem esmaecer, e uma janela invisível baixa a biblioteca e
   o estilo durante o onboarding/login. Imagens do mapa do Preview recomprimidas (progressivas).
 - **Celular:** listas e Ajustes com títulos e legendas no tamanho do iOS (17/15 pt).
+
+### 2026-11-24 09:28 — "Pedido" vira "Rota" no cartão do cliente (Mapa, celular)
+
+- No cartão do cliente do Mapa (aba puxável do celular), o botão **Pedido** foi trocado por **Rota**.
+- Tocar em **Rota** troca o conteúdo do cartão, com animação (o conteúdo atual sai deslizando e o
+  novo entra pelo outro lado, na curva da Apple), pela lista dos clientes escolhidos para visitar,
+  na ordem da visita. A aba abre inteira para mostrar a lista. Tocar de novo em **Rota** volta.
+- A ordem pode ser mudada **arrastando pela alça (≡)**, como a fila do Spotify: a linha levantada
+  cresce um pouco e ganha sombra, as outras abrem espaço com mola. Enquanto arrasta, a aba não
+  sobe/desce nem rola.
+- A ordem escolhida passa a valer para o Mapa: "Parada X de Y", próximo/anterior e a navegação
+  seguem essa ordem (a otimização automática do roteamento deixa de reordenar até a rota do dia ser
+  montada de novo).
+- Tocar num cliente da lista leva até aquela parada.
+- O bloco "Pedido" com os itens continua nos detalhes do cliente (só aparece quando há itens).
+- Arquivos: `apps/automotive/src/map/route-queue.tsx` (novo), `map/sheet-context.tsx` (novo),
+  `map/phone-sheet.tsx`, `map/stops.tsx`, `app/(main)/mapa.tsx`;
+  `packages/core/src/route-order.ts` (novo, com testes).

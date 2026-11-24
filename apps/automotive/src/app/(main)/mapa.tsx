@@ -71,7 +71,8 @@ export default function MapScreen() {
   useEffect(() => {
     setNavigating(false);
     setArrivedAt(null);
-    setStop(0);
+    // `?rota=dia&id=…` (escolhido na lista "Rota"): começa naquela parada.
+    setStop(mode === 'day' && id ? Math.max(0, stops.dayIds.indexOf(id)) : 0);
   }, [mode, id]);
   const places = useClientPlaces(live ? [...CLIENTS, ...stops.extra] : [], live);
   const targets = mode === 'day' ? plannedDay : mode === 'client' && picked ? [picked] : [];
@@ -79,11 +80,13 @@ export default function MapScreen() {
   const { route, error: routeError } = useLiveRoute(
     live && mode !== 'explore' ? position : null,
     located.map((t) => places[t.id] as LatLng),
-    mode === 'day',
+    // Ordem escolhida pelo usuário (lista "Rota") vale mais que a otimizada.
+    mode === 'day' && !stops.manual,
   );
-  // Na rota do dia, segue a melhor ordem calculada (o último cliente continua o último).
+  // Na rota do dia, segue a melhor ordem calculada (o último cliente continua o último),
+  // a não ser que o usuário tenha reordenado as paradas.
   const routeClients =
-    live && mode === 'day' && route && located.length > 1
+    live && mode === 'day' && !stops.manual && route && located.length > 1
       ? [
           ...route.order.map((i) => located[i] as MockClient),
           located[located.length - 1] as MockClient,
@@ -214,6 +217,25 @@ export default function MapScreen() {
               client={client}
               stopLabel={stopLabel}
               trip={trip}
+              queue={mode === 'day' ? routeClients : plannedDay}
+              onReorder={(ids) => {
+                stops.reorder(ids);
+                if (mode === 'day') setStop(Math.max(0, ids.indexOf(client.id)));
+              }}
+              onPick={(pickedId) => {
+                if (mode === 'day') {
+                  setStop(
+                    Math.max(
+                      0,
+                      routeClients.findIndex((x) => x.id === pickedId),
+                    ),
+                  );
+                  return;
+                }
+                // Fora da rota do dia: fixa a ordem mostrada e abre a rota naquela parada.
+                stops.reorder(plannedDay.map((x) => x.id));
+                router.replace({ pathname: '/mapa', params: { rota: 'dia', id: pickedId } });
+              }}
               onNext={
                 mode === 'day' && routeClients.length > 1 ? () => setStop((s) => s + 1) : undefined
               }

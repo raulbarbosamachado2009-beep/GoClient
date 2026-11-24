@@ -1,17 +1,8 @@
 import { useRouter } from 'expo-router';
-import {
-  type ComponentProps,
-  type ComponentRef,
-  createContext,
-  type ReactNode,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { type ComponentRef, type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
+  Easing,
   Keyboard,
   PanResponder,
   type PanResponderCallbacks,
@@ -27,9 +18,12 @@ import { customerAddress, findCustomer, useKyteList } from '../kyte/store';
 import { TAB_BAR_HEIGHT, useSystemInsets, useTabBarSpace } from '../layout/form-factor';
 import { CLIENTS, type MockClient, REGIONS } from '../mocks/data';
 import { useFrameScale } from '../preview/automotive-frame';
-import { concentric, spacing, useColors } from '../theme';
+import { concentric, nativeDriver, spacing, useColors } from '../theme';
+import { appleEase } from '../ui/motion';
 import { Avatar, Blur, Icon, type IconName, Text, Touchable } from '../ui/primitives';
 import { RoutePlanner } from './route-planner';
+import { RouteQueue } from './route-queue';
+import { DraggedContext, REORDER_HANDLE, SheetLock, Tap } from './sheet-context';
 import { useStops } from './stops';
 
 /**
@@ -39,19 +33,6 @@ import { useStops } from './stops';
  */
 export type Detent = 0 | 1 | 2;
 export type SheetController = { snap: (d: Detent) => void };
-
-/** Diz se o último gesto na aba foi um arrasto (aí o toque nos botões é ignorado). */
-const DraggedContext = createContext<{ current: boolean }>({ current: false });
-/** Botão da aba: ignora o toque quando o gesto foi um arrasto da aba. */
-function Tap({ onPress, ...rest }: ComponentProps<typeof Touchable>) {
-  const dragged = useContext(DraggedContext);
-  return (
-    <Touchable
-      {...rest}
-      onPress={onPress ? (e) => (dragged.current ? undefined : onPress(e)) : undefined}
-    />
-  );
-}
 
 const NO_SELECT = (Platform.OS === 'web' ? { userSelect: 'none' } : null) as object;
 /** No navegador, põe a aba numa camada própria da GPU (o deslocamento não repinta o mapa). */
@@ -111,6 +92,13 @@ export function DragSheet({
   scaleRef.current = scale;
   const dragged = useRef(false);
   const scrollTop = useRef(0);
+  // Item da lista sendo arrastado (lista "Rota"): a aba fica parada e o conteúdo não rola.
+  const [locked, setLocked] = useState(false);
+  const lockedRef = useRef(false);
+  const lock = useRef((on: boolean) => {
+    lockedRef.current = on;
+    setLocked(on);
+  }).current;
   const detentRef = useRef<Detent>(initial);
 
   // Geometria da aba para uma altura `v`: recolhida = pílula flutuante; média = cartão
@@ -283,7 +271,9 @@ export function DragSheet({
   const contentPan = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponderCapture: (_e, g) =>
-        vertical(g) && (detentRef.current !== 2 || (g.dy > 0 && scrollTop.current <= 0)),
+        !lockedRef.current &&
+        vertical(g) &&
+        (detentRef.current !== 2 || (g.dy > 0 && scrollTop.current <= 0)),
       onMoveShouldSetPanResponder: () => false,
       ...handlers,
     }),
@@ -309,10 +299,16 @@ export function DragSheet({
       y0 = y;
       mode = 'maybe';
       inHeader = !!head && target instanceof Node && head.contains(target);
+      // Alça de arrastar um item da lista: o gesto é do item, não da aba.
+      if (target instanceof Element && target.closest(`[${REORDER_HANDLE}]`)) mode = 'native';
       samples = [{ y, t: performance.now() }];
     };
     const move = (x: number, y: number, prevent: () => void) => {
       if (mode === 'idle' || mode === 'native') return;
+      if (lockedRef.current) {
+        mode = 'native';
+        return;
+      }
       const dx = x - x0;
       const dy = y - y0;
       if (mode === 'maybe') {
@@ -411,79 +407,83 @@ export function DragSheet({
 
   return (
     <DraggedContext.Provider value={dragged}>
-      <View
-        pointerEvents="box-none"
-        style={styles.area}
-        onLayout={(e) => {
-          setScreen(Math.round(e.nativeEvent.layout.height));
-          setWidth(Math.round(e.nativeEvent.layout.width));
-        }}
-      >
-        {screen > 0 && width > 0 && (
-          <Animated.View
-            ref={clipRef}
-            pointerEvents="box-none"
-            style={[styles.clip, { height: screen }, anim?.clip, WILL_MOVE, NO_SELECT]}
-          >
-            {/* Fundo de vidro: desfoca o mapa atrás da aba (no Android sem desfoque ao vivo,
-                vira a cor quase opaca do material). */}
+      <SheetLock.Provider value={lock}>
+        <View
+          pointerEvents="box-none"
+          style={styles.area}
+          onLayout={(e) => {
+            setScreen(Math.round(e.nativeEvent.layout.height));
+            setWidth(Math.round(e.nativeEvent.layout.width));
+          }}
+        >
+          {screen > 0 && width > 0 && (
             <Animated.View
-              ref={bgRef}
-              pointerEvents="none"
-              style={[
-                styles.sheetBg,
-                { height: screen, borderColor: c.material.border },
-                anim?.bg,
-                WILL_MOVE,
-              ]}
+              ref={clipRef}
+              pointerEvents="box-none"
+              style={[styles.clip, { height: screen }, anim?.clip, WILL_MOVE, NO_SELECT]}
             >
-              <Blur radius={40} tint={c.material.tint} />
-              <View style={[StyleSheet.absoluteFill, { backgroundColor: c.material.fallback }]} />
-            </Animated.View>
-            <Animated.View
-              ref={bodyRef}
-              style={[
-                styles.body,
-                {
-                  left: CONTENT_INSET,
-                  width: width - CONTENT_INSET * 2,
-                  height: screen,
-                },
-                anim?.body,
-                WILL_MOVE,
-              ]}
-            >
-              {/* Cabeçalho fixo: a busca nunca rola junto com a lista. */}
-              <View ref={headerRef} {...(WEB ? null : pan.panHandlers)}>
-                <Touchable
-                  accessibilityRole="button"
-                  accessibilityLabel={detent === 2 ? 'Recolher aba' : 'Expandir aba'}
-                  onPress={() =>
-                    snap(detentRef.current === 2 ? 0 : ((detentRef.current + 1) as Detent))
-                  }
-                  style={styles.grabArea}
-                >
-                  <View style={[styles.grabber, { backgroundColor: c.textTertiary }]} />
-                </Touchable>
-                <View style={styles.header}>{header}</View>
-              </View>
-              <ScrollView
-                style={[{ flex: 1 }, WEB && OVERSCROLL]}
-                scrollEnabled={detent === 2}
-                showsVerticalScrollIndicator={detent === 2}
-                contentContainerStyle={styles.content}
-                scrollEventThrottle={16}
-                onScroll={(e) => {
-                  scrollTop.current = e.nativeEvent.contentOffset.y;
-                }}
-                {...(WEB ? null : contentPan.panHandlers)}
+              <Animated.View
+                ref={bgRef}
+                pointerEvents="none"
+                style={[
+                  styles.sheetBg,
+                  { height: screen, borderColor: c.material.border },
+                  anim?.bg,
+                  WILL_MOVE,
+                ]}
               >
-                {children}
-              </ScrollView>
+                {/* Fundo de vidro: desfoca o mapa atrás da aba (no Android sem desfoque ao
+                    vivo, vira a cor quase opaca do material). */}
+                <Blur radius={40} tint={c.material.tint} />
+                <View
+                  style={[StyleSheet.absoluteFill, { backgroundColor: c.material.fallback }]}
+                />
+              </Animated.View>
+              <Animated.View
+                ref={bodyRef}
+                style={[
+                  styles.body,
+                  {
+                    left: CONTENT_INSET,
+                    width: width - CONTENT_INSET * 2,
+                    height: screen,
+                  },
+                  anim?.body,
+                  WILL_MOVE,
+                ]}
+              >
+                {/* Cabeçalho fixo: a busca nunca rola junto com a lista. */}
+                <View ref={headerRef} {...(WEB ? null : pan.panHandlers)}>
+                  <Touchable
+                    accessibilityRole="button"
+                    accessibilityLabel={detent === 2 ? 'Recolher aba' : 'Expandir aba'}
+                    onPress={() =>
+                      snap(detentRef.current === 2 ? 0 : ((detentRef.current + 1) as Detent))
+                    }
+                    style={styles.grabArea}
+                  >
+                    <View style={[styles.grabber, { backgroundColor: c.textTertiary }]} />
+                  </Touchable>
+                  <View style={styles.header}>{header}</View>
+                </View>
+                <ScrollView
+                  style={[{ flex: 1 }, WEB && OVERSCROLL]}
+                  scrollEnabled={detent === 2 && !locked}
+                  showsVerticalScrollIndicator={detent === 2}
+                  contentContainerStyle={styles.content}
+                  scrollEventThrottle={16}
+                  onScroll={(e) => {
+                    scrollTop.current = e.nativeEvent.contentOffset.y;
+                  }}
+                  {...(WEB ? null : contentPan.panHandlers)}
+                >
+                  {children}
+                </ScrollView>
+              </Animated.View>
             </Animated.View>
-          </Animated.View>
-        )}
-      </View>
+          )}
+        </View>
+      </SheetLock.Provider>
     </DraggedContext.Provider>
   );
 }
@@ -1013,6 +1013,9 @@ export function RouteSheet({
   client,
   stopLabel,
   trip,
+  queue,
+  onReorder,
+  onPick,
   onNext,
   onPrevious,
   onNavigate,
@@ -1021,6 +1024,11 @@ export function RouteSheet({
   client: MockClient;
   stopLabel?: string;
   trip: TripInfo;
+  /** Clientes escolhidos para visitar, na ordem da visita (lista "Rota"). */
+  queue: MockClient[];
+  onReorder: (ids: string[]) => void;
+  /** Tocar num cliente da lista "Rota": vai até aquela parada. */
+  onPick: (id: string) => void;
   onNext?: () => void;
   onPrevious?: () => void;
   onNavigate: () => void;
@@ -1029,11 +1037,21 @@ export function RouteSheet({
   const router = useRouter();
   const c = useColors();
   const active = client.status === 'Ativo';
+  // "Rota" troca o conteúdo do cartão (pedido e detalhes) pela lista das paradas.
+  const sheet = useRef<SheetController | null>(null);
+  const swap = useSwap();
+  const [view, setView] = useState<'client' | 'route'>('client');
+  const toggleRoute = () => {
+    const next = view === 'route' ? 'client' : 'route';
+    swap.run(next === 'route' ? 1 : -1, () => setView(next));
+    if (next === 'route') sheet.current?.snap(2);
+  };
   return (
     <DragSheet
       key={client.id}
       initial={1}
       collapsed={338}
+      controller={sheet}
       header={
         <View style={{ gap: spacing[5] }}>
           <View style={styles.titleRow}>
@@ -1093,7 +1111,7 @@ export function RouteSheet({
       <View style={styles.quickRow}>
         <Quick icon="call" label="Ligar" onPress={() => callPhone(client.phone)} />
         <Quick icon="logo-whatsapp" label="WhatsApp" onPress={() => openWhatsApp(client.phone)} />
-        <Quick icon="document-text" label="Pedido" />
+        <Quick icon="list" label="Rota" active={view === 'route'} onPress={toggleRoute} />
         <Quick
           icon="storefront"
           label="Ficha"
@@ -1101,25 +1119,66 @@ export function RouteSheet({
         />
       </View>
 
-      <Section title="Pedido" />
-      <View
-        style={[styles.card, { backgroundColor: c.fill, padding: spacing[6], gap: spacing[2] }]}
-      >
-        {client.order.map((line) => (
-          <Text key={line} variant="body">
-            {line}
-          </Text>
-        ))}
-      </View>
+      <Animated.View style={swap.style}>
+        {view === 'route' ? (
+          <>
+            <View style={styles.routeHead}>
+              <Text variant="title2" style={TYPE.section}>
+                Rota
+              </Text>
+              <Text variant="callout" tone="secondary">
+                {queue.length === 1 ? '1 parada' : `${queue.length} paradas`}
+              </Text>
+            </View>
+            {queue.length > 1 && (
+              <Text variant="callout" tone="secondary" style={{ marginBottom: spacing[3] }}>
+                Arraste pela alça para mudar a ordem das visitas.
+              </Text>
+            )}
+            <RouteQueue
+              clients={queue}
+              currentId={client.id}
+              onReorder={onReorder}
+              onPick={(id) => {
+                swap.run(-1, () => setView('client'));
+                onPick(id);
+              }}
+            />
+          </>
+        ) : (
+          <>
+            {client.order.length > 0 && (
+              <>
+                <Section title="Pedido" />
+                <View
+                  style={[
+                    styles.card,
+                    { backgroundColor: c.fill, padding: spacing[6], gap: spacing[2] },
+                  ]}
+                >
+                  {client.order.map((line) => (
+                    <Text key={line} variant="body">
+                      {line}
+                    </Text>
+                  ))}
+                </View>
+              </>
+            )}
 
-      <Section title="Detalhes" />
-      <View style={[styles.card, { backgroundColor: c.fill }]}>
-        <Detail label="Endereço" value={`${client.address}\n${client.district}`} />
-        <View style={[styles.sep, { backgroundColor: c.separator }]} />
-        <Detail label="Telefone" value={client.phone} tone="accent" />
-        <View style={[styles.sep, { backgroundColor: c.separator }]} />
-        <Detail label="Última visita" value={client.lastVisit} />
-      </View>
+            <Section title="Detalhes" />
+            <View style={[styles.card, { backgroundColor: c.fill }]}>
+              <Detail
+                label="Endereço"
+                value={[client.address, client.district].filter(Boolean).join('\n')}
+              />
+              <View style={[styles.sep, { backgroundColor: c.separator }]} />
+              <Detail label="Telefone" value={client.phone || '—'} tone="accent" />
+              <View style={[styles.sep, { backgroundColor: c.separator }]} />
+              <Detail label="Última visita" value={client.lastVisit} />
+            </View>
+          </>
+        )}
+      </Animated.View>
     </DragSheet>
   );
 }
@@ -1232,20 +1291,74 @@ function SquareButton({
   );
 }
 
-function Quick({ icon, label, onPress }: { icon: IconName; label: string; onPress?: () => void }) {
+function Quick({
+  icon,
+  label,
+  active,
+  onPress,
+}: {
+  icon: IconName;
+  label: string;
+  /** Ligado (ex.: "Rota" aberta): fundo na cor de destaque. */
+  active?: boolean;
+  onPress?: () => void;
+}) {
   const c = useColors();
   return (
     <Tap
       accessibilityRole="button"
+      accessibilityState={active === undefined ? undefined : { selected: active }}
       onPress={onPress}
-      style={[styles.quick, { backgroundColor: c.fill }]}
+      style={[styles.quick, { backgroundColor: active ? c.accent : c.fill }]}
     >
-      <Icon name={icon} size={34} color={c.accent} />
-      <Text variant="caption" tone="accent">
+      <Icon name={icon} size={34} color={active ? '#FFFFFF' : c.accent} />
+      <Text
+        variant="caption"
+        tone={active ? undefined : 'accent'}
+        color={active ? '#FFFFFF' : undefined}
+      >
         {label}
       </Text>
     </Tap>
   );
+}
+
+/**
+ * Troca de conteúdo com a curva da Apple: o atual sai deslizando e some, o novo entra do
+ * outro lado (`dir` 1 = avança, -1 = volta). Só opacidade e deslocamento (driver nativo).
+ */
+function useSwap() {
+  const v = useRef(new Animated.Value(0)).current;
+  const busy = useRef(false);
+  const run = (dir: 1 | -1, change: () => void) => {
+    if (busy.current) return;
+    busy.current = true;
+    Animated.timing(v, {
+      toValue: -dir,
+      duration: 160,
+      easing: Easing.in(Easing.quad),
+      useNativeDriver: nativeDriver,
+    }).start(() => {
+      change();
+      v.setValue(dir);
+      Animated.timing(v, {
+        toValue: 0,
+        duration: 340,
+        easing: appleEase,
+        useNativeDriver: nativeDriver,
+      }).start(() => {
+        busy.current = false;
+      });
+    });
+  };
+  const style = {
+    opacity: v.interpolate({ inputRange: [-1, 0, 1], outputRange: [0, 1, 0] }),
+    transform: [
+      { translateX: v.interpolate({ inputRange: [-1, 0, 1], outputRange: [-48, 0, 48] }) },
+      { scale: v.interpolate({ inputRange: [-1, 0, 1], outputRange: [0.98, 1, 0.98] }) },
+    ],
+  };
+  return { run, style };
 }
 
 function Detail({ label, value, tone }: { label: string; value: string; tone?: 'accent' }) {
@@ -1420,6 +1533,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   quickRow: { flexDirection: 'row', gap: spacing[3] },
+  routeHead: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    marginTop: spacing[6],
+    marginBottom: spacing[2],
+  },
   quick: {
     flex: 1,
     height: 96,
