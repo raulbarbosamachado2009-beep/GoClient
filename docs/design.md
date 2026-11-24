@@ -21,6 +21,29 @@ Estado: protótipo navegável de design (sem funcionalidades). Dados fictícios 
   indicador da barra lateral e das abas da Música), janela que sobe com mola, player minimizado
   que sobe ao aparecer.
 
+## Bordas concêntricas
+
+- Regra: **raio de dentro = raio de fora − espaçamento** (`concentric()` em
+  `apps/automotive/src/theme.tsx`). Ex.: cartão com raio 48 e 18 de espaço → peças de dentro 30.
+- Aba do Mapa (celular): raio 64, 28 de espaço na altura média → peças com 36 (`SHEET_INNER`).
+- Mapa (multimídia): "Para onde vamos?" 56/32 → 24; cartão do cliente 48/24 → 24; viagem 32/16 → 16.
+- Onboarding: quadro das ilustrações 56/28 → cartões 28 → avatares 12.
+
+## Onboarding e login
+
+- Molde único (`src/onboarding/layout.tsx`): quadro com ilustração animada, selo, título grande,
+  texto, pontos de página e botão em pílula (branco no escuro). Celular: quadro em cima; multimídia:
+  quadro à esquerda e texto à direita.
+- Ilustrações (`src/onboarding/scenes.tsx`), sem imagens nem degradês: cartões de clientes
+  flutuando, rota com o carro andando entre as paradas, conversa com o assistente, permissão com
+  anel pulsando. Desenhadas em 560×460 e reduzidas para caber.
+- Login: "Continuar com e-mail" e, só na multimídia, "Entrar com o celular" (QR ilustrativo).
+
+## Carregamento
+
+- `Spinner` (`src/ui/spinner.tsx`): raios girando em passos, como o indicador do iOS, em todas
+  as plataformas (o `ActivityIndicator` do Android é um anel do Material).
+
 ## Mapa
 
 `src/map/pannable-map.tsx` + `src/map/world.tsx`. O mapa atual é uma **imagem de exemplo**
