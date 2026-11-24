@@ -13,6 +13,7 @@ import { CLIENTS, type MockClient } from '../mocks/data';
 import { concentric, layout, spacing, type, useColors } from '../theme';
 import { appleEase, Swap } from '../ui/motion';
 import { Blur, Icon, type IconName, Text, Touchable } from '../ui/primitives';
+import { useMapNav } from './map-nav';
 import { OptionGroup, OptionRow, SavedRoutes, useTint } from './saved-routes';
 import { useStops } from './stops';
 
@@ -37,6 +38,7 @@ export function CarSearch({ maxHeight }: { maxHeight: number }) {
   const c = useColors();
   const t = useTint();
   const router = useRouter();
+  const mapNav = useMapNav();
   const stops = useStops();
   const input = useRef<ComponentRef<typeof TextInput>>(null);
   const p = useRef(new Animated.Value(0)).current;
@@ -72,7 +74,7 @@ export function CarSearch({ maxHeight }: { maxHeight: number }) {
 
   const go = (id: string) => {
     hide();
-    router.replace({ pathname: '/mapa', params: { rota: 'cliente', id } });
+    mapNav({ rota: 'cliente', id });
   };
 
   const q = norm(query.trim());

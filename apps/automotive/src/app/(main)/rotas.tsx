@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Animated, ScrollView, StyleSheet, View } from 'react-native';
 import { usePhone } from '../../layout/form-factor';
+import { useMapNav } from '../../map/map-nav';
 import { CLIENTS, REGIONS } from '../../mocks/data';
 import { usePrototype } from '../../prototype/state';
 import { layout, nativeDriver, spacing, useColors } from '../../theme';
@@ -30,7 +31,8 @@ import { Spinner } from '../../ui/spinner';
 export default function RoutesScreen() {
   const c = useColors();
   const { setOverlay } = usePrototype();
-  const router = useRouter();
+  const _router = useRouter();
+  const mapNav = useMapNav();
   const [region, setRegion] = useState<string>('Todas');
   const [selected, setSelected] = useState<string[]>(['c7', 'c1', 'c6']);
   const phone = usePhone();
@@ -50,7 +52,7 @@ export default function RoutesScreen() {
         count={chosen.length}
         onDone={() => {
           setOverlay(null);
-          router.replace({ pathname: '/mapa', params: { rota: 'dia' } });
+          mapNav({ rota: 'dia' });
         }}
       />,
     );

@@ -7,6 +7,7 @@ import { CLIENTS, REGIONS } from '../mocks/data';
 import { spacing, useColors } from '../theme';
 import { Appear } from '../ui/motion';
 import { Icon, Text, Touchable } from '../ui/primitives';
+import { useMapNav } from './map-nav';
 import { useKyteNames } from './phone-sheet';
 import { useStops } from './stops';
 
@@ -21,6 +22,7 @@ const norm = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCa
 export function ClientPicker({ onClose }: { onClose: () => void }) {
   const c = useColors();
   const router = useRouter();
+  const mapNav = useMapNav();
   const stops = useStops();
   const [query, setQuery] = useState('');
   const [region, setRegion] = useState<string | null>(null);
@@ -126,9 +128,7 @@ export function ClientPicker({ onClose }: { onClose: () => void }) {
                 key={x.id}
                 title={x.tradeName}
                 sub={`${x.address} · ${x.district.split(' · ')[0]}`}
-                onPress={() =>
-                  router.replace({ pathname: '/mapa', params: { rota: 'cliente', id: x.id } })
-                }
+                onPress={() => mapNav({ rota: 'cliente', id: x.id })}
               />
             ))}
         {kyte.names?.length === 0 && (

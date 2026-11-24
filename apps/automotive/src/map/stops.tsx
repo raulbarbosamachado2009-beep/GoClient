@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import { createContext, type ReactNode, useCallback, useContext, useMemo, useState } from 'react';
 import { Platform } from 'react-native';
 import { CLIENTS, type MockClient, TODAY_ROUTE } from '../mocks/data';
+import { useMapNav } from './map-nav';
 
 /**
  * Paradas da rota vindas de fora da lista de exemplo: clientes do **Kyte** (botões da ficha
@@ -108,7 +109,8 @@ function toClient(s: ExternalStop): MockClient {
 }
 
 export function StopsProvider({ children }: { children: ReactNode }) {
-  const router = useRouter();
+  const _router = useRouter();
+  const mapNav = useMapNav();
   const [extra, setExtra] = useState<MockClient[]>([]);
   const [removed, setRemoved] = useState<string[]>([]);
   // Ordem manual (null = ordem automática, a melhor calculada pelo roteamento).
@@ -138,11 +140,11 @@ export function StopsProvider({ children }: { children: ReactNode }) {
       add: (s) => upsert(s),
       goNow: (s) => {
         const id = upsert(s);
-        router.replace({ pathname: '/mapa', params: { rota: 'cliente', id } });
+        mapNav({ rota: 'cliente', id });
         return id;
       },
       remove: (id) => setRemoved((cur) => [...cur, id]),
-      showDay: () => router.replace({ pathname: '/mapa', params: { rota: 'dia' } }),
+      showDay: () => mapNav({ rota: 'dia' }),
       setDay: (list, name) => {
         setExtra(list.map(toClient));
         setBase([]);
@@ -168,10 +170,10 @@ export function StopsProvider({ children }: { children: ReactNode }) {
         setExtra(r.stops.map(toClient));
         setRemoved([]);
         setOrder(null);
-        router.replace({ pathname: '/mapa', params: { rota: 'dia' } });
+        mapNav({ rota: 'dia' });
       },
     };
-  }, [extra, removed, order, router, upsert, base, saved]);
+  }, [extra, removed, order, upsert, base, saved, mapNav]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

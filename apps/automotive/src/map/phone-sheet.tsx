@@ -20,6 +20,7 @@ import { useFrameScale } from '../preview/automotive-frame';
 import { concentric, spacing, useColors } from '../theme';
 import { useSwap } from '../ui/motion';
 import { Avatar, Blur, Icon, type IconName, Text, Touchable } from '../ui/primitives';
+import { useMapNav } from './map-nav';
 import { RoutePlanner } from './route-planner';
 import { RouteQueue } from './route-queue';
 import { SavedRoutes } from './saved-routes';
@@ -493,9 +494,9 @@ const RECENT = ['c1', 'c6', 'c3'];
 export function ExploreSheet() {
   const c = useColors();
   const router = useRouter();
+  const mapNav = useMapNav();
   const recent = RECENT.map((id) => CLIENTS.find((x) => x.id === id) as MockClient);
-  const goTo = (id: string) =>
-    router.replace({ pathname: '/mapa', params: { rota: 'cliente', id } });
+  const goTo = (id: string) => mapNav({ rota: 'cliente', id });
   // Busca como no Apple Maps: tocar no campo abre a aba inteira, mostra o teclado,
   // atalhos de filtro e sugestões — sem sair do Mapa.
   const sheet = useRef<SheetController | null>(null);
@@ -720,7 +721,7 @@ export function ExploreSheet() {
               Keyboard.dismiss();
               goTo(id);
             }}
-            onDayRoute={() => router.replace({ pathname: '/mapa', params: { rota: 'dia' } })}
+            onDayRoute={() => mapNav({ rota: 'dia' })}
           />
         ) : (
           <>
@@ -786,7 +787,7 @@ export function ExploreSheet() {
             <Section title="Rota de hoje" onPress={openPlanner} />
             <Tap
               accessibilityRole="button"
-              onPress={() => router.replace({ pathname: '/mapa', params: { rota: 'dia' } })}
+              onPress={() => mapNav({ rota: 'dia' })}
               scaleTo={0.98}
               style={[styles.guide, { backgroundColor: c.fill }]}
             >

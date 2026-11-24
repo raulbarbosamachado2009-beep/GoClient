@@ -5,7 +5,7 @@ Leia este arquivo antes de começar qualquer trabalho.
 
 ## Estado atual do app
 
-_Última atualização: 2026-11-24 11:56 — botão Ir/Encerrar no mapa da multimídia, nome nas rotas montadas e transições em todo o app._
+_Última atualização: 2026-11-24 12:41 — cartão do cliente sem o resumo do Kyte, com "Ver lista" da rota, e transições ao entrar e sair de uma rota._
 
 - **Automotive (`apps/automotive`)** é onde está quase todo o produto: Mapa (OSM + OpenRouteService,
   navegação com voz), Kyte (telas próprias sobre a janela do Kyte), Música (Spotify App Remote) e
@@ -14,6 +14,25 @@ _Última atualização: 2026-11-24 11:56 — botão Ir/Encerrar no mapa da multi
 - Regras de negócio em `packages/core` (com testes); visual só com `@goclient/design-tokens`.
 
 ## Mudanças
+
+### 2026-11-24 12:41 — 7ª rodada: cartão do cliente, "Ver lista" e transições de rota
+
+Pedido do usuário (thread "Melhorar o design e o onboarding do app", 7ª rodada).
+
+- **Cartão do cliente (multimídia):** saiu o resumo (última visita, última compra, pedido em
+  aberto). O espaço foi para: avatar e nome maiores, endereço completo, um bloco "Próxima
+  parada" (tocar vai para ela) e chegada/tempo/km maiores.
+- **"Ver lista":** no canto superior esquerdo (rota com mais de uma parada). Troca o conteúdo
+  do cartão, com transição, pela fila de clientes da rota numerada (a atual em azul); tocar num
+  cliente vai para aquela parada. "<" volta. "Parada 2 de 5" fica no canto superior direito.
+- **Entrar e sair de uma rota sem corte seco (celular e multimídia):** a tela do Mapa não é
+  mais montada de novo ao trocar de modo (`map/map-nav.ts`: já no Mapa, só troca os
+  parâmetros). O mapa desliza até o novo ponto, a rota e os pinos aparecem e somem com fade
+  (`map/world.tsx`), os cartões da direita trocam deslizando (`Swap`), e a busca, o botão
+  Ir/Encerrar, a orientação e as abas do celular trocam com fade (`Presence`).
+- Arquivos: `app/(main)/mapa.tsx`, `map/map-nav.ts` (novo), `map/world.tsx`, `map/stops.tsx`,
+  `map/car-search.tsx`, `map/phone-sheet.tsx`, `map/client-picker.tsx`,
+  `app/(main)/clientes.tsx`, `app/(main)/rotas.tsx`, `kyte/screens/clients.tsx`.
 
 ### 2026-11-24 11:56 — 6ª rodada: Ir/Encerrar, nome da rota e transições
 

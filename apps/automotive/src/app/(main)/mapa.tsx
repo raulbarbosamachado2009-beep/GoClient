@@ -7,6 +7,7 @@ import { usePhone, useSystemInsets } from '../../layout/form-factor';
 import { CarSearch } from '../../map/car-search';
 import { ClientPicker } from '../../map/client-picker';
 import { LiveMap, type MapPin } from '../../map/live-map';
+import { useMapNav } from '../../map/map-nav';
 import { type Guidance as TurnGuidance, useTurnByTurn } from '../../map/navigation';
 import { PannableMap } from '../../map/pannable-map';
 import { ExploreSheet, RouteSheet, type TripInfo } from '../../map/phone-sheet';
@@ -158,7 +159,8 @@ export default function MapScreen() {
             : 'Pronto para navegar, com voz';
 
   const mapArea = useRef<ComponentRef<typeof View>>(null);
-  const router = useRouter();
+  const _router = useRouter();
+  const mapNav = useMapNav();
   // Dados da viagem: da rota real (Google) ou os de exemplo do protótipo.
   const left = guidance
     ? { s: guidance.remainingSeconds, m: guidance.remainingMeters }
@@ -200,8 +202,10 @@ export default function MapScreen() {
           )}
         </BlurArea>
         <BlurTargetProvider value={mapArea}>
-          {mode !== 'explore' &&
-            (live ? (
+          {/* Entrar ou sair de uma rota: a orientação no topo e as abas trocam com fade e um
+              pequeno deslocamento, sem corte seco. */}
+          <Presence show={mode !== 'explore'} distance={-24} style={StyleSheet.absoluteFill}>
+            {live ? (
               <LiveGuidance
                 to={client?.tradeName ?? ''}
                 status={liveStatus}
@@ -211,52 +215,55 @@ export default function MapScreen() {
               />
             ) : (
               <Guidance trip={client ? trip : undefined} />
-            ))}
-          {client ? (
-            <RouteSheet
-              client={client}
-              stopLabel={stopLabel}
-              trip={trip}
-              queue={mode === 'day' ? routeClients : plannedDay}
-              onReorder={(ids) => {
-                stops.reorder(ids);
-                if (mode === 'day') setStop(Math.max(0, ids.indexOf(client.id)));
-              }}
-              onPick={(pickedId) => {
-                if (mode === 'day') {
-                  setStop(
-                    Math.max(
-                      0,
-                      routeClients.findIndex((x) => x.id === pickedId),
-                    ),
-                  );
-                  return;
-                }
-                // Fora da rota do dia: fixa a ordem mostrada e abre a rota naquela parada.
-                stops.reorder(plannedDay.map((x) => x.id));
-                router.replace({ pathname: '/mapa', params: { rota: 'dia', id: pickedId } });
-              }}
-              onNext={
-                mode === 'day' && routeClients.length > 1 ? () => setStop((s) => s + 1) : undefined
-              }
-              onPrevious={
-                mode === 'day' && routeClients.length > 1 ? () => setStop((s) => s - 1) : undefined
-              }
-              onNavigate={() =>
-                mode === 'explore'
-                  ? router.replace({
-                      pathname: '/mapa',
-                      params: { rota: 'cliente', id: client.id },
-                    })
-                  : navigate()
-              }
-              navigating={navigating}
-              onStopNavigation={() => setNavigating(false)}
-              onEnd={() => router.replace('/mapa')}
-            />
-          ) : (
+            )}
+          </Presence>
+          <Presence show={!client} distance={60} style={StyleSheet.absoluteFill}>
             <ExploreSheet />
-          )}
+          </Presence>
+          <Presence show={!!client} distance={60} style={StyleSheet.absoluteFill}>
+            {client ? (
+              <RouteSheet
+                client={client}
+                stopLabel={stopLabel}
+                trip={trip}
+                queue={mode === 'day' ? routeClients : plannedDay}
+                onReorder={(ids) => {
+                  stops.reorder(ids);
+                  if (mode === 'day') setStop(Math.max(0, ids.indexOf(client.id)));
+                }}
+                onPick={(pickedId) => {
+                  if (mode === 'day') {
+                    setStop(
+                      Math.max(
+                        0,
+                        routeClients.findIndex((x) => x.id === pickedId),
+                      ),
+                    );
+                    return;
+                  }
+                  // Fora da rota do dia: fixa a ordem mostrada e abre a rota naquela parada.
+                  stops.reorder(plannedDay.map((x) => x.id));
+                  mapNav({ rota: 'dia', id: pickedId });
+                }}
+                onNext={
+                  mode === 'day' && routeClients.length > 1
+                    ? () => setStop((s) => s + 1)
+                    : undefined
+                }
+                onPrevious={
+                  mode === 'day' && routeClients.length > 1
+                    ? () => setStop((s) => s - 1)
+                    : undefined
+                }
+                onNavigate={() =>
+                  mode === 'explore' ? mapNav({ rota: 'cliente', id: client.id }) : navigate()
+                }
+                navigating={navigating}
+                onStopNavigation={() => setNavigating(false)}
+                onEnd={() => mapNav()}
+              />
+            ) : null}
+          </Presence>
         </BlurTargetProvider>
       </View>
     );
@@ -286,24 +293,25 @@ export default function MapScreen() {
           do quadro recortado: o desfoque da Web perde os cantos dentro de um recorte. */}
       <View pointerEvents="box-none" style={styles.mapOverlay}>
         <BlurTargetProvider value={mapArea}>
-          {mode === 'explore' ? (
+          {/* Entrar ou sair de uma rota: a busca e os controles da viagem trocam com fade. */}
+          <Presence show={mode === 'explore'} distance={-16} style={StyleSheet.absoluteFill}>
             <CarSearch maxHeight={layout.height - layout.gutter * 4} />
-          ) : live ? (
-            <LiveGuidance to={client?.tradeName ?? ''} status={liveStatus} guidance={guidance} />
-          ) : (
-            // A manobra só aparece depois de tocar em "Ir" (navegação começada).
-            <Presence show={navigating} distance={-24} style={StyleSheet.absoluteFill}>
-              <Guidance />
-            </Presence>
-          )}
-          {mode !== 'explore' && (
+          </Presence>
+          <Presence show={mode !== 'explore'} distance={16} style={StyleSheet.absoluteFill}>
+            {live ? (
+              <LiveGuidance to={client?.tradeName ?? ''} status={liveStatus} guidance={guidance} />
+            ) : (
+              // A manobra só aparece depois de tocar em "Ir" (navegação começada).
+              <Presence show={navigating} distance={-24} style={StyleSheet.absoluteFill}>
+                <Guidance />
+              </Presence>
+            )}
             <TripBar
-              key={`trip:${mode}`}
               navigating={navigating}
               onNavigate={navigate}
               onStop={() => setNavigating(false)}
             />
-          )}
+          </Presence>
         </BlurTargetProvider>
       </View>
 
@@ -313,13 +321,11 @@ export default function MapScreen() {
         <Appear delay={160} distance={40} fade={false} style={{ height: NOW_H }}>
           <NowPlayingCard />
         </Appear>
-        <Appear
-          key={`${mode}:${client?.id ?? ''}`}
-          axis="x"
-          distance={520}
-          delay={80}
-          duration={520}
-          fade={false}
+        {/* Trocar de cartão (entrar ou sair de uma rota, ir para outra parada) desliza: o
+            atual sai e o novo entra, sem corte seco. */}
+        <Swap
+          id={client ? `${mode}:${client.id}` : 'welcome'}
+          index={client ? (mode === 'day' ? wrap(stop, routeClients.length) + 1 : 1) : 0}
           style={{ flex: 1 }}
         >
           {client ? (
@@ -328,6 +334,9 @@ export default function MapScreen() {
               client={client}
               mode={mode}
               stopLabel={stopLabel}
+              queue={mode === 'day' ? routeClients : []}
+              current={wrap(stop, routeClients.length)}
+              onPick={setStop}
               // Setas só na rota do dia com mais de uma parada (destino único não tem).
               onNext={
                 mode === 'day' && routeClients.length > 1 ? () => setStop((s) => s + 1) : undefined
@@ -336,12 +345,12 @@ export default function MapScreen() {
                 mode === 'day' && routeClients.length > 1 ? () => setStop((s) => s - 1) : undefined
               }
               trip={trip}
-              onClose={() => router.replace('/mapa')}
+              onClose={() => mapNav()}
             />
           ) : (
             <WelcomeCard />
           )}
-        </Appear>
+        </Swap>
       </View>
     </View>
   );
@@ -624,7 +633,7 @@ function TripBar({
 function Stat({ value, label }: { value: string; label: string }) {
   return (
     <View style={{ alignItems: 'center' }}>
-      <Text variant="title" style={{ fontSize: 34, lineHeight: 40 }}>
+      <Text variant="title" style={{ fontSize: 40, lineHeight: 46 }}>
         {value}
       </Text>
       <Text variant="caption" tone="secondary">
@@ -634,11 +643,18 @@ function Stat({ value, label }: { value: string; label: string }) {
   );
 }
 
-/** Cartão do cliente com o destino escolhido: compacto, no pé do espaço do cartão. */
+/**
+ * Cartão do cliente com o destino escolhido. Em cima: "Ver lista" (fila da rota) à esquerda e
+ * "Parada 2 de 5" à direita. "Ver lista" troca o conteúdo do cartão pela fila de clientes
+ * (com "<" para voltar); tocar num cliente da fila vai para aquela parada.
+ */
 function ClientCard({
   client,
   mode,
   stopLabel,
+  queue,
+  current,
+  onPick,
   onNext,
   onPrevious,
   trip,
@@ -647,6 +663,10 @@ function ClientCard({
   client: MockClient;
   mode: MapMode;
   stopLabel?: string;
+  /** Clientes da rota, na ordem (só na rota do dia com mais de uma parada). */
+  queue: MockClient[];
+  current: number;
+  onPick: (index: number) => void;
   onNext?: () => void;
   onPrevious?: () => void;
   /** Chegada, tempo e distância (o botão "Ir" fica no canto do mapa). */
@@ -654,9 +674,13 @@ function ClientCard({
   onClose: () => void;
 }) {
   const c = useColors();
-  const _router = useRouter();
+  const [list, setList] = useState(false);
   const tile = c.mode === 'dark' ? 'rgba(255,255,255,0.1)' : '#FFFFFF';
   const district = client.district.split(' · ')[0];
+  const hasQueue = queue.length > 1;
+  const nextIndex = current + 1;
+  const next = hasQueue ? queue[nextIndex] : undefined;
+  const soft = c.mode === 'dark' ? 'rgba(10,132,255,0.2)' : 'rgba(0,122,255,0.12)';
   const square = (icon: IconName, label: string, onPress: () => void) => (
     <Touchable
       accessibilityRole="button"
@@ -664,82 +688,163 @@ function ClientCard({
       onPress={onPress}
       style={[styles.step, { backgroundColor: tile }]}
     >
-      <Icon name={icon} size={34} />
+      <Icon name={icon} size={38} />
     </Touchable>
   );
 
   return (
     <Material style={styles.compact}>
-      <Appear distance={10} style={styles.compactBody}>
-        <View style={{ gap: spacing[4] }}>
-          {stopLabel && (
-            <Text variant="footnote" tone="secondary">
-              {stopLabel}
-            </Text>
-          )}
-          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: spacing[4] }}>
-            <Avatar name={client.name} size={104} radius={COMPACT_INNER} />
-            <View style={{ flex: 1, gap: 4 }}>
-              <Text variant="title" numberOfLines={2}>
-                {client.tradeName || client.name}
+      <View style={styles.compactTop}>
+        {hasQueue ? (
+          <Touchable
+            accessibilityRole="button"
+            accessibilityLabel={list ? 'Voltar' : 'Ver lista'}
+            onPress={() => setList((v) => !v)}
+            style={styles.topLink}
+          >
+            <Icon name={list ? 'chevron-back' : 'list'} size={32} color={c.accent} />
+            {!list && (
+              <Text variant="headline" tone="accent" style={{ fontSize: 26, lineHeight: 32 }}>
+                Ver lista
               </Text>
-              <Text variant="subhead" tone="secondary" numberOfLines={2}>
-                {[client.address, district].filter(Boolean).join(' · ')}
-              </Text>
+            )}
+          </Touchable>
+        ) : (
+          <View />
+        )}
+        <Text variant="headline" tone="secondary" style={{ fontSize: 24, lineHeight: 30 }}>
+          {stopLabel ?? 'Destino'}
+        </Text>
+      </View>
+      <Swap id={list ? 'list' : 'card'} dir={list ? 1 : -1} style={{ flex: 1 }}>
+        {list ? (
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: spacing[2] }}
+          >
+            <View style={[styles.queue, { backgroundColor: tile }]}>
+              {queue.map((q, i) => {
+                const on = i === current;
+                return (
+                  <Touchable
+                    key={q.id}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Parada ${i + 1}: ${q.tradeName}`}
+                    scaleTo={0.98}
+                    onPress={() => (on ? setList(false) : onPick(i))}
+                    style={[
+                      styles.queueRow,
+                      i > 0 && {
+                        borderTopWidth: StyleSheet.hairlineWidth,
+                        borderTopColor: c.separator,
+                      },
+                    ]}
+                  >
+                    <View style={[styles.queueDot, { backgroundColor: on ? c.accent : soft }]}>
+                      <Text
+                        variant="headline"
+                        style={{ fontSize: 26, color: on ? '#FFFFFF' : c.accent }}
+                      >
+                        {i + 1}
+                      </Text>
+                    </View>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text
+                        variant="headline"
+                        numberOfLines={1}
+                        style={{ fontSize: 28, lineHeight: 34 }}
+                      >
+                        {q.tradeName || q.name}
+                      </Text>
+                      <Text
+                        variant="callout"
+                        tone="secondary"
+                        numberOfLines={1}
+                        style={{ fontSize: 22, lineHeight: 28 }}
+                      >
+                        {on ? 'Parada atual' : q.address}
+                      </Text>
+                    </View>
+                  </Touchable>
+                );
+              })}
             </View>
-            <IconButton
-              icon="close"
-              size={56}
-              iconSize={28}
-              accessibilityLabel="Fechar destino"
-              onPress={onClose}
-            />
+          </ScrollView>
+        ) : (
+          <View style={styles.compactBody}>
+            <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: spacing[4] }}>
+              <Avatar name={client.name} size={120} radius={COMPACT_INNER} />
+              <View style={{ flex: 1, gap: 6 }}>
+                <Text variant="title" numberOfLines={2} style={{ fontSize: 40, lineHeight: 46 }}>
+                  {client.tradeName || client.name}
+                </Text>
+                <Text
+                  variant="subhead"
+                  tone="secondary"
+                  numberOfLines={3}
+                  style={{ fontSize: 24, lineHeight: 30 }}
+                >
+                  {[client.address, district].filter(Boolean).join(' · ')}
+                </Text>
+              </View>
+              <IconButton
+                icon="close"
+                size={56}
+                iconSize={28}
+                accessibilityLabel="Fechar destino"
+                onPress={onClose}
+              />
+            </View>
+            {/* Rota do dia: a próxima parada no meio do cartão (tocar vai para ela). */}
+            {next ? (
+              <Touchable
+                accessibilityRole="button"
+                accessibilityLabel={`Próxima parada: ${next.tradeName}`}
+                scaleTo={0.98}
+                onPress={() => onPick(nextIndex)}
+                style={[styles.nextStop, { backgroundColor: tile }]}
+              >
+                <View style={[styles.queueDot, { backgroundColor: soft }]}>
+                  <Text variant="headline" style={{ fontSize: 26, color: c.accent }}>
+                    {nextIndex + 1}
+                  </Text>
+                </View>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text variant="callout" tone="secondary" style={{ fontSize: 22, lineHeight: 28 }}>
+                    Próxima parada
+                  </Text>
+                  <Text
+                    variant="headline"
+                    numberOfLines={1}
+                    style={{ fontSize: 28, lineHeight: 34 }}
+                  >
+                    {next.tradeName || next.name}
+                  </Text>
+                </View>
+                <Icon name="chevron-forward" size={30} color={c.textTertiary} />
+              </Touchable>
+            ) : null}
+            <View style={{ gap: spacing[4] }}>
+              <View style={{ flexDirection: 'row', gap: spacing[3] }}>
+                {client.phone ? square('call', 'Ligar', () => callPhone(client.phone)) : null}
+                {client.phone
+                  ? square('logo-whatsapp', 'WhatsApp', () => openWhatsApp(client.phone))
+                  : null}
+                <View style={{ flex: 1 }} />
+                {onPrevious ? square('chevron-back', 'Cliente anterior', onPrevious) : null}
+                {onNext ? square('chevron-forward', 'Próximo cliente', onNext) : null}
+              </View>
+              {mode !== 'explore' && (
+                <View style={[styles.tripStats, { backgroundColor: tile }]}>
+                  <Stat value={trip.arrival} label="chegada" />
+                  <Stat value={trip.duration.value} label={trip.duration.unit} />
+                  <Stat value={trip.km} label="km" />
+                </View>
+              )}
+            </View>
           </View>
-        </View>
-        {/* Resumo do cliente no meio do cartão (dados do Kyte). */}
-        <View style={[styles.facts, { backgroundColor: tile }]}>
-          {[
-            { label: 'Última visita', value: client.lastVisit },
-            { label: 'Última compra', value: client.lastPurchaseTotal },
-            ...(client.order.length > 0
-              ? [{ label: 'Pedido em aberto', value: `${client.order.length} itens` }]
-              : []),
-          ].map((f, i) => (
-            <View
-              key={f.label}
-              style={[
-                styles.fact,
-                i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.separator },
-              ]}
-            >
-              <Text variant="callout" tone="secondary" numberOfLines={1}>
-                {f.label}
-              </Text>
-              <Text variant="headline" numberOfLines={1}>
-                {f.value}
-              </Text>
-            </View>
-          ))}
-        </View>
-        <View style={{ gap: spacing[4] }}>
-          <View style={{ flexDirection: 'row', gap: spacing[3] }}>
-            {client.phone ? square('call', 'Ligar', () => callPhone(client.phone)) : null}
-            {client.phone
-              ? square('logo-whatsapp', 'WhatsApp', () => openWhatsApp(client.phone))
-              : null}
-            <View style={{ flex: 1 }} />
-            {onPrevious ? square('chevron-back', 'Cliente anterior', onPrevious) : null}
-            {onNext ? square('chevron-forward', 'Próximo cliente', onNext) : null}
-          </View>
-          {mode !== 'explore' && (
-            <View style={[styles.tripStats, { backgroundColor: tile }]}>
-              <Stat value={trip.arrival} label="chegada" />
-              <Stat value={trip.duration.value} label={trip.duration.unit} />
-              <Stat value={trip.km} label="km" />
-            </View>
-          )}
-        </View>
-      </Appear>
+        )}
+      </Swap>
     </Material>
   );
 }
@@ -922,20 +1027,43 @@ const styles = StyleSheet.create({
   tripButton: { borderRadius: TRIP_INNER, minWidth: 280, paddingHorizontal: spacing[8] },
   card: { flex: 1, borderRadius: 40, padding: spacing[8] },
   compact: { flex: 1, borderRadius: COMPACT_R, padding: spacing[6] },
-  // Cabeçalho em cima e os botões no pé do cartão (que ocupa a coluna até embaixo).
-  facts: { borderRadius: COMPACT_INNER, paddingHorizontal: spacing[5] },
   tripStats: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     borderRadius: COMPACT_INNER,
-    paddingVertical: spacing[2],
+    paddingVertical: spacing[4],
   },
-  fact: {
+  compactTop: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: spacing[3],
-    paddingVertical: spacing[2],
+    height: 48,
+    marginTop: -spacing[2],
+    marginBottom: spacing[3],
+  },
+  topLink: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 48 },
+  nextStop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[4],
+    borderRadius: COMPACT_INNER,
+    paddingHorizontal: spacing[4],
+    paddingVertical: spacing[4],
+  },
+  queue: { borderRadius: COMPACT_INNER, paddingLeft: spacing[4] },
+  queueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[4],
+    minHeight: 104,
+    paddingRight: spacing[4],
+  },
+  queueDot: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   compactBody: { flex: 1, gap: spacing[5], justifyContent: 'space-between' },
   welcome: {

@@ -3,6 +3,7 @@ import { Image, View } from 'react-native';
 import Svg, { Circle, G, Path, Polyline, Text as SvgText } from 'react-native-svg';
 import type { Palette } from '../theme';
 import { FONT } from '../theme';
+import { Presence } from '../ui/motion';
 
 /**
  * Mapa de EXEMPLO para o design: imagem estática fornecida como referência (versão clara)
@@ -65,8 +66,6 @@ function pts(list: readonly (readonly [number, number])[]) {
 
 export const MapWorld = memo(function MapWorld({ c, mode }: { c: Palette; mode: MapMode }) {
   const m = c.map;
-  const route = mode === 'day' ? DAY_ROUTE : mode === 'client' ? CLIENT_ROUTE : null;
-  const dest = CLIENT_ROUTE[CLIENT_ROUTE.length - 1] as readonly [number, number];
   return (
     <View style={{ width: WORLD.width, height: WORLD.height }}>
       <Image
@@ -74,59 +73,14 @@ export const MapWorld = memo(function MapWorld({ c, mode }: { c: Palette; mode: 
         style={{ position: 'absolute', width: WORLD.width, height: WORLD.height }}
         resizeMode="cover"
       />
+      {/* Cada modo tem a sua camada (rota, paradas, pinos): ao trocar de modo, a camada
+          antiga some e a nova aparece com fade, sem corte seco. */}
+      {(['explore', 'client', 'day'] as const).map((k) => (
+        <Presence key={k} show={mode === k} distance={0} style={LAYER}>
+          <Overlay c={c} mode={k} />
+        </Presence>
+      ))}
       <Svg width={WORLD.width} height={WORLD.height} style={{ position: 'absolute' }}>
-        {route && (
-          <>
-            <Polyline
-              points={pts(route)}
-              stroke={m.routeCasing}
-              strokeWidth="26"
-              fill="none"
-              strokeLinejoin="round"
-              strokeLinecap="round"
-            />
-            <Polyline
-              points={pts(route)}
-              stroke={m.route}
-              strokeWidth="16"
-              fill="none"
-              strokeLinejoin="round"
-              strokeLinecap="round"
-            />
-          </>
-        )}
-
-        {mode === 'day' &&
-          DAY_STOPS.map(([x, y], i) => (
-            <G key={`s${x}-${y}`}>
-              <Circle cx={x} cy={y} r="26" fill="#FFFFFF" />
-              <Circle cx={x} cy={y} r="21" fill={m.route} />
-              <SvgText
-                x={x}
-                y={y + 8}
-                fill="#FFFFFF"
-                fontSize="22"
-                fontFamily={FONT.textSemibold}
-                textAnchor="middle"
-              >
-                {String(i + 1)}
-              </SvgText>
-            </G>
-          ))}
-        {mode !== 'day' && <Pin x={dest[0]} y={dest[1]} color={c.danger} />}
-        {mode === 'explore' &&
-          CLIENT_PINS.map(([x, y]) => (
-            <Circle
-              key={`p${x}-${y}`}
-              cx={x}
-              cy={y}
-              r="14"
-              fill={c.accent}
-              stroke="#FFFFFF"
-              strokeWidth="5"
-            />
-          ))}
-
         <Circle cx={USER.x} cy={USER.y} r="56" fill={`${m.route}33`} />
         <Circle cx={USER.x} cy={USER.y} r="24" fill="#FFFFFF" />
         <Path
@@ -137,6 +91,69 @@ export const MapWorld = memo(function MapWorld({ c, mode }: { c: Palette; mode: 
     </View>
   );
 });
+
+const LAYER = { position: 'absolute', left: 0, top: 0 } as const;
+
+function Overlay({ c, mode }: { c: Palette; mode: MapMode }) {
+  const m = c.map;
+  const route = mode === 'day' ? DAY_ROUTE : mode === 'client' ? CLIENT_ROUTE : null;
+  const dest = CLIENT_ROUTE[CLIENT_ROUTE.length - 1] as readonly [number, number];
+  return (
+    <Svg width={WORLD.width} height={WORLD.height}>
+      {route && (
+        <>
+          <Polyline
+            points={pts(route)}
+            stroke={m.routeCasing}
+            strokeWidth="26"
+            fill="none"
+            strokeLinejoin="round"
+            strokeLinecap="round"
+          />
+          <Polyline
+            points={pts(route)}
+            stroke={m.route}
+            strokeWidth="16"
+            fill="none"
+            strokeLinejoin="round"
+            strokeLinecap="round"
+          />
+        </>
+      )}
+
+      {mode === 'day' &&
+        DAY_STOPS.map(([x, y], i) => (
+          <G key={`s${x}-${y}`}>
+            <Circle cx={x} cy={y} r="26" fill="#FFFFFF" />
+            <Circle cx={x} cy={y} r="21" fill={m.route} />
+            <SvgText
+              x={x}
+              y={y + 8}
+              fill="#FFFFFF"
+              fontSize="22"
+              fontFamily={FONT.textSemibold}
+              textAnchor="middle"
+            >
+              {String(i + 1)}
+            </SvgText>
+          </G>
+        ))}
+      {mode !== 'day' && <Pin x={dest[0]} y={dest[1]} color={c.danger} />}
+      {mode === 'explore' &&
+        CLIENT_PINS.map(([x, y]) => (
+          <Circle
+            key={`p${x}-${y}`}
+            cx={x}
+            cy={y}
+            r="14"
+            fill={c.accent}
+            stroke="#FFFFFF"
+            strokeWidth="5"
+          />
+        ))}
+    </Svg>
+  );
+}
 
 function Pin({ x, y, color }: { x: number; y: number; color: string }) {
   return (

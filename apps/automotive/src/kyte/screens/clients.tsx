@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { FlatList, ScrollView, View } from 'react-native';
 import { callPhone, openWhatsApp } from '../../integrations/contact';
 import { useTabBarSpace } from '../../layout/form-factor';
+import { useMapNav } from '../../map/map-nav';
 import { useStops } from '../../map/stops';
 import { Swap } from '../../ui/motion';
 import { Touchable } from '../../ui/primitives';
@@ -194,7 +195,8 @@ export function ClientDetail({ id }: { id: string }) {
   const s = useKySize();
   const nav = useKyteNav();
   const stops = useStops();
-  const router = useRouter();
+  const _router = useRouter();
+  const mapNav = useMapNav();
   const data = useKyteList('customer');
   const sales = useKyteList('sale');
   const [tab, setTab] = useState<'dados' | 'vendas' | 'pedidos' | 'conta'>('dados');
@@ -337,7 +339,7 @@ export function ClientDetail({ id }: { id: string }) {
                       if (!address)
                         return setMsg('Cadastre o endereço deste cliente no Kyte primeiro.');
                       stops.goNow(stop);
-                      router.replace('/mapa');
+                      mapNav();
                     }}
                   />
                   <SmallButton
