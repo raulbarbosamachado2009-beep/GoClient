@@ -145,13 +145,26 @@ demonstração. Código em `apps/automotive/src/spotify/`.
   mesmo aparelho, trocadas pelo menu da foto do perfil.
 - **Dados:** Músicas Curtidas, playlists, álbuns e programas salvos, artistas seguidos,
   tocadas recentemente, busca de músicas (máx. 10 resultados, regra de fev/2026).
-- **Reprodução:** tocar/pausar/próxima/anterior e tocar playlist/álbum/programa pela Web API; o
-  estado é lido a cada 4 s. Sem aparelho ativo, o GoClient liga o app do Spotify **por trás**
-  com o SDK oficial App Remote 0.8.0 (módulo local `apps/automotive/modules/spotify-remote`, aar
-  do repositório github.com/spotify/android-sdk, licença Apache 2.0), espera ele aparecer como
-  aparelho e manda o comando; se não aparecer, manda o comando direto pelo SDK. A pessoa não sai
-  do GoClient. Exige o app do Spotify instalado e logado na multimídia; na primeira conexão o
-  Spotify pode mostrar uma tela pedindo para autorizar o GoClient.
+- **Reprodução (desde 24/11/2026):** com o app do Spotify instalado na multimídia, todos os
+  comandos (tocar, pausar, pular, voltar, posição, aleatório, repetir, fila) vão pelo SDK
+  oficial **App Remote 0.8.0** (módulo local `apps/automotive/modules/spotify-remote`, aar do
+  repositório github.com/spotify/android-sdk, licença Apache 2.0) direto para o Spotify **deste
+  aparelho**: o som nunca vai parar em outro aparelho da conta. Uma faixa escolhida numa
+  playlist, álbum ou nas Curtidas é tocada pela **posição** dela (`skipToIndex`), então a
+  música que toca é sempre a que a pessoa tocou. O estado (faixa, play/pausa, posição,
+  aleatório, repetir, contexto) chega por **evento** do SDK, na hora; a Web API só completa os
+  dados (capa grande, artistas, fila). Regras em `apps/automotive/src/spotify/transport.ts`
+  (com testes).
+- **Sem o app do Spotify** (ou se o SDK não conectar), os mesmos comandos vão pela Web API
+  (Spotify Connect) para o aparelho ativo da conta, e o estado é lido a cada 4 s.
+- **Player:** a parte de baixo mostra só dados reais da faixa tocando: artista (foto e gêneros
+  de `GET /artists/{id}`), artistas da faixa, próximas da fila e créditos (artistas e álbum).
+  "Ouvintes mensais", vídeos relacionados e "Conheça" não existem na API para este app e
+  saíram. Seguir artista exigiria o escopo `user-follow-modify` e `PUT /me/library` (não
+  pedido hoje).
+- Na primeira conexão o Spotify pode mostrar uma tela pedindo para autorizar o GoClient. Ao
+  abrir o GoClient, ele tenta conectar ao Spotify em silêncio (sem essa tela) para já mostrar o
+  que está tocando.
 
 **Limitações reais (não contornáveis pelo GoClient):**
 
@@ -164,8 +177,11 @@ demonstração. Código em `apps/automotive/src/spotify/`.
 - O login pelo **Google** é bloqueado pelo Google dentro de WebViews: usar e-mail e senha.
 - A cor de fundo do player/mini player das capas remotas é um tom estável derivado do item, não
   a cor extraída da capa (exigiria biblioteca nativa).
-- O áudio sai pelo Spotify da conta ativa: se outra pessoa da família trocar de conta, o app do
-  Spotify da multimídia precisa estar com a mesma conta, senão o som toca no aparelho dela.
+- O SDK controla o app do Spotify **com a conta que estiver logada nele**. Se a conta ativa no
+  GoClient for outra, as bibliotecas e playlists vêm da conta do GoClient, mas o som e o
+  estado vêm da conta do app do Spotify: as duas precisam ser a mesma.
+- Nada disso foi testado num aparelho de verdade a partir do ambiente de desenvolvimento: o
+  SDK só existe na compilação Android com o app do Spotify instalado.
 
 **Configuração (uma vez):**
 

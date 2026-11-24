@@ -188,12 +188,10 @@ export async function runTool(
       if (!t) return { result: `Não achei "${q}" no Spotify.` };
       const label = `${t.name} — ${t.artists?.map((a) => a.name).join(', ') ?? ''}`;
       if (args.fila) {
-        await d.spotify.call(`/me/player/queue?uri=${encodeURIComponent(t.uri)}`, {
-          method: 'POST',
-        });
+        await d.spotify.addToQueue(t.uri);
         return { result: `Na fila: ${label}` };
       }
-      await d.spotify.play({ uris: [t.uri] });
+      await d.spotify.play({ uris: [t.uri], offsetUri: t.uri });
       return { result: `Tocando: ${label}` };
     }
     case 'cliente_buscar': {

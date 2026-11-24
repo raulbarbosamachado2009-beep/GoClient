@@ -9,7 +9,8 @@
     "android": "expo start --android --port 8082",
     "export:web": "expo export --platform web --output-dir dist",
     "typecheck": "tsc -p tsconfig.json",
-    "preview:bundle": "expo export --platform web --output-dir dist && node scripts/single-file-preview.mjs"
+    "preview:bundle": "expo export --platform web --output-dir dist && node scripts/single-file-preview.mjs",
+    "test": "vitest run"
   },
   "dependencies": {
     "@expo-google-fonts/figtree": "^0.4.1",
@@ -48,6 +49,7 @@
   "devDependencies": {
     "@types/node": "26.6.6",
     "@types/react": "~19.3.0",
-    "typescript": "~6.0.3"
+    "typescript": "~6.0.3",
+    "vitest": "5.1.1"
   }
 }

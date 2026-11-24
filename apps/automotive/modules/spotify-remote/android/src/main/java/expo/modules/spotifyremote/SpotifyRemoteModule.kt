@@ -8,6 +8,7 @@ import com.spotify.android.appremote.api.SpotifyAppRemote
 import com.spotify.protocol.client.CallResult
 import com.spotify.protocol.client.Subscription
 import com.spotify.protocol.types.Empty
+import com.spotify.protocol.types.PlayerContext
 import com.spotify.protocol.types.PlayerState
 import expo.modules.kotlin.Promise
 import expo.modules.kotlin.exception.CodedException
@@ -22,6 +23,7 @@ import expo.modules.kotlin.modules.ModuleDefinition
 class SpotifyRemoteModule : Module() {
   private var remote: SpotifyAppRemote? = null
   private var playerSub: Subscription<PlayerState>? = null
+  private var contextSub: Subscription<PlayerContext>? = null
   private val main = Handler(Looper.getMainLooper())
 
   private class RemoteError(name: String, message: String?) :
@@ -30,7 +32,7 @@ class SpotifyRemoteModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("SpotifyRemote")
 
-    Events("onPlayerState", "onDisconnected")
+    Events("onPlayerState", "onPlayerContext", "onDisconnected")
 
     Function("isInstalled") {
       val ctx = appContext.reactContext ?: return@Function false
@@ -73,6 +75,8 @@ class SpotifyRemoteModule : Module() {
     Function("disconnect") {
       playerSub?.cancel()
       playerSub = null
+      contextSub?.cancel()
+      contextSub = null
       remote?.let { SpotifyAppRemote.disconnect(it) }
       remote = null
     }
@@ -87,9 +91,27 @@ class SpotifyRemoteModule : Module() {
       run(promise) { it.playerApi.skipToIndex(uri, index) }
     }
     AsyncFunction("seekTo") { ms: Double, promise: Promise -> run(promise) { it.playerApi.seekTo(ms.toLong()) } }
+    AsyncFunction("setShuffle") { on: Boolean, promise: Promise -> run(promise) { it.playerApi.setShuffle(on) } }
+    // 0 = desligado, 1 = repetir a faixa, 2 = repetir a lista (com.spotify.protocol.types.Repeat).
+    AsyncFunction("setRepeat") { mode: Int, promise: Promise -> run(promise) { it.playerApi.setRepeat(mode) } }
+
+    // Estado atual na hora (sem esperar o próximo evento).
+    AsyncFunction("getPlayerState") { promise: Promise ->
+      val r = remote
+      if (r == null || !r.isConnected) {
+        promise.reject(RemoteError("NOT_CONNECTED", "Spotify não conectado"))
+        return@AsyncFunction
+      }
+      main.post {
+        r.playerApi.playerState
+          .setResultCallback { s -> promise.resolve(stateMap(s)) }
+          .setErrorCallback { e -> promise.reject(RemoteError(e.javaClass.simpleName, e.message)) }
+      }
+    }
 
     OnDestroy {
       playerSub?.cancel()
+      contextSub?.cancel()
       remote?.let { SpotifyAppRemote.disconnect(it) }
       remote = null
     }
@@ -111,22 +133,40 @@ class SpotifyRemoteModule : Module() {
   private fun subscribe(r: SpotifyAppRemote) {
     playerSub?.cancel()
     playerSub = r.playerApi.subscribeToPlayerState().setEventCallback { s ->
-      val t = s.track
+      sendEvent("onPlayerState", stateMap(s))
+    }
+    contextSub?.cancel()
+    contextSub = r.playerApi.subscribeToPlayerContext().setEventCallback { c ->
       sendEvent(
-        "onPlayerState",
-        mapOf(
-          "isPaused" to s.isPaused,
-          "position" to s.playbackPosition.toDouble(),
-          "track" to if (t == null) null else mapOf(
-            "uri" to t.uri,
-            "name" to t.name,
-            "artist" to (t.artist?.name ?: ""),
-            "album" to (t.album?.name ?: ""),
-            "duration" to t.duration.toDouble(),
-            "imageUri" to (t.imageUri?.raw ?: "")
-          )
-        )
+        "onPlayerContext",
+        mapOf("uri" to (c.uri ?: ""), "title" to (c.title ?: ""), "type" to (c.type ?: ""))
       )
     }
+    // Lifecycle: o Spotify pode cair (app fechado pelo sistema); avisa o JS para reconectar.
+    playerSub?.setErrorCallback { e ->
+      remote = null
+      sendEvent("onDisconnected", mapOf("reason" to e.javaClass.simpleName))
+    }
+  }
+
+  private fun stateMap(s: PlayerState): Map<String, Any?> {
+    val t = s.track
+    return mapOf(
+      "isPaused" to s.isPaused,
+      "position" to s.playbackPosition.toDouble(),
+      "shuffle" to (s.playbackOptions?.isShuffling ?: false),
+      "repeat" to (s.playbackOptions?.repeatMode ?: 0),
+      "track" to if (t == null) null else mapOf(
+        "uri" to t.uri,
+        "name" to t.name,
+        "artist" to (t.artist?.name ?: ""),
+        "artists" to (t.artists?.map { mapOf("name" to it.name, "uri" to it.uri) } ?: emptyList()),
+        "album" to (t.album?.name ?: ""),
+        "albumUri" to (t.album?.uri ?: ""),
+        "duration" to t.duration.toDouble(),
+        "imageUri" to (t.imageUri?.raw ?: ""),
+        "isEpisode" to t.isEpisode
+      )
+    )
   }
 }

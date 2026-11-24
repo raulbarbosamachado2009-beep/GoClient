@@ -33,14 +33,27 @@ interface PrototypeState {
    * Toca uma faixa; a fila padrão é a lista inteira. No Spotify, `context` é a playlist ou
    * álbum de onde ela veio e `hint` a própria faixa (mostrada na hora no player).
    */
-  playTrack: (trackId: string, queue?: string[], context?: string, hint?: MockTrack) => void;
+  playTrack: (
+    trackId: string,
+    queue?: string[],
+    context?: string,
+    hint?: MockTrack,
+    opts?: PlayOptions,
+  ) => void;
   /** Toca uma playlist, álbum ou programa inteiro do Spotify. */
-  playContext: (uri: string) => void;
+  playContext: (uri: string, opts?: PlayOptions) => void;
   next: () => void;
   previous: () => void;
   togglePlaying: () => void;
   overlay: ReactNode;
   setOverlay: (node: ReactNode) => void;
+}
+
+export interface PlayOptions {
+  /** Liga/desliga o aleatório antes de tocar (indefinido = como estiver no Spotify). */
+  shuffle?: boolean;
+  /** Nome da playlist/álbum, para o cabeçalho do player. */
+  title?: string;
 }
 
 const Ctx = createContext<PrototypeState | null>(null);
@@ -92,16 +105,30 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
           : (SPOTIFY_ACCOUNTS[0] as MockSpotifyAccount),
         setSpotifyAccount: sp.setActive,
         nowPlaying: sp.playback.track,
-        upNext: sp.playback.upNext,
+        upNext: sp.playback.queue[0] ?? null,
         queue: [],
         playing: sp.playback.isPlaying,
-        playTrack: (trackId, list, context, hint) =>
+        playTrack: (trackId, list, context, hint, opts) =>
           sp.play(
             context
-              ? { contextUri: context, offsetUri: trackId, hint }
-              : { uris: list && list.length > 0 ? list : [trackId], offsetUri: trackId, hint },
+              ? {
+                  contextUri: context,
+                  offsetUri: trackId,
+                  // A ordem da tela dá a posição da faixa (o SDK toca pela posição).
+                  order: list && list.length > 0 ? list : undefined,
+                  hint,
+                  shuffle: opts?.shuffle,
+                  contextTitle: opts?.title,
+                }
+              : {
+                  uris: list && list.length > 0 ? list : [trackId],
+                  offsetUri: trackId,
+                  hint,
+                  shuffle: opts?.shuffle,
+                },
           ),
-        playContext: (uri) => sp.play({ contextUri: uri }),
+        playContext: (uri, opts) =>
+          sp.play({ contextUri: uri, shuffle: opts?.shuffle, contextTitle: opts?.title }),
         next: sp.next,
         previous: sp.previous,
         togglePlaying: sp.toggle,
