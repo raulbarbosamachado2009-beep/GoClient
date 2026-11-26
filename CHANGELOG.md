@@ -5,16 +5,54 @@ Leia este arquivo antes de começar qualquer trabalho.
 
 ## Estado atual do app
 
-_Última atualização: 2026-11-26 09:55 — WhatsApp simulado no Preview da multimídia para refinar o design (PR aguardando revisão)._
+_Última atualização: 2026-11-26 10:45 — WhatsApp simulado fiel ao WhatsApp Web, modo claro padrão, cartão do WhatsApp no Mapa, permissões e login novos (PR aguardando revisão)._
 
 - **Automotive (`apps/automotive`)** é onde está quase todo o produto: Mapa (OSM + OpenRouteService,
   navegação com voz), Kyte (telas próprias sobre a janela do Kyte) e o assistente de voz Lucas.
   Não há mais Música/Spotify; no lugar entrou a aba **WhatsApp** (WhatsApp Web dentro do
   app, número da equipe). O Lucas avisa o próximo cliente da rota pelo WhatsApp. Roda no carro (paisagem) e no celular (em pé, com aba puxável estilo Apple Maps).
+- **Modo claro é o padrão** (o escuro continua em Ajustes → Tema). Login com fundo "aurora".
 - **Mobile e Web** ainda são telas de diagnóstico; **API** (`apps/api`) com Hono + Drizzle.
 - Regras de negócio em `packages/core` (com testes); visual só com `@goclient/design-tokens`.
 
 ## Mudanças
+
+### 2026-11-26 10:45 — WhatsApp simulado fiel ao WhatsApp Web, modo claro e Mapa com cartão do WhatsApp
+
+Pedidos do usuário (8 itens) e uma correção achada ao verificar o fluxo:
+
+1. **Sem o trilho lateral no WhatsApp simulado.** O botão ao lado do "+" (onde ficavam os ⋮)
+   alterna Conversas ↔ Ligações. Também vale no celular (saíram as abas "Conversas/Ligações").
+2. **O ícone mostra o destino:** nas Conversas, ícone de ligação; nas Ligações, ícone de
+   conversa (com o número de conversas não lidas).
+3. **Visual igual ao WhatsApp Web:** fonte do sistema (Segoe UI/Roboto), cores do WhatsApp
+   atual (#1DAA61, fundo #F7F5F3, papel de parede bege), proporções do original ×1,35,
+   avatares padrão (silhueta azul e de grupo), filtros, balões com "rabinho" e sombra fina,
+   aviso de criptografia em amarelo, campo de mensagem flutuante, menu e confirmações no
+   formato do WhatsApp, dados do contato com botões redondos e painel vazio com cartão branco.
+   Continua tudo com dados fictícios.
+4. **Modo claro é o padrão do sistema** (`theme.tsx`, `app.json`). "Automático" agora cai no
+   claro quando o aparelho não informa o tema.
+5. **Permissões mais simples:** cada tela tem só um ícone pequeno, título ("Permitir
+   localização", "Permitir microfone") e um subtítulo curto, com Permitir / Agora não.
+6. **Barra lateral visível no modo claro:** o painel é cinza sólido (#DEDEE4) com borda e
+   sombra leve em todas as páginas (no Mapa ele sumia no fundo).
+7. **Mapa (multimídia): cartão do WhatsApp** quadrado e arredondado no lugar do antigo mini
+   player, com "Abrir conversas". Ao tocar em "Escolher cliente" ou "Rotas montadas" (ou com um
+   destino), o cartão de baixo cresce e o do WhatsApp encolhe, com animação de forma (altura,
+   cantos e desfoque juntos). Ícones novos: pessoa (cliente) e mapa (rotas).
+8. **Login com fundo "aurora"** (brilhos roxo, amarelo, rosa e azul sobre lilás → rosa), em
+   todas as etapas do login. Feito com react-native-svg, estático (sem animação nem desfoque)
+   para não travar; o app não usa Tailwind/shadcn. Saíram os logos flutuando do fundo.
+   Exceção à regra "sem gradientes" registrada no CLAUDE.md a pedido do usuário.
+
+- **Correção (verificação do fluxo):** em Ligações, os Favoritos vinham da lista fixa de
+  contatos, então quem era adicionado aos favoritos nos dados do contato (ou um contato novo)
+  não aparecia lá. Agora vêm da agenda atual.
+- Arquivos: `whatsapp/sim/simulated.tsx`, `theme.tsx`, `app.json`, `shell/sidebar.tsx`,
+  `app/(main)/mapa.tsx`, `app/onboarding/permissoes.tsx`, `app/onboarding/login.tsx`,
+  `onboarding/aurora.tsx` (novo), `onboarding/layout.tsx`; removido
+  `onboarding/floating-logos.tsx`.
 
 ### 2026-11-26 09:55 — WhatsApp simulado no Preview (multimídia)
 

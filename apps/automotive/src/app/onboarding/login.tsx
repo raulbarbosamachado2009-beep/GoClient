@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Animated, Platform, StyleSheet, TextInput, View } from 'react-native';
 import Svg, { Rect } from 'react-native-svg';
 import { usePhone } from '../../layout/form-factor';
-import { FloatingLogos } from '../../onboarding/floating-logos';
+import { AuroraBackground } from '../../onboarding/aurora';
 import { OnboardingLayout, PillButton } from '../../onboarding/layout';
 import { concentric, spacing, type, useColors } from '../../theme';
 import { Appear, Swap, usePageTransition } from '../../ui/motion';
@@ -11,7 +11,8 @@ import { Icon, type IconName, Text, Touchable } from '../../ui/primitives';
 
 /**
  * Onboarding — login, depois das permissões e antes do mapa (referência: telas de entrada
- * com ilustração em cima, marca, e botões em pílula embaixo).
+ * com ilustração em cima, marca, e botões em pílula embaixo). Fundo "aurora" em todas as
+ * etapas (ver `onboarding/aurora.tsx`).
  * - Início: "Continuar com e-mail" e, na multimídia, "Entrar com o celular" (código QR).
  * - E-mail: campos agrupados no estilo do iOS e o botão Entrar.
  * Protótipo de design: entrar segue para o mapa; o provedor de login ainda não foi definido.
@@ -53,7 +54,7 @@ function LoginStage({
       <OnboardingLayout
         sceneKey="email"
         scene={null}
-        backdrop={<FloatingLogos />}
+        backdrop={<AuroraBackground />}
         centered
         title="Entre com seu e-mail"
         text="Use a mesma conta do GoClient no celular e no carro."
@@ -84,6 +85,7 @@ function LoginStage({
     return (
       <OnboardingLayout
         sceneKey="qr"
+        backdrop={<AuroraBackground />}
         scene={
           <View style={styles.qrScene}>
             <View style={styles.qr}>
@@ -109,6 +111,7 @@ function LoginStage({
     <OnboardingLayout
       sceneKey="start"
       scene={null}
+      backdrop={<AuroraBackground />}
       title="Venda mais em cada visita"
       text="Entre para ver seus clientes, produtos e rotas no carro e no celular."
       actions={

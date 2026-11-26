@@ -8,17 +8,27 @@ import {
   useRef,
   useState,
 } from 'react';
-import { Animated, Easing, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
-import { Text } from '../../kyte/ui';
+import {
+  Animated,
+  Easing,
+  Platform,
+  Pressable,
+  Text as RNText,
+  ScrollView,
+  type StyleProp,
+  StyleSheet,
+  TextInput,
+  type TextStyle,
+  View,
+} from 'react-native';
 import { usePhone } from '../../layout/form-factor';
-import { concentric, FONT, useColors } from '../../theme';
+import { useColors } from '../../theme';
 import { Appear, Presence } from '../../ui/motion';
 import { Switch, Touchable } from '../../ui/primitives';
 import {
   CALLS,
   CHATS,
   CONTACTS,
-  initials,
   ME,
   type SimCall,
   type SimChat,
@@ -34,10 +44,15 @@ import {
  * Telas: carregamento, conversas (lista + painel vazio), conversa aberta, menu da conversa
  * (Pesquisar, Selecionar mensagens, Bloquear, Limpar e Apagar conversa), dados do contato,
  * nova conversa, novo contato, ligações e dados da ligação.
+ *
+ * Visual fiel ao WhatsApp Web atual (pedido do usuário em 26/11/2026): fonte do sistema,
+ * cores, proporções, balões com "rabinho" e avatares padrão do WhatsApp, tudo ampliado ~1,35×
+ * para a tela do carro. Sem o trilho lateral: o botão ao lado do "+" alterna Conversas ↔
+ * Ligações e mostra o ícone do destino (ligação nas conversas, conversa nas ligações).
  */
 type IconName = ComponentProps<typeof Ionicons>['name'];
 
-/** Cores do WhatsApp (claro e escuro), para o simulado parecer o app de verdade. */
+/** Cores do WhatsApp Web atual (claro e escuro), para o simulado parecer o app de verdade. */
 function usePalette() {
   const dark = useColors().mode === 'dark';
   return dark
@@ -45,83 +60,128 @@ function usePalette() {
         dark,
         wall: '#0B141A',
         panel: '#111B21',
-        bar: '#202C33',
-        field: '#202C33',
+        bar: '#161717',
+        head: '#161717',
+        field: '#2E2F2F',
         line: 'rgba(134,150,160,0.15)',
         ink: '#E9EDEF',
         sub: '#8696A0',
-        green: '#00A884',
-        greenInk: '#25D366',
-        chipOn: '#0A332C',
-        out: '#005C4B',
-        in: '#202C33',
+        icon: '#AEBAC1',
+        green: '#21C063',
+        greenInk: '#21C063',
+        chipOn: '#103529',
+        chipInk: '#D9FDD3',
+        out: '#144D37',
+        in: '#242626',
         red: '#F15C6D',
-        press: '#2A3942',
-        avatar: '#6A7175',
-        avatarInk: '#CFD4D6',
+        press: '#2E2F2F',
+        avatar: '#103B4F',
+        avatarInk: '#8ACDEA',
+        group: '#0B3A36',
+        groupInk: '#6FD1C5',
+        soft: '#2E2F2F',
+        tile: '#2E2F2F',
+        menu: '#1D1F1F',
         tick: '#53BDEB',
         scrim: 'rgba(0,0,0,0.5)',
       }
     : {
         dark,
-        wall: '#EFEAE2',
+        wall: '#F4EFE8',
         panel: '#FFFFFF',
-        bar: '#F0F2F5',
-        field: '#F0F2F5',
-        line: '#E9EDEF',
+        bar: '#F7F5F3',
+        head: '#FFFFFF',
+        field: '#F6F5F4',
+        line: '#E9E9E9',
         ink: '#111B21',
         sub: '#667781',
-        green: '#00A884',
-        greenInk: '#008069',
+        icon: '#54656F',
+        green: '#1DAA61',
+        greenInk: '#1DAA61',
         chipOn: '#D9FDD3',
+        chipInk: '#15603E',
         out: '#D9FDD3',
         in: '#FFFFFF',
         red: '#EA0038',
-        press: '#F5F6F6',
-        avatar: '#DFE5E7',
-        avatarInk: '#667781',
+        press: '#F6F5F4',
+        avatar: '#CAECFA',
+        avatarInk: '#3D9BD1',
+        group: '#CBF2EE',
+        groupInk: '#048479',
+        soft: '#F6F5F4',
+        tile: '#EDEAE7',
+        menu: '#FFFFFF',
         tick: '#53BDEB',
         scrim: 'rgba(11,20,26,0.35)',
       };
 }
 type Palette = ReturnType<typeof usePalette>;
 
-/** Medidas: multimídia (1600×900, alvos de toque grandes) e celular. */
+/**
+ * Medidas do WhatsApp Web ×1,35 (multimídia, 1600×900) e ×1,3 (celular): cabeçalho 64,
+ * título 22, nome 17, texto 14, linha 72 e avatar 49 no original.
+ */
 function useSizes() {
   const phone = usePhone();
-  return phone
-    ? {
-        phone,
-        rail: 0,
-        list: 0,
-        title: 34,
-        name: 25,
-        sub: 21,
-        small: 17,
-        icon: 30,
-        rowH: 104,
-        avatar: 72,
-        pad: 22,
-        head: 96,
-        radius: 24,
-      }
-    : {
-        phone,
-        rail: 112,
-        list: 600,
-        title: 40,
-        name: 30,
-        sub: 25,
-        small: 21,
-        icon: 36,
-        rowH: 124,
-        avatar: 88,
-        pad: 28,
-        head: 112,
-        radius: 28,
-      };
+  const k = phone ? 1.3 : 1.35;
+  return {
+    phone,
+    k,
+    list: phone ? 0 : 620,
+    title: Math.round(22 * k),
+    name: Math.round(17 * k),
+    sub: Math.round(14.5 * k),
+    small: Math.round(12 * k),
+    icon: Math.round(24 * k),
+    rowH: Math.round(72 * k),
+    avatar: Math.round(49 * k),
+    pad: Math.round(16 * k),
+    head: Math.round(64 * k),
+    radius: Math.round(12 * k),
+  };
 }
 type Sizes = ReturnType<typeof useSizes>;
+
+/** Fonte do sistema, como o WhatsApp (Segoe UI no Windows, Roboto no Android). */
+const SYSTEM_FONT = Platform.select({
+  web: '"Segoe UI", "Helvetica Neue", Helvetica, Roboto, Arial, sans-serif',
+  default: undefined,
+});
+const WEIGHT = { regular: '400', medium: '500', semibold: '600', bold: '700' } as const;
+
+function Text({
+  children,
+  size,
+  weight = 'regular',
+  color,
+  style,
+  lines,
+}: {
+  children: ReactNode;
+  size: number;
+  weight?: keyof typeof WEIGHT;
+  color?: string;
+  style?: StyleProp<TextStyle>;
+  lines?: number;
+}) {
+  return (
+    <RNText
+      numberOfLines={lines}
+      style={[
+        {
+          fontFamily: SYSTEM_FONT,
+          fontWeight: WEIGHT[weight],
+          fontSize: size,
+          lineHeight: Math.round(size * 1.35),
+          color,
+        },
+        style,
+      ]}
+    >
+      {children}
+    </RNText>
+  );
+}
 
 type Tab = 'chats' | 'calls';
 type Left = 'list' | 'new' | 'newContact';
@@ -225,13 +285,29 @@ export function WhatsAppSim() {
     else setConfirm({ kind: k, chat: chat.id });
   };
 
+  // Botão ao lado do "+": Conversas ↔ Ligações (substitui o trilho lateral).
+  const toggle = (t: Tab) => {
+    setTab(t);
+    setLeft('list');
+    setMenu(false);
+  };
+
   if (loading) return <Loading P={P} S={S} />;
 
   // Celular (por enquanto): uma coluna por vez. A versão do celular será desenhada depois.
   const showRight = tab === 'chats' ? !!chat : !!call;
   const leftPane =
     tab === 'calls' ? (
-      <CallsList P={P} S={S} contactOf={contactOf} selected={call} onSelect={setCall} />
+      <CallsList
+        P={P}
+        S={S}
+        contacts={contacts}
+        contactOf={contactOf}
+        selected={call}
+        onSelect={setCall}
+        unread={unreadTotal}
+        onToggle={() => toggle('chats')}
+      />
     ) : left === 'new' ? (
       <NewChat
         P={P}
@@ -260,6 +336,7 @@ export function WhatsAppSim() {
         open={open}
         onOpen={openChat}
         onNew={() => setLeft('new')}
+        onToggle={() => toggle('calls')}
       />
     );
 
@@ -345,24 +422,12 @@ export function WhatsAppSim() {
         S={S}
         onNew={() => setLeft('new')}
         onContact={() => setLeft('newContact')}
-        onCalls={() => setTab('calls')}
+        onCalls={() => toggle('calls')}
       />
     );
 
   return (
     <Appear distance={0} style={[styles.root, { backgroundColor: P.panel }]}>
-      {!S.phone && (
-        <Rail
-          P={P}
-          S={S}
-          tab={tab}
-          unread={unreadTotal}
-          onTab={(t) => {
-            setTab(t);
-            setMenu(false);
-          }}
-        />
-      )}
       {(!S.phone || !showRight) && (
         <View
           style={[
@@ -370,7 +435,6 @@ export function WhatsAppSim() {
             { borderRightWidth: S.phone ? 0 : 1, borderRightColor: P.line },
           ]}
         >
-          {S.phone && <PhoneTabs P={P} S={S} tab={tab} onTab={setTab} />}
           {leftPane}
         </View>
       )}
@@ -426,7 +490,8 @@ function IconButton({
   /** Botão verde cheio (o "+" da lista). */
   filled?: boolean;
 }) {
-  const box = S.icon + 36;
+  // Alvo de toque grande (carro), mas o círculo verde tem o tamanho do WhatsApp (40 × k).
+  const box = Math.max(S.icon + 32, 72);
   return (
     <Touchable
       accessibilityRole="button"
@@ -439,43 +504,48 @@ function IconButton({
         borderRadius: box / 2,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: filled ? P.green : 'transparent',
       }}
     >
-      <Icon name={name} size={S.icon} color={filled ? '#FFFFFF' : (color ?? P.ink)} />
+      {filled ? (
+        <View
+          style={[
+            styles.center,
+            {
+              width: Math.round(40 * S.k),
+              height: Math.round(40 * S.k),
+              borderRadius: 40 * S.k,
+              backgroundColor: P.green,
+            },
+          ]}
+        >
+          <Icon name={name} size={S.icon} color="#FFFFFF" />
+        </View>
+      ) : (
+        <Icon name={name} size={S.icon} color={color ?? P.icon} />
+      )}
     </Touchable>
   );
 }
 
-function Avatar({
-  P,
-  name,
-  size,
-  group,
-}: {
-  P: Palette;
-  name: string;
-  size: number;
-  group?: boolean;
-}) {
+/** Avatar padrão do WhatsApp: silhueta azul (pessoa) ou verde-água (grupo). */
+function Avatar({ P, size, group }: { P: Palette; name?: string; size: number; group?: boolean }) {
   return (
     <View
       style={{
         width: size,
         height: size,
         borderRadius: size / 2,
-        backgroundColor: group ? (P.dark ? '#103529' : '#D9FDD3') : P.avatar,
+        backgroundColor: group ? P.group : P.avatar,
         alignItems: 'center',
         justifyContent: 'center',
+        overflow: 'hidden',
       }}
     >
-      {group ? (
-        <Icon name="people" size={size * 0.46} color={P.greenInk} />
-      ) : (
-        <Text size={size * 0.36} weight="semibold" color={P.avatarInk}>
-          {initials(name)}
-        </Text>
-      )}
+      <Icon
+        name={group ? 'people' : 'person'}
+        size={size * (group ? 0.46 : 0.5)}
+        color={group ? P.groupInk : P.avatarInk}
+      />
     </View>
   );
 }
@@ -495,27 +565,32 @@ function SearchField({
   placeholder: string;
   autoFocus?: boolean;
 }) {
-  const h = S.phone ? 64 : 76;
+  const h = Math.round(40 * S.k);
+  const [focus, setFocus] = useState(false);
   return (
     <View
       style={{
         height: h,
         borderRadius: h / 2,
-        backgroundColor: P.field,
+        backgroundColor: focus ? P.panel : P.field,
+        borderWidth: 2,
+        borderColor: focus ? P.green : 'transparent',
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 24,
-        gap: 16,
+        paddingHorizontal: Math.round(14 * S.k),
+        gap: Math.round(12 * S.k),
         marginHorizontal: S.pad,
       }}
     >
-      <Icon name="search" size={S.icon * 0.8} color={P.sub} />
+      <Icon name="search" size={Math.round(20 * S.k)} color={P.icon} />
       <TextInput
         value={value}
         onChangeText={onChange}
         placeholder={placeholder}
         placeholderTextColor={P.sub}
         autoFocus={autoFocus}
+        onFocus={() => setFocus(true)}
+        onBlur={() => setFocus(false)}
         style={[styles.input, { color: P.ink, fontSize: S.sub }]}
       />
       {!!value && (
@@ -547,7 +622,7 @@ function Header({
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: S.pad - (onBack ? 14 : 0),
-        gap: 8,
+        gap: Math.round(4 * S.k),
       }}
     >
       {onBack && <IconButton P={P} S={S} name={backIcon} label="Voltar" onPress={onBack} />}
@@ -587,17 +662,17 @@ function Row({
       scaleTo={0.985}
       style={{
         minHeight: S.rowH,
-        marginHorizontal: 12,
-        paddingHorizontal: S.pad - 12,
-        borderRadius: concentric(S.radius, 6),
+        marginHorizontal: Math.round(10 * S.k),
+        paddingHorizontal: Math.round(8 * S.k),
+        borderRadius: S.radius,
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 20,
+        gap: Math.round(14 * S.k),
         backgroundColor: selected ? P.press : 'transparent',
       }}
     >
       {left}
-      <View style={{ flex: 1, gap: 4 }}>
+      <View style={{ flex: 1, gap: 2 }}>
         <Text size={S.name} color={titleColor ?? P.ink} lines={1}>
           {title}
         </Text>
@@ -627,7 +702,7 @@ function Pill({
   on?: boolean;
   onPress?: () => void;
 }) {
-  const h = S.phone ? 52 : 60;
+  const h = Math.round(34 * S.k);
   return (
     <Touchable
       accessibilityRole="button"
@@ -635,17 +710,18 @@ function Pill({
       accessibilityState={{ selected: on }}
       onPress={onPress}
       scaleTo={0.94}
+      hitSlop={12}
       style={{
         height: h,
-        paddingHorizontal: 24,
+        paddingHorizontal: Math.round(12 * S.k),
         borderRadius: h / 2,
         justifyContent: 'center',
         backgroundColor: on ? P.chipOn : 'transparent',
         borderWidth: 1,
-        borderColor: on ? 'transparent' : P.line,
+        borderColor: on ? P.chipOn : P.line,
       }}
     >
-      <Text size={S.small + 1} weight="medium" color={on ? P.greenInk : P.sub}>
+      <Text size={Math.round(15 * S.k)} weight="medium" color={on ? P.chipInk : P.sub}>
         {label}
       </Text>
     </Touchable>
@@ -691,90 +767,6 @@ function Loading({ P, S }: { P: Palette; S: Sizes }) {
   );
 }
 
-/* ---------------- Trilho (Conversas, Ligações) ---------------- */
-
-function Rail({
-  P,
-  S,
-  tab,
-  unread,
-  onTab,
-}: {
-  P: Palette;
-  S: Sizes;
-  tab: Tab;
-  unread: number;
-  onTab: (t: Tab) => void;
-}) {
-  const box = S.rail - 28;
-  const item = (key: Tab, icon: IconName, iconOn: IconName, label: string, badge?: number) => {
-    const on = tab === key;
-    return (
-      <Touchable
-        key={key}
-        accessibilityRole="tab"
-        accessibilityLabel={label}
-        accessibilityState={{ selected: on }}
-        onPress={() => onTab(key)}
-        scaleTo={0.9}
-        style={{
-          width: box,
-          height: box,
-          borderRadius: box / 2,
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: on ? P.press : 'transparent',
-        }}
-      >
-        <Icon name={on ? iconOn : icon} size={S.icon} color={on ? P.ink : P.sub} />
-        {!!badge && (
-          <View style={[styles.badge, { backgroundColor: P.greenInk, right: 2, top: 2 }]}>
-            <Text size={18} weight="semibold" color={P.dark ? '#111B21' : '#FFFFFF'}>
-              {badge}
-            </Text>
-          </View>
-        )}
-      </Touchable>
-    );
-  };
-  return (
-    <View
-      style={{
-        width: S.rail,
-        backgroundColor: P.bar,
-        alignItems: 'center',
-        paddingTop: 24,
-        gap: 14,
-        borderRightWidth: 1,
-        borderRightColor: P.line,
-      }}
-    >
-      {item('chats', 'chatbox-ellipses-outline', 'chatbox-ellipses', 'Conversas', unread)}
-      {item('calls', 'call-outline', 'call', 'Ligações')}
-    </View>
-  );
-}
-
-/** Celular: Conversas e Ligações em cima da lista (o trilho não cabe). */
-function PhoneTabs({
-  P,
-  S,
-  tab,
-  onTab,
-}: {
-  P: Palette;
-  S: Sizes;
-  tab: Tab;
-  onTab: (t: Tab) => void;
-}) {
-  return (
-    <View style={{ flexDirection: 'row', gap: 12, paddingHorizontal: S.pad, paddingTop: 12 }}>
-      <Pill P={P} S={S} label="Conversas" on={tab === 'chats'} onPress={() => onTab('chats')} />
-      <Pill P={P} S={S} label="Ligações" on={tab === 'calls'} onPress={() => onTab('calls')} />
-    </View>
-  );
-}
-
 /* ---------------- Lista de conversas ---------------- */
 
 function ChatList({
@@ -785,6 +777,7 @@ function ChatList({
   open,
   onOpen,
   onNew,
+  onToggle,
 }: {
   P: Palette;
   S: Sizes;
@@ -793,6 +786,7 @@ function ChatList({
   open: string | null;
   onOpen: (id: string) => void;
   onNew: () => void;
+  onToggle: () => void;
 }) {
   const [q, setQ] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
@@ -812,7 +806,7 @@ function ChatList({
         <Text size={S.title} weight="bold" color={P.greenInk} style={{ flex: 1 }}>
           WhatsApp
         </Text>
-        <IconButton P={P} S={S} name="ellipsis-vertical" label="Mais opções" />
+        <IconButton P={P} S={S} name="call-outline" label="Ir para Ligações" onPress={onToggle} />
         <IconButton P={P} S={S} name="add" label="Nova conversa" filled onPress={onNew} />
       </Header>
       <SearchField
@@ -823,7 +817,12 @@ function ChatList({
         placeholder="Pesquisar ou começar uma nova conversa"
       />
       <View
-        style={{ flexDirection: 'row', gap: 12, paddingHorizontal: S.pad, paddingVertical: 18 }}
+        style={{
+          flexDirection: 'row',
+          gap: Math.round(8 * S.k),
+          paddingHorizontal: S.pad,
+          paddingVertical: Math.round(10 * S.k),
+        }}
       >
         <Pill P={P} S={S} label="Tudo" on={filter === 'all'} onPress={() => setFilter('all')} />
         <Pill
@@ -867,16 +866,34 @@ function ChatList({
               subtitle={<LastLine P={P} S={S} msg={last} />}
               right={
                 <View
-                  style={{ alignItems: 'flex-end', gap: 8, alignSelf: 'stretch', paddingTop: 26 }}
+                  style={{
+                    alignItems: 'flex-end',
+                    gap: Math.round(6 * S.k),
+                    alignSelf: 'stretch',
+                    paddingTop: Math.round(14 * S.k),
+                  }}
                 >
-                  <Text size={S.small} color={c.unread ? P.greenInk : P.sub}>
+                  <Text
+                    size={S.small}
+                    weight={c.unread ? 'semibold' : 'regular'}
+                    color={c.unread ? P.greenInk : P.sub}
+                  >
                     {last?.day === 'Hoje' ? last.time : (last?.day ?? '')}
                   </Text>
                   {c.unread > 0 && (
                     <View
-                      style={[styles.badge, { backgroundColor: P.greenInk, position: 'relative' }]}
+                      style={[
+                        styles.badge,
+                        {
+                          backgroundColor: P.green,
+                          position: 'relative',
+                          minWidth: Math.round(20 * S.k),
+                          height: Math.round(20 * S.k),
+                          borderRadius: 10 * S.k,
+                        },
+                      ]}
                     >
-                      <Text size={18} weight="semibold" color={P.dark ? '#111B21' : '#FFFFFF'}>
+                      <Text size={S.small} weight="semibold" color={P.dark ? '#111B21' : '#FFFFFF'}>
                         {c.unread}
                       </Text>
                     </View>
@@ -915,12 +932,14 @@ function LastLine({ P, S, msg }: { P: Palette; S: Sizes; msg?: SimMessage }) {
 
 /* ---------------- Painel vazio ---------------- */
 
+/** Painel vazio do WhatsApp Web: cartão branco no fundo cinza-quente e atalhos redondos. */
 function EmptyCard({
   P,
   S,
   icon,
   title,
   text,
+  cta,
   actions,
   footer,
 }: {
@@ -929,45 +948,59 @@ function EmptyCard({
   icon: IconName;
   title: string;
   text: string;
-  actions: { icon: IconName; label: string; primary?: boolean; onPress?: () => void }[];
+  cta?: { label: string; onPress?: () => void };
+  actions: { icon: IconName; label: string; onPress?: () => void }[];
   footer: string;
 }) {
-  const R = 40;
-  const tile = S.phone ? 84 : 100;
+  const k = S.k;
+  const tile = Math.round(60 * k);
   return (
     <View style={[styles.center, { flex: 1, backgroundColor: P.bar, padding: 48 }]}>
-      <Appear style={[styles.center, { gap: 48 }]}>
+      <Appear style={[styles.center, { gap: Math.round(32 * k) }]}>
         <View
           style={{
-            width: S.phone ? 520 : 620,
+            width: Math.round(352 * k),
             backgroundColor: P.panel,
-            borderRadius: R,
-            padding: 48,
+            borderRadius: Math.round(24 * k),
+            paddingVertical: Math.round(40 * k),
+            paddingHorizontal: Math.round(32 * k),
             alignItems: 'center',
-            gap: 18,
+            gap: Math.round(10 * k),
           }}
         >
-          <View
-            style={{
-              width: 128,
-              height: 128,
-              borderRadius: concentric(R, 8),
-              backgroundColor: P.chipOn,
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginBottom: 8,
-            }}
+          <Icon name={icon} size={Math.round(72 * k)} color={P.green} />
+          <Text
+            size={Math.round(22 * k)}
+            color={P.ink}
+            style={{ textAlign: 'center', marginTop: Math.round(14 * k) }}
           >
-            <Icon name={icon} size={64} color={P.greenInk} />
-          </View>
-          <Text size={S.title - 4} color={P.ink} style={{ textAlign: 'center' }}>
             {title}
           </Text>
-          <Text size={S.sub} color={P.sub} style={{ textAlign: 'center' }}>
+          <Text size={Math.round(14 * k)} color={P.sub} style={{ textAlign: 'center' }}>
             {text}
           </Text>
+          {cta && (
+            <Touchable
+              accessibilityRole="button"
+              accessibilityLabel={cta.label}
+              onPress={cta.onPress}
+              scaleTo={0.95}
+              style={{
+                marginTop: Math.round(14 * k),
+                height: Math.round(36 * k),
+                paddingHorizontal: Math.round(18 * k),
+                borderRadius: 18 * k,
+                justifyContent: 'center',
+                backgroundColor: P.chipOn,
+              }}
+            >
+              <Text size={Math.round(14 * k)} weight="semibold" color={P.chipInk}>
+                {cta.label}
+              </Text>
+            </Touchable>
+          )}
         </View>
-        <View style={{ flexDirection: 'row', gap: 16 }}>
+        <View style={{ flexDirection: 'row', gap: Math.round(16 * k) }}>
           {actions.map((a) => (
             <Touchable
               key={a.label}
@@ -975,21 +1008,17 @@ function EmptyCard({
               accessibilityLabel={a.label}
               onPress={a.onPress}
               scaleTo={0.92}
-              style={{ alignItems: 'center', gap: 14, width: 196 }}
+              style={{ alignItems: 'center', gap: Math.round(10 * k), width: Math.round(120 * k) }}
             >
               <View
-                style={{
-                  width: tile,
-                  height: tile,
-                  borderRadius: tile / 2,
-                  backgroundColor: a.primary ? P.green : P.panel,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
+                style={[
+                  styles.center,
+                  { width: tile, height: tile, borderRadius: tile / 2, backgroundColor: P.tile },
+                ]}
               >
-                <Icon name={a.icon} size={S.icon} color={a.primary ? '#FFFFFF' : P.ink} />
+                <Icon name={a.icon} size={S.icon} color={P.ink} />
               </View>
-              <Text size={S.small - 1} color={P.ink} style={{ textAlign: 'center' }}>
+              <Text size={Math.round(13 * k)} color={P.ink} style={{ textAlign: 'center' }}>
                 {a.label}
               </Text>
             </Touchable>
@@ -997,8 +1026,8 @@ function EmptyCard({
         </View>
       </Appear>
       <View style={[styles.footer, { bottom: 28, left: 32, right: 32 }]}>
-        <Icon name="lock-closed-outline" size={S.small - 2} color={P.sub} />
-        <Text size={S.small - 3} color={P.sub} lines={1}>
+        <Icon name="lock-closed-outline" size={S.small} color={P.sub} />
+        <Text size={S.small} color={P.sub} lines={1}>
           {footer}
         </Text>
       </View>
@@ -1023,12 +1052,13 @@ function ChatsEmpty({
     <EmptyCard
       P={P}
       S={S}
-      icon="chatbubbles"
+      icon="chatbubbles-outline"
       title="WhatsApp no GoClient"
       text="Converse com clientes e com a equipe pelo número compartilhado. O Lucas também avisa os clientes por aqui."
+      cta={{ label: 'Nova conversa', onPress: onNew }}
       actions={[
-        { icon: 'create-outline', label: 'Nova conversa', primary: true, onPress: onNew },
-        { icon: 'person-add-outline', label: 'Novo contato', onPress: onContact },
+        { icon: 'document-text-outline', label: 'Enviar documento' },
+        { icon: 'person-add-outline', label: 'Adicionar contato', onPress: onContact },
         { icon: 'call-outline', label: 'Ligações', onPress: onCalls },
       ]}
       footer="Suas mensagens pessoais são protegidas com a criptografia de ponta a ponta"
@@ -1148,53 +1178,82 @@ function Conversation({
 
   return (
     <View style={{ flex: 1, backgroundColor: P.wall }}>
-      <View style={{ backgroundColor: P.bar }}>{header}</View>
+      <View style={{ backgroundColor: P.head, borderBottomWidth: 1, borderBottomColor: P.line }}>
+        {header}
+      </View>
       <ScrollView
         ref={scroll}
         onContentSizeChange={() => scroll.current?.scrollToEnd({ animated: false })}
-        contentContainerStyle={{ padding: S.pad, gap: 10, flexGrow: 1, justifyContent: 'flex-end' }}
+        contentContainerStyle={{
+          paddingHorizontal: Math.round(48 * S.k),
+          paddingVertical: S.pad,
+          gap: Math.round(3 * S.k),
+          flexGrow: 1,
+          justifyContent: 'flex-end',
+        }}
       >
         <View
-          style={[styles.dayPill, { backgroundColor: P.in, alignSelf: 'center', maxWidth: 640 }]}
+          style={[
+            styles.dayPill,
+            {
+              backgroundColor: P.dark ? '#1D1F1F' : '#FFEECD',
+              alignSelf: 'center',
+              maxWidth: 640,
+              marginBottom: 8,
+            },
+          ]}
         >
-          <Icon name="lock-closed" size={S.small - 2} color={P.dark ? '#FFD279' : '#54656F'} />
+          <Icon name="lock-closed" size={S.small} color={P.dark ? '#FFD279' : '#54656F'} />
           <Text
-            size={S.small - 2}
+            size={S.small}
             color={P.dark ? '#FFD279' : '#54656F'}
             style={{ textAlign: 'center' }}
           >
             As mensagens são protegidas com a criptografia de ponta a ponta.
           </Text>
         </View>
-        {msgs.map((m, i) => (
-          <View key={m.id} style={{ gap: 10 }}>
-            {m.day !== msgs[i - 1]?.day && (
-              <View style={[styles.dayPill, { backgroundColor: P.in, alignSelf: 'center' }]}>
-                <Text size={S.small} color={P.sub}>
-                  {m.day}
-                </Text>
-              </View>
-            )}
-            <Bubble
-              P={P}
-              S={S}
-              msg={m}
-              group={!!contact.members}
-              selected={selecting?.has(m.id)}
-              selecting={!!selecting}
-              onPress={
-                selecting
-                  ? () => {
-                      const next = new Set(selecting);
-                      if (next.has(m.id)) next.delete(m.id);
-                      else next.add(m.id);
-                      onSelect(next);
-                    }
-                  : undefined
-              }
-            />
-          </View>
-        ))}
+        {msgs.map((m, i) => {
+          const prev = msgs[i - 1];
+          const newDay = m.day !== prev?.day;
+          // Rabinho só no primeiro balão de cada sequência do mesmo lado (como no WhatsApp).
+          const tail = newDay || prev?.out !== m.out;
+          return (
+            <View key={m.id} style={{ gap: Math.round(3 * S.k), marginTop: tail && i > 0 ? 9 : 0 }}>
+              {newDay && (
+                <View
+                  style={[
+                    styles.dayPill,
+                    styles.bubbleShadow,
+                    { backgroundColor: P.in, alignSelf: 'center', marginVertical: 9 },
+                  ]}
+                >
+                  <Text size={S.small} color={P.sub}>
+                    {m.day}
+                  </Text>
+                </View>
+              )}
+              <Bubble
+                P={P}
+                S={S}
+                msg={m}
+                tail={tail}
+                group={!!contact.members}
+                selected={selecting?.has(m.id)}
+                selecting={!!selecting}
+                onPress={
+                  selecting
+                    ? () => {
+                        const next = new Set(selecting);
+                        if (next.has(m.id)) next.delete(m.id);
+                        else next.add(m.id);
+                        onSelect(next);
+                      }
+                    : undefined
+                }
+              />
+            </View>
+          );
+        })}
         {!!q && !msgs.length && (
           <Text size={S.sub} color={P.sub} style={{ textAlign: 'center' }}>
             Nenhuma mensagem com "{finding}".
@@ -1236,6 +1295,7 @@ function Bubble({
   S,
   msg,
   group,
+  tail,
   selected,
   selecting,
   onPress,
@@ -1244,11 +1304,15 @@ function Bubble({
   S: Sizes;
   msg: SimMessage;
   group: boolean;
+  tail: boolean;
   selected?: boolean;
   selecting: boolean;
   onPress?: () => void;
 }) {
-  const R = 22;
+  const R = Math.round(7.5 * S.k);
+  const bg = msg.out ? P.out : P.in;
+  const TW = Math.round(8 * S.k);
+  const TH = Math.round(13 * S.k);
   return (
     <Pressable
       onPress={onPress}
@@ -1275,31 +1339,49 @@ function Bubble({
       )}
       <View style={{ flex: 1, alignItems: msg.out ? 'flex-end' : 'flex-start' }}>
         <View
-          style={{
-            maxWidth: '72%',
-            backgroundColor: msg.out ? P.out : P.in,
-            borderRadius: R,
-            paddingHorizontal: 18,
-            paddingTop: 12,
-            paddingBottom: 10,
-            gap: 6,
-            shadowColor: '#000',
-            shadowOpacity: P.dark ? 0 : 0.06,
-            shadowRadius: 1,
-            shadowOffset: { width: 0, height: 1 },
-          }}
+          style={[
+            styles.bubbleShadow,
+            {
+              maxWidth: '65%',
+              backgroundColor: bg,
+              borderRadius: R,
+              borderTopRightRadius: tail && msg.out ? 0 : R,
+              borderTopLeftRadius: tail && !msg.out ? 0 : R,
+              paddingLeft: Math.round(9 * S.k),
+              paddingRight: Math.round(7 * S.k),
+              paddingTop: Math.round(6 * S.k),
+              paddingBottom: Math.round(6 * S.k),
+              gap: 4,
+            },
+          ]}
         >
-          {group && !msg.out && msg.from && (
-            <Text size={S.small} weight="semibold" color={P.greenInk}>
+          {tail && (
+            // "Rabinho" do balão: triângulo no canto de cima, do lado de quem enviou.
+            <View
+              style={{
+                position: 'absolute',
+                top: 0,
+                width: 0,
+                height: 0,
+                borderTopWidth: TH,
+                borderTopColor: bg,
+                ...(msg.out
+                  ? { right: -TW, borderRightWidth: TW, borderRightColor: 'transparent' }
+                  : { left: -TW, borderLeftWidth: TW, borderLeftColor: 'transparent' }),
+              }}
+            />
+          )}
+          {group && !msg.out && msg.from && tail && (
+            <Text size={S.small + 1} weight="semibold" color={P.groupInk}>
               {msg.from}
             </Text>
           )}
           {msg.kind === 'photo' && (
             <View
               style={{
-                width: S.phone ? 360 : 440,
-                height: S.phone ? 240 : 290,
-                borderRadius: concentric(R, 10),
+                width: Math.round(240 * S.k),
+                height: Math.round(160 * S.k),
+                borderRadius: R - 2,
                 backgroundColor: P.dark ? '#2A3942' : '#E9EDEF',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -1314,8 +1396,8 @@ function Bubble({
                 flexDirection: 'row',
                 alignItems: 'center',
                 gap: 14,
-                padding: 14,
-                borderRadius: concentric(R, 10),
+                padding: Math.round(10 * S.k),
+                borderRadius: R - 2,
                 backgroundColor: P.dark ? 'rgba(0,0,0,0.18)' : 'rgba(0,0,0,0.04)',
               }}
             >
@@ -1324,25 +1406,31 @@ function Bubble({
                 <Text size={S.sub} color={P.ink}>
                   {msg.text}.pdf
                 </Text>
-                <Text size={S.small - 2} color={P.sub}>
+                <Text size={S.small} color={P.sub}>
                   PDF · 2 páginas
                 </Text>
               </View>
             </View>
           )}
-          <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 12 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-end', flexWrap: 'wrap', gap: 10 }}>
             {msg.kind !== 'doc' && (
               <Text size={S.sub} color={P.ink} style={{ flexShrink: 1 }}>
                 {msg.text}
               </Text>
             )}
             <View
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginLeft: 'auto' }}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 3,
+                marginLeft: 'auto',
+                marginBottom: -2,
+              }}
             >
-              <Text size={S.small - 3} color={P.sub}>
+              <Text size={Math.round(11 * S.k)} color={P.sub}>
                 {msg.time}
               </Text>
-              {msg.out && <Icon name="checkmark-done" size={S.small} color={P.tick} />}
+              {msg.out && <Icon name="checkmark-done" size={Math.round(16 * S.k)} color={P.tick} />}
             </View>
           </View>
         </View>
@@ -1364,22 +1452,28 @@ function Composer({
   onChange: (v: string) => void;
   onSend: () => void;
 }) {
-  const h = S.phone ? 80 : 96;
+  const h = Math.round(52 * S.k);
   const has = value.trim().length > 0;
   return (
-    <View style={{ padding: 16, paddingHorizontal: S.pad, backgroundColor: 'transparent' }}>
+    <View
+      style={{
+        paddingHorizontal: Math.round(12 * S.k),
+        paddingBottom: Math.round(12 * S.k),
+        paddingTop: 4,
+      }}
+    >
       <View
         style={{
           minHeight: h,
           borderRadius: h / 2,
-          backgroundColor: P.in,
+          backgroundColor: P.dark ? P.in : '#FFFFFF',
           flexDirection: 'row',
           alignItems: 'center',
-          paddingHorizontal: 10,
-          gap: 4,
-          shadowColor: '#000',
-          shadowOpacity: P.dark ? 0 : 0.08,
-          shadowRadius: 6,
+          paddingHorizontal: 4,
+          shadowColor: '#0B141A',
+          shadowOpacity: P.dark ? 0 : 0.1,
+          shadowRadius: 3,
+          shadowOffset: { width: 0, height: 1 },
         }}
       >
         <IconButton P={P} S={S} name="add" label="Anexar" />
@@ -1417,8 +1511,8 @@ function ChatMenu({
   onClose: () => void;
   onPick: (k: 'find' | 'select' | 'block' | 'clear' | 'delete') => void;
 }) {
-  const R = 28;
-  const PAD = 10;
+  const R = Math.round(16 * S.k);
+  const PAD = Math.round(6 * S.k);
   const items: {
     k: 'find' | 'select' | 'block' | 'clear' | 'delete';
     icon: IconName;
@@ -1441,16 +1535,16 @@ function ChatMenu({
       <View
         style={{
           position: 'absolute',
-          top: S.head - 8,
-          right: S.pad,
-          width: S.phone ? 440 : 500,
-          backgroundColor: P.dark ? '#233138' : '#FFFFFF',
+          top: S.head - 6,
+          right: Math.round(10 * S.k),
+          width: Math.round(240 * S.k),
+          backgroundColor: P.menu,
           borderRadius: R,
           padding: PAD,
-          shadowColor: '#000',
-          shadowOpacity: 0.25,
-          shadowRadius: 24,
-          shadowOffset: { width: 0, height: 10 },
+          shadowColor: '#0B141A',
+          shadowOpacity: 0.2,
+          shadowRadius: 18,
+          shadowOffset: { width: 0, height: 4 },
           elevation: 12,
         }}
       >
@@ -1461,8 +1555,8 @@ function ChatMenu({
                 style={{
                   height: 1,
                   backgroundColor: P.line,
-                  marginVertical: 6,
-                  marginHorizontal: 16,
+                  marginVertical: PAD,
+                  marginHorizontal: PAD * 2,
                 }}
               />
             )}
@@ -1472,16 +1566,20 @@ function ChatMenu({
               onPress={() => onPick(it.k)}
               scaleTo={0.98}
               style={{
-                height: S.phone ? 84 : 96,
-                borderRadius: concentric(R, PAD),
+                height: Math.max(Math.round(40 * S.k), 64),
+                borderRadius: R - PAD,
                 flexDirection: 'row',
                 alignItems: 'center',
-                gap: 22,
-                paddingHorizontal: 22,
+                gap: Math.round(14 * S.k),
+                paddingHorizontal: Math.round(12 * S.k),
               }}
             >
-              <Icon name={it.icon} size={S.icon * 0.85} color={it.red ? P.red : P.ink} />
-              <Text size={S.sub + 1} color={it.red ? P.red : P.ink}>
+              <Icon
+                name={it.icon}
+                size={Math.round(20 * S.k)}
+                color={it.red ? P.red : P.dark ? P.ink : '#3B4A54'}
+              />
+              <Text size={S.sub} color={it.red ? P.red : P.dark ? P.ink : '#3B4A54'}>
                 {it.label}
               </Text>
             </Touchable>
@@ -1509,8 +1607,8 @@ function ConfirmDialog({
   onCancel: () => void;
   onConfirm: () => void;
 }) {
-  const R = 36;
-  const PAD = 28;
+  const R = Math.round(24 * S.k);
+  const PAD = Math.round(24 * S.k);
   const text = {
     block: blocked
       ? {
@@ -1534,19 +1632,19 @@ function ConfirmDialog({
       ok: 'Apagar conversa',
     },
   }[confirm.kind];
-  const btn = S.phone ? 80 : 92;
+  const btn = Math.max(Math.round(40 * S.k), 72);
   return (
     <View style={[StyleSheet.absoluteFill, styles.center, { backgroundColor: P.scrim }]}>
       <View
         style={{
-          width: S.phone ? 600 : 680,
-          backgroundColor: P.dark ? '#233138' : '#FFFFFF',
+          width: Math.round(440 * S.k),
+          backgroundColor: P.menu,
           borderRadius: R,
           padding: PAD,
           gap: 14,
         }}
       >
-        <Text size={S.name + 2} weight="semibold" color={P.ink}>
+        <Text size={S.name + 2} color={P.ink}>
           {text.title}
         </Text>
         <Text size={S.sub} color={P.sub}>
@@ -1559,7 +1657,7 @@ function ConfirmDialog({
             scaleTo={0.97}
             style={[
               styles.center,
-              { flex: 1, height: btn, borderRadius: concentric(R, PAD), backgroundColor: P.field },
+              { flex: 1, height: btn, borderRadius: btn / 2, backgroundColor: P.soft },
             ]}
           >
             <Text size={S.sub} weight="medium" color={P.ink}>
@@ -1575,7 +1673,7 @@ function ConfirmDialog({
               {
                 flex: 1,
                 height: btn,
-                borderRadius: concentric(R, PAD),
+                borderRadius: btn / 2,
                 backgroundColor: confirm.kind === 'block' && blocked ? P.green : P.red,
               },
             ]}
@@ -1618,7 +1716,6 @@ function Profile({
   const [muted, setMuted] = useState(false);
   const group = !!contact.members;
   const media = chat.messages.filter((m) => m.kind).length;
-  const R = 28;
   const action = (icon: IconName, label: string, onPress?: () => void) => (
     <Touchable
       key={label}
@@ -1626,18 +1723,22 @@ function Profile({
       accessibilityLabel={label}
       onPress={onPress}
       scaleTo={0.94}
-      style={{
-        width: S.phone ? 140 : 168,
-        paddingVertical: 20,
-        borderRadius: R,
-        borderWidth: 1,
-        borderColor: P.line,
-        alignItems: 'center',
-        gap: 10,
-      }}
+      style={{ width: Math.round(76 * S.k), alignItems: 'center', gap: Math.round(8 * S.k) }}
     >
-      <Icon name={icon} size={S.icon} color={P.greenInk} />
-      <Text size={S.small} color={P.ink}>
+      <View
+        style={[
+          styles.center,
+          {
+            width: Math.round(60 * S.k),
+            height: Math.round(60 * S.k),
+            borderRadius: 30 * S.k,
+            backgroundColor: P.soft,
+          },
+        ]}
+      >
+        <Icon name={icon} size={S.icon} color={P.ink} />
+      </View>
+      <Text size={Math.round(14 * S.k)} color={P.ink}>
         {label}
       </Text>
     </Touchable>
@@ -1683,14 +1784,14 @@ function Profile({
         showsVerticalScrollIndicator={false}
       >
         <Appear style={{ alignItems: 'center', gap: 10, paddingVertical: 24 }}>
-          <Avatar P={P} name={contact.name} size={S.phone ? 180 : 210} group={group} />
-          <Text size={S.title} color={P.ink} style={{ marginTop: 12 }}>
+          <Avatar P={P} name={contact.name} size={Math.round(140 * S.k)} group={group} />
+          <Text size={Math.round(24 * S.k)} color={P.ink} style={{ marginTop: 12 }}>
             {contact.name}
           </Text>
           <Text size={S.sub} color={P.sub}>
             {group ? `Grupo · ${contact.members?.length ?? 0} participantes` : contact.phone}
           </Text>
-          <View style={{ flexDirection: 'row', gap: 20, marginTop: 20 }}>
+          <View style={{ flexDirection: 'row', gap: Math.round(16 * S.k), marginTop: 16 }}>
             {action('call-outline', 'Ligar')}
             {action('videocam-outline', 'Vídeo')}
             {action('search', 'Pesquisar', onFind)}
@@ -1847,7 +1948,7 @@ function NewChat({
   return (
     <Appear axis="x" distance={-24} style={{ flex: 1 }}>
       <Header P={P} S={S} onBack={onBack}>
-        <Text size={S.name + 2} weight="semibold" color={P.ink} style={{ flex: 1 }}>
+        <Text size={S.name} color={P.ink} style={{ flex: 1 }}>
           Nova conversa
         </Text>
       </Header>
@@ -1961,7 +2062,7 @@ function NewContact({
   return (
     <Appear axis="x" distance={-24} style={{ flex: 1 }}>
       <Header P={P} S={S} onBack={onBack}>
-        <Text size={S.name + 2} weight="semibold" color={P.ink} style={{ flex: 1 }}>
+        <Text size={S.name} color={P.ink} style={{ flex: 1 }}>
           Novo contato
         </Text>
       </Header>
@@ -2056,29 +2157,66 @@ const CALL_ICON: Record<SimCall['kind'], IconName> = {
 function CallsList({
   P,
   S,
+  contacts,
   contactOf,
   selected,
   onSelect,
+  unread,
+  onToggle,
 }: {
   P: Palette;
   S: Sizes;
+  contacts: SimContact[];
   contactOf: (id: string) => SimContact | undefined;
   selected: string | null;
   onSelect: (id: string) => void;
+  unread: number;
+  onToggle: () => void;
 }) {
   const [q, setQ] = useState('');
   const [all, setAll] = useState(false);
-  const favorites = CONTACTS.filter((c) => c.favorite);
+  // Favoritos vêm da agenda atual (quem foi favoritado nos dados do contato aparece aqui).
+  const favorites = contacts.filter((c) => c.favorite);
   const recent = CALLS.filter(
     (k) => !q || norm(contactOf(k.contact)?.name ?? '').includes(norm(q)),
   );
   return (
     <View style={{ flex: 1 }}>
       <Header P={P} S={S}>
-        <Text size={S.title} weight="semibold" color={P.ink} style={{ flex: 1 }}>
+        <Text size={S.title} weight="bold" color={P.ink} style={{ flex: 1 }}>
           Ligações
         </Text>
-        <IconButton P={P} S={S} name="ellipsis-vertical" label="Mais opções" />
+        <View>
+          <IconButton
+            P={P}
+            S={S}
+            name="chatbubble-ellipses-outline"
+            label="Voltar para Conversas"
+            onPress={onToggle}
+          />
+          {unread > 0 && (
+            <View
+              pointerEvents="none"
+              style={[
+                styles.badge,
+                {
+                  backgroundColor: P.green,
+                  top: 4,
+                  right: 4,
+                  minWidth: Math.round(18 * S.k),
+                  height: Math.round(18 * S.k),
+                  borderRadius: 9 * S.k,
+                  borderWidth: 2,
+                  borderColor: P.panel,
+                },
+              ]}
+            >
+              <Text size={S.small - 2} weight="semibold" color={P.dark ? '#111B21' : '#FFFFFF'}>
+                {unread}
+              </Text>
+            </View>
+          )}
+        </View>
         <IconButton P={P} S={S} name="call" label="Nova ligação" filled />
       </Header>
       <SearchField P={P} S={S} value={q} onChange={setQ} placeholder="Pesquisar nome ou número" />
@@ -2172,13 +2310,14 @@ function CallsEmpty({ P, S }: { P: Palette; S: Sizes }) {
     <EmptyCard
       P={P}
       S={S}
-      icon="call"
+      icon="call-outline"
       title="Ligações de voz e vídeo"
       text="Ligue para clientes e para a equipe pelo número compartilhado."
+      cta={{ label: 'Iniciar ligação' }}
       actions={[
-        { icon: 'videocam', label: 'Iniciar ligação', primary: true },
-        { icon: 'link', label: 'Novo link de ligação' },
-        { icon: 'keypad', label: 'Ligar para um telefone' },
+        { icon: 'videocam-outline', label: 'Ligação de vídeo' },
+        { icon: 'link-outline', label: 'Novo link de ligação' },
+        { icon: 'keypad-outline', label: 'Ligar para um número' },
       ]}
       footer="Suas ligações pessoais são protegidas com a criptografia de ponta a ponta"
     />
@@ -2206,7 +2345,7 @@ function CallDetail({
     <View style={{ flex: 1, backgroundColor: P.panel }}>
       <Header P={P} S={S}>
         {S.phone && <IconButton P={P} S={S} name="arrow-back" label="Voltar" onPress={onClose} />}
-        <Text size={S.name + 2} weight="semibold" color={P.ink} style={{ flex: 1 }}>
+        <Text size={S.name} color={P.ink} style={{ flex: 1 }}>
           Dados da ligação
         </Text>
         {!S.phone && <IconButton P={P} S={S} name="close" label="Fechar" onPress={onClose} />}
@@ -2270,7 +2409,7 @@ const styles = StyleSheet.create({
   center: { alignItems: 'center', justifyContent: 'center' },
   input: {
     flex: 1,
-    fontFamily: FONT.displayRegular,
+    fontFamily: SYSTEM_FONT,
     paddingVertical: 0,
     // Web: sem o contorno azul do navegador.
     outlineStyle: 'none',
@@ -2288,9 +2427,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingHorizontal: 18,
-    paddingVertical: 8,
-    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 7,
+    borderRadius: 11,
+  },
+  // Sombra dos balões do WhatsApp: 0 1px 0.5px rgba(11,20,26,0.13).
+  bubbleShadow: {
+    shadowColor: '#0B141A',
+    shadowOpacity: 0.13,
+    shadowRadius: 0.5,
+    shadowOffset: { width: 0, height: 1 },
   },
   footer: {
     position: 'absolute',

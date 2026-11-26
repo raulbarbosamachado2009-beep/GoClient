@@ -19,7 +19,6 @@ interface Item {
   glyph: AppGlyph;
 }
 
-const MAP_LIGHT = require('../../assets/map/map-light.jpg');
 const MAP_DARK = require('../../assets/map/map-dark.jpg');
 
 const ITEMS: Item[] = [
@@ -61,22 +60,14 @@ export function Sidebar() {
   // a página mostra (o mapa no Mapa). O painel parece vidro fosco na cor de cada página.
   const onMap = pathname.startsWith('/mapa');
   const pageBg = onKyte ? '#EEF1F5' : c.background;
-  const backdrop = onMap ? (dark ? MAP_DARK : MAP_LIGHT) : null;
-  const veil = onKyte
-    ? 'rgba(255,255,255,0.72)'
-    : backdrop
-      ? dark
-        ? 'rgba(18,18,20,0.5)'
-        : 'rgba(255,255,255,0.5)'
-      : dark
-        ? 'rgba(255,255,255,0.07)'
-        : 'rgba(0,0,0,0.04)';
+  // Modo claro: o painel é cinza sólido com borda e sombra, para destacar do fundo claro em
+  // todas as páginas (no Mapa o vidro claro sumia no fundo, que é da mesma cor).
+  const backdrop = onMap && dark ? MAP_DARK : null;
+  const veil = dark ? (backdrop ? 'rgba(18,18,20,0.5)' : 'rgba(255,255,255,0.07)') : LIGHT_PANEL;
 
   return (
     <View style={[styles.bar, { backgroundColor: pageBg }]}>
-      <View
-        style={[styles.panel, { borderColor: onKyte ? 'rgba(0,0,0,0.06)' : c.material.border }]}
-      >
+      <View style={[styles.panel, dark ? { borderColor: c.material.border } : styles.panelLight]}>
         {backdrop && (
           <Image
             source={backdrop}
@@ -85,7 +76,7 @@ export function Sidebar() {
             style={[StyleSheet.absoluteFill, { transform: [{ scale: 1.4 }] }]}
           />
         )}
-        <Blur radius={40} tint={c.material.tint} />
+        {dark && <Blur radius={40} tint={c.material.tint} />}
         <View style={[StyleSheet.absoluteFill, { backgroundColor: veil }]} />
 
         <View style={styles.status}>
@@ -176,6 +167,9 @@ function Tile({
   );
 }
 
+/** Painel no modo claro: um tom abaixo do fundo (#F2F2F7) e do mapa claro. */
+const LIGHT_PANEL = '#DEDEE4';
+
 const styles = StyleSheet.create({
   bar: { position: 'absolute', left: 0, top: 0, bottom: 0, width: layout.sidebarWidth },
   panel: {
@@ -189,6 +183,13 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     paddingTop: spacing[5],
     paddingBottom: PANEL_PAD,
+  },
+  panelLight: {
+    borderColor: 'rgba(0,0,0,0.08)',
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 2 },
   },
   status: { alignItems: 'center', gap: 4, marginBottom: spacing[5] },
   signal: { flexDirection: 'row', alignItems: 'center', gap: 6 },

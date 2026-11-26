@@ -46,6 +46,7 @@ import {
   Text,
   Touchable,
 } from '../../ui/primitives';
+import { WhatsAppLogo } from '../../whatsapp/brand';
 
 /**
  * Tela inicial (Mapa): o mapa ocupa todo o fundo e os painéis flutuam por cima com
@@ -79,6 +80,10 @@ export default function MapScreen() {
   // Navegação dentro do GoClient (voz e câmera seguindo o carro).
   const [navigating, setNavigating] = useState(false);
   const [arrivedAt, setArrivedAt] = useState<string | null>(null);
+  // Coluna da direita (multimídia): o início do "Para onde vamos?" é baixo e o WhatsApp
+  // cresce; escolher cliente ou rota (ou ter um destino) aumenta o cartão de baixo.
+  const [welcomeCompact, setWelcomeCompact] = useState(true);
+  const [homeH, setHomeH] = useState(0);
   // biome-ignore lint/correctness/useExhaustiveDependencies: troca de destino encerra a navegação
   useEffect(() => {
     setNavigating(false);
@@ -354,10 +359,15 @@ export default function MapScreen() {
         </BlurTargetProvider>
       </View>
 
-      {/* Coluna da direita: o cartão de vidro do destino ocupa a coluna inteira, de cima a
-          baixo. */}
+      {/* Coluna da direita: WhatsApp em cima e destino embaixo, sempre ocupando a coluna
+          inteira. Com "Para onde vamos?" (cartão baixo) o WhatsApp cresce; ao escolher cliente
+          ou rota (cartão alto) ele encolhe. Os dois mudam de forma juntos. */}
       <View style={styles.side}>
-        <SideCard>
+        <MorphColumn
+          top={(expand, artSize) => <WhatsAppCard expand={expand} artSize={artSize} />}
+          compact={!client && welcomeCompact}
+          compactHeight={homeH > 0 ? homeH + spacing[6] * 2 : 0}
+        >
           {/* Trocar de cartão (entrar ou sair de uma rota, ir para outra parada) desliza: o
             atual sai e o novo entra, sem corte seco. */}
           <Swap
@@ -397,10 +407,10 @@ export default function MapScreen() {
                 onClose={() => mapNav()}
               />
             ) : (
-              <WelcomeCard />
+              <WelcomeCard onCompact={setWelcomeCompact} onHomeHeight={setHomeH} />
             )}
           </Swap>
-        </SideCard>
+        </MorphColumn>
       </View>
     </View>
   );
@@ -689,19 +699,177 @@ function StopButton({ onPress }: { onPress: () => void }) {
 }
 
 /**
- * Coluna da direita: o cartão de vidro do destino, de cima a baixo da coluna. O conteúdo
- * (início, cliente, rota do dia) troca dentro dele.
+ * Cartão do WhatsApp (multimídia), no lugar do antigo mini player de música: quadrado
+ * arredondado com o ícone, o nome e o botão de abrir as conversas. Quando o cartão cresce
+ * (início do "Para onde vamos?"), o ícone grande aparece em cima; quando encolhe, fica só a
+ * linha do título e o botão.
  */
-function SideCard({ children }: { children: ReactNode }) {
+function WhatsAppCard({
+  expand,
+  artSize,
+}: {
+  /** 0 = cartão baixo, 1 = cartão alto (ícone grande em cima). */
+  expand: Animated.AnimatedInterpolation<number>;
+  artSize: number;
+}) {
   const c = useColors();
+  const router = useRouter();
+  const open = () => router.push('/whatsapp');
+  const art = Math.min(artSize, 220);
+  const headIcon = expand.interpolate({ inputRange: [0, 1], outputRange: [80 + spacing[4], 0] });
+  const headIconO = expand.interpolate({ inputRange: [0, 0.5], outputRange: [1, 0] });
+  const artScale = expand.interpolate({ inputRange: [0, 1], outputRange: [0.7, 1] });
   return (
-    <Appear delay={160} distance={40} fade={false} style={{ flex: 1 }}>
-      <View style={[styles.morph, { borderColor: c.material.border }]}>
-        <Blur radius={44} tint={c.material.tint} />
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: c.material.fallback }]} />
-        {children}
-      </View>
-    </Appear>
+    <View style={[styles.wa, { borderColor: c.material.border }]}>
+      <Blur radius={44} tint={c.material.tint} />
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: c.material.fallback }]} />
+      <Touchable
+        accessibilityRole="button"
+        accessibilityLabel="Abrir o WhatsApp"
+        onPress={open}
+        style={styles.waArt}
+      >
+        {art > 0 && (
+          <Animated.View style={{ opacity: expand, transform: [{ scale: artScale }] }}>
+            <WhatsAppLogo size={art} />
+          </Animated.View>
+        )}
+      </Touchable>
+      <Touchable
+        accessibilityRole="button"
+        accessibilityLabel="Abrir o WhatsApp"
+        onPress={open}
+        style={styles.waHead}
+      >
+        <Animated.View style={{ width: headIcon, opacity: headIconO, overflow: 'hidden' }}>
+          <WhatsAppLogo size={80} />
+        </Animated.View>
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text variant="headline" numberOfLines={1}>
+            WhatsApp
+          </Text>
+          <Text variant="callout" tone="secondary" numberOfLines={1}>
+            Conversas da equipe
+          </Text>
+        </View>
+      </Touchable>
+      <Touchable
+        accessibilityRole="button"
+        onPress={open}
+        scaleTo={0.97}
+        style={[styles.waButton, { backgroundColor: c.fill }]}
+      >
+        <Icon name="chatbubbles" size={34} color={c.accent} />
+        <Text variant="bodyStrong" tone="accent">
+          Abrir conversas
+        </Text>
+      </Touchable>
+    </View>
+  );
+}
+
+/**
+ * Coluna da direita: cartão do WhatsApp em cima e o cartão de vidro do destino embaixo,
+ * sempre preenchendo a coluna de cima a baixo. Quando o destino fica baixo ("Para onde
+ * vamos?"), o WhatsApp cresce e ocupa o resto; quando o destino precisa de espaço (escolher
+ * cliente, rotas, um destino), o WhatsApp volta ao tamanho de painel. As duas formas andam
+ * juntas (altura e cantos) e um desfoque de movimento passa pelas duas no meio da troca. O
+ * conteúdo do destino é montado já no tamanho final e a casca recorta, para nada se espremer
+ * durante a animação.
+ */
+function MorphColumn({
+  compact,
+  compactHeight,
+  top,
+  children,
+}: {
+  compact: boolean;
+  compactHeight: number;
+  top: (expand: Animated.AnimatedInterpolation<number>, artSize: number) => ReactNode;
+  children: ReactNode;
+}) {
+  const c = useColors();
+  const [total, setTotal] = useState(0);
+  const gap = layout.gutter;
+  // Destino alto: o WhatsApp fica no tamanho de painel e o destino leva o resto.
+  const big = Math.max(total - WA_H - gap, 0);
+  const small = compactHeight > 0 ? Math.min(compactHeight, big) : big;
+  const target = compact ? small : big;
+  // Ícone grande: cabe no espaço que sobra em cima quando o WhatsApp cresce.
+  const grown = total - gap - small;
+  const artSize = Math.max(
+    Math.min(SIDE_W - spacing[6] * 2, grown - WA_H - spacing[3]) - spacing[2],
+    0,
+  );
+  const h = useRef(new Animated.Value(0)).current;
+  const m = useRef(new Animated.Value(0)).current;
+  const first = useRef(true);
+  useEffect(() => {
+    if (!total) return;
+    if (first.current) {
+      first.current = false;
+      h.setValue(target);
+      return;
+    }
+    m.setValue(0);
+    Animated.parallel([
+      Animated.timing(h, {
+        toValue: target,
+        duration: 560,
+        easing: appleEase,
+        useNativeDriver: false,
+      }),
+      Animated.timing(m, { toValue: 1, duration: 560, useNativeDriver: false }),
+    ]).start();
+  }, [target, total, h, m]);
+  const topH = Animated.add(total - gap, Animated.multiply(h, -1));
+  const expand = h.interpolate({
+    inputRange: [Math.min(small, big - 1), big],
+    outputRange: [1, 0],
+    extrapolate: 'clamp',
+  });
+  const blurO = m.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 1, 0] });
+  const webBlur =
+    Platform.OS === 'web'
+      ? {
+          filter: m.interpolate({
+            inputRange: [0, 0.5, 1],
+            outputRange: ['blur(0px)', 'blur(6px)', 'blur(0px)'],
+          }),
+        }
+      : null;
+  const pulse = (
+    <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { opacity: blurO }]}>
+      <Blur radius={18} tint={c.material.tint} />
+    </Animated.View>
+  );
+  return (
+    <View style={{ flex: 1 }} onLayout={(e) => setTotal(e.nativeEvent.layout.height)}>
+      {total > 0 && (
+        <>
+          <Appear delay={160} distance={40} fade={false}>
+            <Animated.View style={[styles.waShell, { height: topH }]}>
+              <Animated.View style={[{ flex: 1 }, webBlur as object]}>
+                {top(expand, artSize)}
+              </Animated.View>
+              {pulse}
+            </Animated.View>
+          </Appear>
+          <Animated.View
+            style={[styles.morph, { height: h, marginTop: gap, borderColor: c.material.border }]}
+          >
+            <Blur radius={44} tint={c.material.tint} />
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: c.material.fallback }]} />
+            <Animated.View
+              style={[{ height: compact ? Math.max(target, 1) : big }, webBlur as object]}
+            >
+              {children}
+            </Animated.View>
+            {pulse}
+          </Animated.View>
+        </>
+      )}
+    </View>
   );
 }
 
@@ -962,14 +1130,28 @@ function ClientCard({
  * agrupada com linhas grandes, todas no azul do app. Regra 3: a multimídia não monta rotas —
  * só escolhe um cliente ou começa uma rota montada no celular.
  */
-function WelcomeCard() {
+function WelcomeCard({
+  onCompact,
+  onHomeHeight,
+}: {
+  /** O cartão fica baixo (só o início) ou cresce (listas de clientes e rotas). */
+  onCompact: (compact: boolean) => void;
+  /** Altura do conteúdo do início, para o cartão ter só esse tamanho. */
+  onHomeHeight: (h: number) => void;
+}) {
   const stops = useStops();
   const [view, setView] = useState<'home' | 'pick' | 'routes'>('home');
   const count = stops.saved.length;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: avisa só na troca de tela
+  useEffect(() => onCompact(view === 'home'), [view]);
   // Mesma transição da aba "Rotas" do celular: o atual sai deslizando e o novo entra.
   return (
-    <View style={styles.welcome}>
-      <Swap id={view} dir={view === 'home' ? -1 : 1} style={{ flex: 1, gap: spacing[5] }}>
+    <View style={[styles.welcome, view !== 'home' && { justifyContent: 'flex-start' }]}>
+      <Swap
+        id={view}
+        dir={view === 'home' ? -1 : 1}
+        style={view === 'home' ? { gap: spacing[6] } : { flex: 1, gap: spacing[5] }}
+      >
         {view === 'pick' ? (
           <ClientPicker onClose={() => setView('home')} />
         ) : view === 'routes' ? (
@@ -991,8 +1173,11 @@ function WelcomeCard() {
             </ScrollView>
           </>
         ) : (
-          // Título em cima e as opções embaixo, perto da mão: o cartão ocupa a coluna inteira.
-          <View style={styles.welcomeHome}>
+          // Só o título e as opções: o cartão fica baixo e o WhatsApp ocupa o resto em cima.
+          <View
+            style={{ gap: spacing[6] }}
+            onLayout={(e) => onHomeHeight(e.nativeEvent.layout.height)}
+          >
             <View style={{ gap: spacing[1] }}>
               <Text variant="largeTitle" style={{ fontSize: 42, lineHeight: 50 }}>
                 Para onde vamos?
@@ -1006,14 +1191,14 @@ function WelcomeCard() {
                 first
                 big
                 strong
-                icon="storefront"
+                icon="person"
                 title="Escolher cliente"
                 sub="Traçar o caminho até ele"
                 onPress={() => setView('pick')}
               />
               <OptionRow
                 big
-                icon="trail-sign"
+                icon="map"
                 title="Rotas montadas"
                 sub={
                   count === 0
@@ -1046,6 +1231,10 @@ const TRIP_INNER = concentric(TRIP_R, spacing[4]);
 const LEFT = layout.sidebarWidth + layout.gutter;
 /** Coluna de cartões à direita do mapa. */
 const SIDE_W = 480;
+/** Cartão do WhatsApp no tamanho de painel (quando o cartão de baixo cresce). */
+const WA_H = 232;
+const WA_R = 48;
+const WA_INNER = concentric(WA_R, spacing[6]);
 const MAP_R = 48;
 
 /** Celular em pé: busca/orientação no topo, cartão embaixo (acima das abas). */
@@ -1118,7 +1307,28 @@ const styles = StyleSheet.create({
   tripButton: { borderRadius: TRIP_INNER, width: STOP_W },
   card: { flex: 1, borderRadius: 40, padding: spacing[8] },
   compact: { flex: 1, padding: spacing[6] },
-  morph: { flex: 1, borderRadius: COMPACT_R, overflow: 'hidden', borderWidth: 1 },
+  morph: { borderRadius: COMPACT_R, overflow: 'hidden', borderWidth: 1 },
+  waShell: { borderRadius: WA_R, overflow: 'hidden' },
+  wa: {
+    flex: 1,
+    borderRadius: WA_R,
+    overflow: 'hidden',
+    borderWidth: 1,
+    paddingHorizontal: spacing[6],
+    paddingVertical: spacing[6],
+    gap: spacing[4],
+  },
+  // Ícone grande: ocupa o espaço que sobra em cima quando o cartão cresce.
+  waArt: { flex: 1, minHeight: 0, alignItems: 'center', justifyContent: 'center' },
+  waHead: { height: 80, flexDirection: 'row', alignItems: 'center' },
+  waButton: {
+    height: 88,
+    borderRadius: WA_INNER,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing[3],
+  },
   wideAction: {
     flex: 1,
     height: 96,
@@ -1172,7 +1382,6 @@ const styles = StyleSheet.create({
     padding: spacing[6],
     gap: spacing[6],
   },
-  welcomeHome: { flex: 1, justifyContent: 'space-between', gap: spacing[6] },
   welcomeHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   avatarTile: {
     width: 112,

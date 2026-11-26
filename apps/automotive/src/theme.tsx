@@ -203,16 +203,17 @@ interface ThemeState {
   setPreference: (p: ThemePreference) => void;
 }
 
+// Modo claro é o padrão do sistema (pedido do usuário em 26/11/2026); o escuro fica em Ajustes.
 const ThemeContext = createContext<ThemeState>({
-  c: dark,
-  preference: 'dark',
+  c: light,
+  preference: 'light',
   setPreference: () => {},
 });
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const system = useColorScheme();
-  const [preference, setPreference] = useState<ThemePreference>('dark');
-  const mode: Mode = preference === 'auto' ? (system === 'light' ? 'light' : 'dark') : preference;
+  const [preference, setPreference] = useState<ThemePreference>('light');
+  const mode: Mode = preference === 'auto' ? (system === 'dark' ? 'dark' : 'light') : preference;
   const value = useMemo(
     () => ({ c: palettes[mode], preference, setPreference }),
     [mode, preference],

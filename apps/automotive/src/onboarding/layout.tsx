@@ -103,7 +103,7 @@ export function OnboardingLayout({
   const bottom = (
     <View style={{ gap: spacing[5], alignSelf: 'stretch' }}>
       {dots && dots.count > 1 && (
-        <View style={[styles.dots, !phone && { justifyContent: 'flex-start' }]}>
+        <View style={[styles.dots, !mid && { justifyContent: 'flex-start' }]}>
           {Array.from({ length: dots.count }, (_, i) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: páginas fixas
             <Dot key={i} active={i === dots.index} />

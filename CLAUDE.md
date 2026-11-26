@@ -9,7 +9,7 @@ Leia `docs/architecture.md` antes de propor mudanças estruturais.
 - Toda escrita de dados passa pela API (`apps/api`). Aplicativos não acessam o banco diretamente.
 - Regra 1 (retirada em 2026-11-24 a pedido do usuário): o Automotive também cria e edita clientes e produtos à mão. Regra 2: escritas pela Havena (Lucas) pedem confirmação do usuário. Regra 3: rotas são montadas só no celular; no Automotive elas são lidas, iniciadas e reordenadas (ação `reorder`), mas não ganham nem perdem paradas. As regras estão em `can()` (`packages/core/src/permissions.ts`) e têm testes.
 - Não invente integrações. O Kyte tem limitações documentadas em `docs/integrations.md`. O Spotify foi removido do app em 2026-11-26 (não reintroduzir sem pedido do usuário).
-- Visual: use apenas `@goclient/design-tokens`. Sem gradientes, neon ou decoração. Escuro por padrão.
+- Visual: use apenas `@goclient/design-tokens`. Sem gradientes, neon ou decoração (exceção pedida pelo usuário: o fundo "aurora" da tela de login). Claro por padrão desde 2026-11-26.
 
 ## Comandos
 
