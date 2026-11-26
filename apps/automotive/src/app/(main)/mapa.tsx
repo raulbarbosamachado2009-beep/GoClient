@@ -700,68 +700,46 @@ function StopButton({ onPress }: { onPress: () => void }) {
 }
 
 /**
- * Cartão do WhatsApp (multimídia), no lugar do antigo mini player de música: quadrado
- * arredondado com as últimas mensagens (logo à esquerda, nome do cliente, a mensagem e o
- * horário à direita) e o botão de abrir as conversas. Baixo, mostra só a última; quando cresce
- * (início do "Para onde vamos?"), aparecem as anteriores embaixo dela.
+ * Cartão do WhatsApp (multimídia), no lugar do antigo mini player de música, no estilo dos
+ * cartões do CarPlay: só a mensagem mais recente, com o logo do WhatsApp à esquerda, o nome do
+ * cliente, a mensagem e o horário à direita. Tocar abre o WhatsApp.
  *
- * No Preview as mensagens vêm do WhatsApp simulado (fictícias). No app instalado o WhatsApp
- * Web não expõe as conversas, então o cartão mostra só o atalho.
+ * No Preview a mensagem vem do WhatsApp simulado (fictícia). No app instalado o WhatsApp Web
+ * não expõe as conversas, então o cartão mostra só o atalho.
  */
-const WA_RECENT = Platform.OS === 'web' ? recentMessages(4) : [];
+const WA_LAST = Platform.OS === 'web' ? recentMessages(1)[0] : undefined;
 
 function WhatsAppCard() {
   const c = useColors();
   const router = useRouter();
-  const open = () => router.push('/whatsapp');
-  const rows = WA_RECENT.length
-    ? WA_RECENT
-    : [{ id: 'app', name: 'WhatsApp', text: 'Conversas da equipe', time: '' }];
+  const m = WA_LAST ?? { id: 'app', name: 'WhatsApp', text: 'Conversas da equipe', time: '' };
   return (
-    <View style={[styles.wa, { borderColor: c.material.border }]}>
+    <Touchable
+      accessibilityRole="button"
+      accessibilityLabel={`Abrir o WhatsApp: ${m.name}`}
+      onPress={() => router.push('/whatsapp')}
+      scaleTo={0.98}
+      style={[styles.wa, { borderColor: c.material.border }]}
+    >
       <Blur radius={44} tint={c.material.tint} />
       <View style={[StyleSheet.absoluteFill, { backgroundColor: c.material.fallback }]} />
-      <View style={styles.waList}>
-        {rows.map((m, i) => (
-          <Touchable
-            key={m.id}
-            accessibilityRole="button"
-            accessibilityLabel={`Abrir o WhatsApp: ${m.name}`}
-            onPress={open}
-            style={[
-              styles.waRow,
-              i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.separator },
-            ]}
-          >
-            <WhatsAppLogo size={72} />
-            <View style={{ flex: 1, gap: 2 }}>
-              <Text variant="headline" numberOfLines={1}>
-                {m.name}
-              </Text>
-              <Text variant="callout" tone="secondary" numberOfLines={1}>
-                {m.text}
-              </Text>
-            </View>
-            {!!m.time && (
-              <Text variant="caption" tone="secondary" style={styles.waTime}>
-                {m.time}
-              </Text>
-            )}
-          </Touchable>
-        ))}
+      <View style={styles.waRow}>
+        <WhatsAppLogo size={112} />
+        <View style={{ flex: 1, gap: spacing[1] }}>
+          <Text variant="title2" numberOfLines={1}>
+            {m.name}
+          </Text>
+          <Text variant="body" tone="secondary" numberOfLines={2}>
+            {m.text}
+          </Text>
+        </View>
+        {!!m.time && (
+          <Text variant="callout" tone="secondary" style={styles.waTime}>
+            {m.time}
+          </Text>
+        )}
       </View>
-      <Touchable
-        accessibilityRole="button"
-        onPress={open}
-        scaleTo={0.97}
-        style={[styles.waButton, { backgroundColor: c.fill }]}
-      >
-        <Icon name="chatbubbles" size={34} color={c.accent} />
-        <Text variant="bodyStrong" tone="accent">
-          Abrir conversas
-        </Text>
-      </Touchable>
-    </View>
+    </Touchable>
   );
 }
 
@@ -790,7 +768,10 @@ function MorphColumn({
   const gap = layout.gutter;
   // Destino alto: o WhatsApp fica no tamanho de painel e o destino leva o resto.
   const big = Math.max(total - WA_H - gap, 0);
-  const small = compactHeight > 0 ? Math.min(compactHeight, big) : big;
+  // Início: o destino fica baixo, mas nunca deixa o WhatsApp passar de WA_HOME (divisão
+  // parecida com a do CarPlay: cartão de cima menor, o de baixo maior).
+  const small =
+    compactHeight > 0 ? Math.min(Math.max(compactHeight, total - gap - WA_HOME), big) : big;
   const target = compact ? small : big;
   const h = useRef(new Animated.Value(0)).current;
   const m = useRef(new Animated.Value(0)).current;
@@ -1216,9 +1197,10 @@ const LEFT = layout.sidebarWidth + layout.gutter;
 /** Coluna de cartões à direita do mapa. */
 const SIDE_W = 480;
 /** Cartão do WhatsApp no tamanho de painel (quando o cartão de baixo cresce). */
-const WA_H = 248;
+const WA_H = 200;
+/** Altura do cartão do WhatsApp no início ("Para onde vamos?"). */
+const WA_HOME = 300;
 const WA_R = 48;
-const WA_INNER = concentric(WA_R, spacing[6]);
 const MAP_R = 48;
 
 /** Celular em pé: busca/orientação no topo, cartão embaixo (acima das abas). */
@@ -1299,26 +1281,10 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1,
     paddingHorizontal: spacing[6],
-    paddingVertical: spacing[6],
-    gap: spacing[4],
-  },
-  // As mensagens ficam de cima para baixo; o cartão recorta as que não cabem.
-  waList: { flex: 1, minHeight: 0, overflow: 'hidden' },
-  waRow: {
-    height: 96,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[4],
-  },
-  waTime: { alignSelf: 'flex-start', marginTop: 14 },
-  waButton: {
-    height: 88,
-    borderRadius: WA_INNER,
-    flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing[3],
   },
+  waRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[5] },
+  waTime: { alignSelf: 'flex-start', marginTop: spacing[1] },
   wideAction: {
     flex: 1,
     height: 96,

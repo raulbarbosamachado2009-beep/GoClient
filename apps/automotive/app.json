@@ -12,7 +12,7 @@
     "android": {
       "package": "com.goclient.automotive",
       "adaptiveIcon": {
-        "backgroundColor": "#D8FF01",
+        "backgroundColor": "#EBF2FD",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"

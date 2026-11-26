@@ -5,7 +5,7 @@ Leia este arquivo antes de começar qualquer trabalho.
 
 ## Estado atual do app
 
-_Última atualização: 2026-11-26 11:00 — WhatsApp maior, login em uma página só com fundo azul, cartões visíveis no modo claro e últimas mensagens no cartão do WhatsApp (PR #12 aguardando revisão)._
+_Última atualização: 2026-11-26 11:25 — novo logo (nuvem azul), cartão do WhatsApp no Mapa só com a última mensagem, WhatsApp maior com fontes SF Pro e sem ligação de vídeo (PR #12 aguardando revisão)._
 
 - **Automotive (`apps/automotive`)** é onde está quase todo o produto: Mapa (OSM + OpenRouteService,
   navegação com voz), Kyte (telas próprias sobre a janela do Kyte) e o assistente de voz Lucas.
@@ -16,6 +16,23 @@ _Última atualização: 2026-11-26 11:00 — WhatsApp maior, login em uma págin
 - Regras de negócio em `packages/core` (com testes); visual só com `@goclient/design-tokens`.
 
 ## Mudanças
+
+### 2026-11-26 11:25 — Novo logo, cartões do Mapa no estilo CarPlay e WhatsApp com fontes da Apple
+
+Terceira rodada de ajustes do usuário:
+
+- **Mapa:** divisão de cartões no estilo do CarPlay: o cartão do WhatsApp em cima (menor)
+  mostra só a mensagem mais recente: logo do WhatsApp à esquerda, nome do cliente, a mensagem
+  e o horário à direita; tocar abre o WhatsApp. Ele encolhe quando o cartão de baixo cresce.
+- **WhatsApp:** elementos um pouco maiores (×1,85) e lista mais estreita (600 px), para a
+  conversa ganhar espaço; **fontes SF Pro** (as da Apple, como no resto do app) no lugar da
+  fonte do sistema; conversa aberta com fundo cinza bem claro (#ECECEC) atrás da linha.
+- **Sem ligação de vídeo** (cabeçalho da conversa, dados do contato, favoritos, ligações).
+- **Interruptor menor** em "Silenciar notificações" e "Sincronizar contato", proporcional à linha.
+- **Letreiro "WhatsApp"** em SF Pro Bold verde-claro, mais justo (texto, não a imagem do
+  logotipo).
+- **Novo logo do GoClient** (nuvem azul enviada pelo usuário): `assets/logo.png`, ícone do app,
+  favicon, splash e ícones adaptativos do Android, na multimídia e no celular.
 
 ### 2026-11-26 11:00 — WhatsApp maior, login numa página só, cartões visíveis e fundo azul
 

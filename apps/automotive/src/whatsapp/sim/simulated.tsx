@@ -11,7 +11,6 @@ import {
 import {
   Animated,
   Easing,
-  Platform,
   Pressable,
   Text as RNText,
   ScrollView,
@@ -22,9 +21,9 @@ import {
   View,
 } from 'react-native';
 import { usePhone } from '../../layout/form-factor';
-import { useColors } from '../../theme';
+import { FONT, useColors } from '../../theme';
 import { Appear, Presence } from '../../ui/motion';
-import { Switch, Touchable } from '../../ui/primitives';
+import { Touchable } from '../../ui/primitives';
 import {
   CALLS,
   CHATS,
@@ -46,7 +45,7 @@ import {
  * nova conversa, novo contato, ligações e dados da ligação.
  *
  * Visual fiel ao WhatsApp Web atual (pedido do usuário em 26/11/2026): fonte do sistema,
- * cores, proporções, balões com "rabinho" e avatares padrão do WhatsApp, tudo ampliado ~1,7×
+ * cores, proporções, balões com "rabinho" e avatares padrão do WhatsApp, tudo ampliado ~1,85×
  * para a tela do carro. Sem o trilho lateral: o botão ao lado do "+" alterna Conversas ↔
  * Ligações e mostra o ícone do destino (ligação nas conversas, conversa nas ligações).
  */
@@ -103,7 +102,7 @@ function usePalette() {
         out: '#D9FDD3',
         in: '#FFFFFF',
         red: '#EA0038',
-        press: '#F6F5F4',
+        press: '#ECECEC',
         avatar: '#CAECFA',
         avatarInk: '#3D9BD1',
         group: '#CBF2EE',
@@ -118,17 +117,18 @@ function usePalette() {
 type Palette = ReturnType<typeof usePalette>;
 
 /**
- * Medidas do WhatsApp Web ×1,7 (multimídia, 1600×900) e ×1,4 (celular): cabeçalho 64,
+ * Medidas do WhatsApp Web ×1,85 (multimídia, 1600×900) e ×1,5 (celular): cabeçalho 64,
  * título 22, nome 17, texto 14, linha 72 e avatar 49 no original.
  */
 function useSizes() {
   const phone = usePhone();
   // Multimídia: elementos grandes como no resto do app (pedido do usuário).
-  const k = phone ? 1.4 : 1.7;
+  const k = phone ? 1.5 : 1.85;
   return {
     phone,
     k,
-    list: phone ? 0 : 680,
+    // Lista um pouco mais estreita, para a conversa ganhar espaço.
+    list: phone ? 0 : 600,
     title: Math.round(22 * k),
     name: Math.round(17 * k),
     sub: Math.round(14.5 * k),
@@ -143,12 +143,13 @@ function useSizes() {
 }
 type Sizes = ReturnType<typeof useSizes>;
 
-/** Fonte do sistema, como o WhatsApp (Segoe UI no Windows, Roboto no Android). */
-const SYSTEM_FONT = Platform.select({
-  web: '"Segoe UI", "Helvetica Neue", Helvetica, Roboto, Arial, sans-serif',
-  default: undefined,
-});
-const WEIGHT = { regular: '400', medium: '500', semibold: '600', bold: '700' } as const;
+/** Fontes da Apple (SF Pro), as mesmas do resto do app: o peso vem da família. */
+const FAMILY = {
+  regular: FONT.displayRegular,
+  medium: FONT.displayMedium,
+  semibold: FONT.displaySemibold,
+  bold: FONT.displayBold,
+} as const;
 
 function Text({
   children,
@@ -160,7 +161,7 @@ function Text({
 }: {
   children: ReactNode;
   size: number;
-  weight?: keyof typeof WEIGHT;
+  weight?: keyof typeof FAMILY;
   color?: string;
   style?: StyleProp<TextStyle>;
   lines?: number;
@@ -170,8 +171,7 @@ function Text({
       numberOfLines={lines}
       style={[
         {
-          fontFamily: SYSTEM_FONT,
-          fontWeight: WEIGHT[weight],
+          fontFamily: FAMILY[weight],
           fontSize: size,
           lineHeight: Math.round(size * 1.35),
           color,
@@ -729,6 +729,58 @@ function Pill({
   );
 }
 
+/** Interruptor no tamanho do WhatsApp (proporcional à linha, menor que o do resto do app). */
+function SimSwitch({
+  P,
+  S,
+  value,
+  onChange,
+}: {
+  P: Palette;
+  S: Sizes;
+  value: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  const w = Math.round(34 * S.k);
+  const h = Math.round(20 * S.k);
+  const knob = h - 6;
+  return (
+    <Pressable
+      accessibilityRole="switch"
+      accessibilityState={{ checked: value }}
+      onPress={() => onChange(!value)}
+      hitSlop={16}
+      style={{
+        width: w,
+        height: h,
+        borderRadius: h / 2,
+        padding: 3,
+        justifyContent: 'center',
+        alignItems: value ? 'flex-end' : 'flex-start',
+        backgroundColor: value ? P.green : P.dark ? '#3B4A54' : '#C4C9CC',
+      }}
+    >
+      <View
+        style={{ width: knob, height: knob, borderRadius: knob / 2, backgroundColor: '#FFFFFF' }}
+      />
+    </Pressable>
+  );
+}
+
+/** Letreiro "WhatsApp" (texto, não a imagem do logotipo): SF Pro Bold, verde claro, justo. */
+function Wordmark({ P, S }: { P: Palette; S: Sizes }) {
+  return (
+    <Text
+      size={Math.round(S.title * 1.12)}
+      weight="bold"
+      color={P.dark ? '#66D06E' : '#5CCB66'}
+      style={{ flex: 1, letterSpacing: -0.8 }}
+    >
+      WhatsApp
+    </Text>
+  );
+}
+
 /* ---------------- Carregamento ---------------- */
 
 function Loading({ P, S }: { P: Palette; S: Sizes }) {
@@ -804,9 +856,7 @@ function ChatList({
   return (
     <View style={{ flex: 1 }}>
       <Header P={P} S={S}>
-        <Text size={S.title} weight="bold" color={P.greenInk} style={{ flex: 1 }}>
-          WhatsApp
-        </Text>
+        <Wordmark P={P} S={S} />
         <IconButton P={P} S={S} name="call-outline" label="Ir para Ligações" onPress={onToggle} />
         <IconButton P={P} S={S} name="add" label="Nova conversa" filled onPress={onNew} />
       </Header>
@@ -815,7 +865,7 @@ function ChatList({
         S={S}
         value={q}
         onChange={setQ}
-        placeholder="Pesquisar ou começar uma nova conversa"
+        placeholder="Pesquisar ou começar conversa"
       />
       <ScrollView
         horizontal
@@ -1165,7 +1215,6 @@ function Conversation({
             </Text>
           </View>
         </Pressable>
-        {!S.phone && <IconButton P={P} S={S} name="videocam-outline" label="Ligação de vídeo" />}
         <IconButton P={P} S={S} name="call-outline" label="Ligação de voz" />
         {!S.phone && (
           <IconButton P={P} S={S} name="search" label="Pesquisar" onPress={() => onFind('')} />
@@ -1797,7 +1846,6 @@ function Profile({
           </Text>
           <View style={{ flexDirection: 'row', gap: Math.round(16 * S.k), marginTop: 16 }}>
             {action('call-outline', 'Ligar')}
-            {action('videocam-outline', 'Vídeo')}
             {action('search', 'Pesquisar', onFind)}
           </View>
         </Appear>
@@ -1835,7 +1883,7 @@ function Profile({
         )}
         {sep('s1')}
         {line('notifications-outline', 'Silenciar notificações', undefined, {
-          right: <Switch value={muted} onChange={setMuted} />,
+          right: <SimSwitch P={P} S={S} value={muted} onChange={setMuted} />,
         })}
         {line('timer-outline', 'Mensagens temporárias', 'Desativadas')}
         {line(
@@ -2116,7 +2164,7 @@ function NewContact({
               O contato também vai para a agenda do celular dono do número.
             </Text>
           </View>
-          <Switch value={sync} onChange={setSync} />
+          <SimSwitch P={P} S={S} value={sync} onChange={setSync} />
         </View>
         <Touchable
           accessibilityRole="button"
@@ -2188,9 +2236,7 @@ function CallsList({
     <View style={{ flex: 1 }}>
       <Header P={P} S={S}>
         {/* O título continua "WhatsApp" também nas Ligações (pedido do usuário). */}
-        <Text size={S.title} weight="bold" color={P.greenInk} style={{ flex: 1 }}>
-          WhatsApp
-        </Text>
+        <Wordmark P={P} S={S} />
         <View>
           <IconButton
             P={P}
@@ -2251,7 +2297,6 @@ function CallsList({
                 title={c.name}
                 right={
                   <View style={{ flexDirection: 'row' }}>
-                    <IconButton P={P} S={S} name="videocam-outline" label={`Vídeo com ${c.name}`} />
                     <IconButton P={P} S={S} name="call-outline" label={`Ligar para ${c.name}`} />
                   </View>
                 }
@@ -2279,11 +2324,7 @@ function CallsList({
               title={who.name}
               subtitle={
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <Icon
-                    name={k.video ? 'videocam' : CALL_ICON[k.kind]}
-                    size={S.small}
-                    color={missed ? P.red : P.sub}
-                  />
+                  <Icon name={CALL_ICON[k.kind]} size={S.small} color={missed ? P.red : P.sub} />
                   <Text size={S.sub} color={missed ? P.red : P.sub}>
                     {missed
                       ? 'Ligação perdida'
@@ -2316,11 +2357,11 @@ function CallsEmpty({ P, S }: { P: Palette; S: Sizes }) {
       P={P}
       S={S}
       icon="call-outline"
-      title="Ligações de voz e vídeo"
+      title="Ligações de voz"
       text="Ligue para clientes e para a equipe pelo número compartilhado."
       cta={{ label: 'Iniciar ligação' }}
       actions={[
-        { icon: 'videocam-outline', label: 'Ligação de vídeo' },
+        { icon: 'person-add-outline', label: 'Ligar para um contato' },
         { icon: 'link-outline', label: 'Novo link de ligação' },
         { icon: 'keypad-outline', label: 'Ligar para um número' },
       ]}
@@ -2369,7 +2410,6 @@ function CallDetail({
               label="Mensagem"
               onPress={() => onMessage(call.contact)}
             />
-            <IconButton P={P} S={S} name="videocam-outline" label="Vídeo" />
             <IconButton P={P} S={S} name="call-outline" label="Ligar" />
           </View>
           <View style={{ height: 1, backgroundColor: P.line }} />
@@ -2380,13 +2420,7 @@ function CallDetail({
             {call.entries.map((e) => (
               <View key={e.label} style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
                 <Icon
-                  name={
-                    call.video
-                      ? 'videocam-outline'
-                      : call.kind === 'out'
-                        ? 'arrow-up'
-                        : 'arrow-down'
-                  }
+                  name={call.kind === 'out' ? 'arrow-up' : 'arrow-down'}
                   size={S.small + 2}
                   color={call.kind === 'missed' ? P.red : P.ink}
                 />
@@ -2414,7 +2448,7 @@ const styles = StyleSheet.create({
   center: { alignItems: 'center', justifyContent: 'center' },
   input: {
     flex: 1,
-    fontFamily: SYSTEM_FONT,
+    fontFamily: FONT.displayRegular,
     paddingVertical: 0,
     // Web: sem o contorno azul do navegador.
     outlineStyle: 'none',

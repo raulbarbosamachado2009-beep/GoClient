@@ -4,13 +4,19 @@ import { Image, type ImageSourcePropType, Text as RNText, View } from 'react-nat
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { FONT } from '../theme';
 
-/** Marca do GoClient: o "G" com seta, sobre o verde-limão (mesma arte do ícone do app). */
+/** Marca do GoClient: a nuvem azul sobre azul-claro (mesma arte do ícone do app, 26/11/2026). */
 export function LogoMark({ size = 96 }: { size?: number }) {
   return (
     <Image
       source={require('../../assets/logo.png')}
       accessibilityLabel="GoClient"
-      style={{ width: size, height: size, borderRadius: size * 0.23 }}
+      style={{
+        width: size,
+        height: size,
+        borderRadius: size * 0.23,
+        borderWidth: 1,
+        borderColor: 'rgba(0,0,0,0.06)',
+      }}
     />
   );
 }
