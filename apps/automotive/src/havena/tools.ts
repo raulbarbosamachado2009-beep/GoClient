@@ -1,6 +1,6 @@
 import * as Location from 'expo-location';
 import type { useRouter } from 'expo-router';
-import { openWhatsApp } from '../integrations/contact';
+import { composeWhatsApp } from '../integrations/contact';
 import { MAPS_ENABLED } from '../integrations/env';
 import { kyteAgent, kyteAgentAvailable, kyteLogged } from '../kyte/agent';
 import { cachedCustomers, customerAddress, restoreKyteCache } from '../kyte/store';
@@ -11,6 +11,8 @@ import { CLIENTS } from '../mocks/data';
 import type { usePrototype } from '../prototype/state';
 import type { ToolSpec } from './brain';
 import { closest } from './fuzzy';
+import { planNotify } from './notify';
+import { say } from './voice';
 
 /**
  * Ferramentas da Havena: tudo o que ela pode fazer no app. Ações que mudam algo (rota,
@@ -26,7 +28,10 @@ export interface HavenaDeps {
 export type ToolOutcome =
   | { result: unknown }
   /** Precisa do "sim" da pessoa: `summary` é a pergunta; `run` faz e devolve a fala final. */
-  | { confirm: { summary: string; run: () => Promise<string> } };
+  | { confirm: { summary: string; run: () => Promise<Done> } };
+
+/** Fala final de uma ação; `after` roda quando a fala termina (ex.: fechar o Lucas). */
+export type Done = string | { say: string; after?: () => void };
 
 const str = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
 const norm = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -88,6 +93,19 @@ export const TOOL_SPECS: ToolSpec[] = [
     },
   },
   {
+    name: 'avisar_chegada',
+    description:
+      'Avisa um cliente pelo WhatsApp que estamos a caminho, com o tempo de chegada pela rota. Sem nome = o próximo cliente da rota ativa. A mensagem é escrita pelo app (humanizada) e a pessoa confirma antes. Use para "avisa o próximo cliente que estamos indo" ou "avisa o Adão do Jardim Selma que chego em 10 minutos".',
+    parameters: {
+      type: 'object',
+      properties: {
+        nome: { type: 'string', description: 'Nome do cliente; vazio para o próximo da rota' },
+        bairro: { type: 'string' },
+        minutos: { type: 'number', description: 'Só se a pessoa disse o tempo' },
+      },
+    },
+  },
+  {
     name: 'kyte_novo_cliente',
     description: 'Cadastra um cliente novo no Kyte.',
     parameters: {
@@ -122,7 +140,7 @@ export const TOOL_SPECS: ToolSpec[] = [
     description: 'Abre uma tela do app.',
     parameters: {
       type: 'object',
-      properties: { tela: { type: 'string', enum: ['mapa', 'kyte', 'ajustes'] } },
+      properties: { tela: { type: 'string', enum: ['mapa', 'kyte', 'whatsapp', 'ajustes'] } },
       required: ['tela'],
     },
   },
@@ -250,12 +268,36 @@ export async function runTool(
       return {
         confirm: {
           summary: `Abro o WhatsApp de ${who} com a mensagem: "${msg}"?`,
-          run: async () =>
-            openWhatsApp(phone, msg)
-              ? 'Abri o WhatsApp com a mensagem pronta. É só tocar em enviar.'
-              : 'Esse telefone não parece válido.',
+          run: async () => {
+            const how = composeWhatsApp(
+              { to: who.split(' ')[0] ?? who, phone, text: msg },
+              d.router,
+              () => say('Enviado!', { onStart: () => {}, onDone: () => {}, onStopped: () => {} }),
+            );
+            if (how === 'invalid') return 'Esse telefone não parece válido.';
+            return {
+              say: 'Pronto! A mensagem está escrita, é só tocar em enviar.',
+              after: () => d.proto.setOverlay(null),
+            };
+          },
         },
       };
+    }
+    case 'avisar_chegada': {
+      const nome = str(args.nome);
+      const minutos =
+        typeof args.minutos === 'number' && args.minutos > 0 ? args.minutos : undefined;
+      return planNotify(
+        nome
+          ? {
+              target: 'named',
+              name: nome,
+              district: str(args.bairro) || undefined,
+              minutes: minutos,
+            }
+          : { target: 'next', minutes: minutos },
+        d,
+      );
     }
     case 'kyte_novo_cliente': {
       if (!kyteOn()) return { result: 'O Kyte não está conectado neste aparelho.' };
@@ -289,7 +331,14 @@ export async function runTool(
     }
     case 'abrir_tela': {
       const t = str(args.tela);
-      const href = t === 'kyte' ? '/kyte' : t === 'ajustes' ? '/configuracoes' : '/mapa';
+      const href =
+        t === 'kyte'
+          ? '/kyte'
+          : t === 'whatsapp'
+            ? '/whatsapp'
+            : t === 'ajustes'
+              ? '/configuracoes'
+              : '/mapa';
       d.router.replace(href);
       return { result: 'aberto' };
     }

@@ -5,9 +5,9 @@ import { FONT, nativeDriver, useColors } from '../theme';
 
 /** Falas de exemplo (quando nenhuma fala real é passada, ex.: no Preview). */
 const PHRASES = [
-  'Seu próximo cliente é a Boutique Albuquerque, a doze minutos daqui.',
-  'No último pedido ela levou camisetas, calças e vestidos de linho.',
-  'Quer que eu abra a rota agora?',
+  'Só um segundo!',
+  'Posso falar para o Adão do Selma que chegamos em 6 minutos?',
+  'Enviado!',
 ];
 
 const WORD_MS = 230; // intervalo entre palavras

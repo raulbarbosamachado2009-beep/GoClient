@@ -18,6 +18,8 @@ export interface Guidance {
   /** O que falta da viagem toda. */
   remainingMeters: number;
   remainingSeconds: number;
+  /** Segundos até a próxima parada (numa rota com várias, a primeira que falta). */
+  toStopSeconds: number;
 }
 
 export function useTurnByTurn({
@@ -63,6 +65,7 @@ export function useTurnByTurn({
       toNext,
       remainingMeters: loc.remaining,
       remainingSeconds: loc.remainingSeconds,
+      toStopSeconds: loc.toStopSeconds,
     });
     const steps = route.steps;
 
@@ -123,6 +126,8 @@ export function locate(route: LiveRoute, cum: number[], position: LatLng, hint: 
   const next = steps[nextIdx] ?? null;
   const toNext = next ? Math.max(0, (cum[next.from] ?? total) - at) : 0;
   const remaining = Math.max(0, total - at);
+  const arrive = steps.slice(nextIdx).find((s) => s.type === 10);
+  const toStop = arrive ? Math.max(0, (cum[arrive.from] ?? total) - at) : remaining;
   return {
     index,
     next,
@@ -130,7 +135,17 @@ export function locate(route: LiveRoute, cum: number[], position: LatLng, hint: 
     toNext,
     remaining,
     remainingSeconds: total > 0 ? (route.durationSeconds * remaining) / total : 0,
+    toStopSeconds: total > 0 ? (route.durationSeconds * toStop) / total : 0,
   };
+}
+
+/** Segundos do começo da rota até a primeira parada (antes de começar a navegar). */
+export function secondsToFirstStop(route: LiveRoute): number {
+  const cum = cumulative(route.path);
+  const total = cum[cum.length - 1] ?? 0;
+  const arrive = route.steps.find((s) => s.type === 10);
+  const until = arrive ? (cum[arrive.from] ?? total) : total;
+  return total > 0 ? (route.durationSeconds * until) / total : route.durationSeconds;
 }
 
 /** Distância acumulada (m) ao longo da linha, ponto a ponto. */

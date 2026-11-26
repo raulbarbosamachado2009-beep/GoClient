@@ -5,15 +5,40 @@ Leia este arquivo antes de começar qualquer trabalho.
 
 ## Estado atual do app
 
-_Última atualização: 2026-11-25 23:25 — Spotify removido de todo o app (aguardando revisão no Preview antes de entrar na main)._
+_Última atualização: 2026-11-26 09:15 — WhatsApp no menu (WhatsApp Web dentro do app) e o Lucas avisando o próximo cliente (PR aguardando revisão; vem depois do PR que remove o Spotify)._
 
 - **Automotive (`apps/automotive`)** é onde está quase todo o produto: Mapa (OSM + OpenRouteService,
   navegação com voz), Kyte (telas próprias sobre a janela do Kyte) e o assistente de voz Lucas.
-  Não há mais Música/Spotify; o WhatsApp deve ocupar esse lugar numa próxima etapa. Roda no carro (paisagem) e no celular (em pé, com aba puxável estilo Apple Maps).
+  Não há mais Música/Spotify; no lugar entrou a aba **WhatsApp** (WhatsApp Web dentro do
+  app, número da equipe). O Lucas avisa o próximo cliente da rota pelo WhatsApp. Roda no carro (paisagem) e no celular (em pé, com aba puxável estilo Apple Maps).
 - **Mobile e Web** ainda são telas de diagnóstico; **API** (`apps/api`) com Hono + Drizzle.
 - Regras de negócio em `packages/core` (com testes); visual só com `@goclient/design-tokens`.
 
 ## Mudanças
+
+### 2026-11-26 09:15 — WhatsApp no menu e o Lucas avisando o próximo cliente
+
+Pedido do usuário: o WhatsApp entra no lugar do Spotify, no celular e na multimídia, e o
+Lucas avisa o cliente que estamos chegando, com mensagem humanizada.
+
+- **Aba WhatsApp** (barra lateral da multimídia e barra de abas do celular, depois do Kyte):
+  o WhatsApp Web oficial dentro do app, para a equipe usar o número compartilhado. Antes do
+  primeiro uso, uma apresentação no estilo das do Kyte explica o QR code. A sessão fica salva
+  no aparelho: a multimídia não precisa de chip e o QR só aparece na primeira vez.
+- **Lucas:** "Lucas, avisa o próximo cliente que estamos indo" → "Só um segundo!" → "Posso
+  falar para o Adão do Selma que chegamos em 6 minutos?" → "Pode!" → abre a conversa com a
+  mensagem escrita → a pessoa toca em enviar → "Enviado!". Também entende o pedido com nome,
+  bairro e tempo ("avisa o Adão do Jardim Selma que chego em 10 minutos") e "abre o
+  WhatsApp". A mensagem muda a cada envio (cumprimento do horário, corpo e fecho sorteados).
+- **Envio com um toque:** o app não aperta enviar sozinho (risco de banir o número). Ele só
+  percebe que a mensagem saiu para o Lucas dizer "Enviado!".
+- Código: `packages/core/src/arrival.ts` (+ testes), `buildWhatsAppWebSend` em
+  `whatsapp.ts`, `apps/automotive/src/whatsapp/` (janela, ponte, ícone, estado),
+  `app/(main)/whatsapp.tsx`, `havena/notify.ts`, ferramenta `avisar_chegada`, `map/trip.ts`
+  (próxima parada e tempo até ela, publicados pelo Mapa), `ui/app-intro.tsx` (apresentação
+  reaproveitada pelo Kyte). Documentação em `docs/integrations.md`.
+- Ainda não testado num aparelho de verdade: o login do WhatsApp Web na WebView e o aviso de
+  "Enviado!".
 
 ### 2026-11-25 23:25 — Spotify removido de todo o app
 

@@ -19,7 +19,8 @@ describe('comandos fixos do Lucas', () => {
     expect(fixedCommand('abre o mapa', d)).toBe('Abrindo.');
     expect(fixedCommand('Lucas, abre o Kyte', d)).toBe('Abrindo.');
     expect(fixedCommand('vai para ajustes', d)).toBe('Abrindo.');
-    expect(went).toEqual(['/mapa', '/kyte', '/configuracoes']);
+    expect(fixedCommand('abre o WhatsApp', d)).toBe('Abrindo.');
+    expect(went).toEqual(['/mapa', '/kyte', '/configuracoes', '/whatsapp']);
   });
 
   it('mostra a rota do dia', () => {
