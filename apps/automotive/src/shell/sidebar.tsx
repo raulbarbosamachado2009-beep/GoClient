@@ -1,25 +1,21 @@
-import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { type Href, usePathname, useRouter } from 'expo-router';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Image, StyleSheet, View } from 'react-native';
+import { Animated, Image, StyleSheet, View } from 'react-native';
 import { HavenaOrb } from '../havena/orb';
 import { HavenaPanel } from '../havena/panel';
-import { SP_BG } from '../music/phone';
 import { usePrototype } from '../prototype/state';
-import { concentric, layout, nativeDriver, spacing, useColors } from '../theme';
+import { concentric, layout, spacing, useColors } from '../theme';
 import { KyteLogo } from '../ui/brand';
 import { useSpring } from '../ui/motion';
 import { Blur, Text, Touchable } from '../ui/primitives';
 import { type AppGlyph, MapAppIcon, OutlineGlyph } from './app-icons';
-import { NowPlayingTile } from './now-playing-tile';
 
 interface Item {
   href: Href;
   match: string;
   label: string;
-  /** Ícone de contorno; sem ele, o item usa o logo do Spotify. */
-  glyph?: AppGlyph;
+  glyph: AppGlyph;
 }
 
 const MAP_LIGHT = require('../../assets/map/map-light.jpg');
@@ -27,7 +23,6 @@ const MAP_DARK = require('../../assets/map/map-dark.jpg');
 
 const ITEMS: Item[] = [
   { href: '/mapa', match: '/mapa', label: 'Mapa', glyph: 'mapa' },
-  { href: '/musica', match: '/musica', label: 'Música' },
   { href: '/kyte', match: '/kyte', label: 'Kyte', glyph: 'kyte' },
 ];
 
@@ -49,9 +44,7 @@ export function Sidebar() {
   const c = useColors();
   const pathname = usePathname();
   const router = useRouter();
-  const { setOverlay, nowPlaying, playing, kyteOpen } = usePrototype();
-  // Fora da Música, o ícone do Spotify mostra a música tocando.
-  const showPlaying = nowPlaying !== null && !pathname.startsWith('/musica');
+  const { setOverlay, kyteOpen } = usePrototype();
   const activeIndex = ITEMS.findIndex((i) => pathname.startsWith(i.match));
   const settingsActive = pathname.startsWith('/configuracoes');
   const y = useSpring(Math.max(activeIndex, 0) * SLOT);
@@ -63,18 +56,10 @@ export function Sidebar() {
   const dark = c.mode === 'dark' && !onKyte;
   const ink = dark ? '#F2F2F7' : '#1C1C1E';
   // Fundo do painel: a cor da página aberta, translúcida, sobre uma imagem desfocada do que
-  // a página mostra (o mapa no Mapa, a capa da música no Spotify). O painel parece vidro
-  // fosco na cor de cada página.
+  // a página mostra (o mapa no Mapa). O painel parece vidro fosco na cor de cada página.
   const onMap = pathname.startsWith('/mapa');
-  const onMusic = pathname.startsWith('/musica');
-  const pageBg = onKyte ? '#EEF1F5' : onMusic ? SP_BG : c.background;
-  const backdrop = onMap
-    ? dark
-      ? MAP_DARK
-      : MAP_LIGHT
-    : onMusic && nowPlaying
-      ? nowPlaying.backdrop
-      : null;
+  const pageBg = onKyte ? '#EEF1F5' : c.background;
+  const backdrop = onMap ? (dark ? MAP_DARK : MAP_LIGHT) : null;
   const veil = onKyte
     ? 'rgba(255,255,255,0.72)'
     : backdrop
@@ -128,31 +113,10 @@ export function Sidebar() {
             >
               {item.glyph === 'kyte' ? (
                 <KyteLogo size={ICON} />
-              ) : item.glyph ? (
+              ) : (
                 <View style={[styles.icon, { overflow: 'hidden' }]}>
                   <MapAppIcon size={ICON} dark={dark} />
                 </View>
-              ) : (
-                <MusicSwap
-                  show={showPlaying}
-                  logo={
-                    <View style={[styles.icon, styles.spotify]}>
-                      <FontAwesome5 name="spotify" size={64} color="#1ED760" />
-                    </View>
-                  }
-                  playingTile={
-                    nowPlaying && (
-                      <NowPlayingTile
-                        cover={nowPlaying.image}
-                        tint={nowPlaying.tint}
-                        playing={playing}
-                        width={ICON}
-                        height={ICON}
-                        radius={ICON_R}
-                      />
-                    )
-                  }
-                />
               )}
             </Tile>
           ))}
@@ -177,59 +141,6 @@ export function Sidebar() {
           </Tile>
         </View>
       </View>
-    </View>
-  );
-}
-
-/**
- * Troca animada entre o logo do Spotify e a música tocando: o logo encolhe e some enquanto
- * a capa cresce no lugar (e o inverso ao voltar para a Música).
- */
-function MusicSwap({
-  show,
-  logo,
-  playingTile,
-}: {
-  show: boolean;
-  logo: ReactNode;
-  playingTile: ReactNode;
-}) {
-  const p = useRef(new Animated.Value(show ? 1 : 0)).current;
-  useEffect(() => {
-    Animated.timing(p, {
-      toValue: show ? 1 : 0,
-      duration: 460,
-      easing: Easing.bezier(0.2, 0.8, 0.2, 1),
-      useNativeDriver: nativeDriver,
-    }).start();
-  }, [p, show]);
-  return (
-    <View style={styles.swap}>
-      <Animated.View
-        style={[
-          styles.swapLayer,
-          {
-            opacity: p.interpolate({ inputRange: [0, 0.5, 1], outputRange: [1, 0, 0] }),
-            transform: [{ scale: p.interpolate({ inputRange: [0, 1], outputRange: [1, 0.55] }) }],
-          },
-        ]}
-      >
-        {logo}
-      </Animated.View>
-      {playingTile && (
-        <Animated.View
-          pointerEvents="none"
-          style={[
-            styles.swapLayer,
-            {
-              opacity: p.interpolate({ inputRange: [0, 0.35, 1], outputRange: [0, 1, 1] }),
-              transform: [{ scale: p.interpolate({ inputRange: [0, 1], outputRange: [0.72, 1] }) }],
-            },
-          ]}
-        >
-          {playingTile}
-        </Animated.View>
-      )}
     </View>
   );
 }
@@ -289,21 +200,6 @@ const styles = StyleSheet.create({
     width: ICON,
     height: ICON,
     borderRadius: ICON_R,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  spotify: {
-    backgroundColor: '#000000',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.14)',
-  },
-  swap: { width: ICON, height: ICON },
-  swapLayer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
     alignItems: 'center',
     justifyContent: 'center',
   },

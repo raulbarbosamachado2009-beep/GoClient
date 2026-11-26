@@ -4,7 +4,7 @@ import { useFrameScale } from '../preview/automotive-frame';
 
 /**
  * Desfaz a redução da moldura (o app é desenhado num tamanho de referência e reduzido para
- * caber no aparelho). Para janelas web (mapa, login do Spotify): sem isso, a página é
+ * caber no aparelho). Para janelas web (mapa, Kyte): sem isso, a página é
  * desenhada pequena e as letras saem miúdas, principalmente com o celular deitado.
  */
 export function Unscaled({ children }: { children: ReactNode }) {

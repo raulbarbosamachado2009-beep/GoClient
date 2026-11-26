@@ -1,7 +1,7 @@
 # GoClient
 
 Ecossistema de gestão comercial para representantes comerciais e vendedores externos:
-clientes, produtos, rotas de visita, música e a assistente **Havena**, em quatro ambientes
+clientes, produtos, rotas de visita e a assistente **Havena**, em quatro ambientes
 (Automotive, Mobile, Web e Desktop) sobre a mesma base de dados e regras.
 
 > **Fase atual: 01 — fundação técnica.** Não há telas do produto ainda; cada app tem apenas uma
@@ -35,7 +35,7 @@ packages/
 docs/
   architecture.md  arquitetura completa
   development.md   como rodar, Preview por plataforma, testes, novas funcionalidades
-  integrations.md  Kyte, Spotify, WhatsApp, mapas — viabilidade e limites
+  integrations.md  Kyte, WhatsApp, mapas — viabilidade e limites
   adr/             decisões de arquitetura
 ```
 

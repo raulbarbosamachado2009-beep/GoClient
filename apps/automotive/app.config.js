@@ -6,8 +6,6 @@
  *   o app usa o mapa de demonstração. O desenho do mapa (OpenFreeMap) não usa chave.
  * - EXPO_PUBLIC_NVIDIA_API_KEY: chave da NVIDIA (IA da Havena). Sem ela, a Havena só entende
  *   comandos fixos.
- * - EXPO_PUBLIC_SPOTIFY_CLIENT_ID: Client ID do app no Spotify for Developers. Sem ele a
- *   Música continua em modo de demonstração.
  *
  * Nenhuma chave fica gravada no repositório.
  */

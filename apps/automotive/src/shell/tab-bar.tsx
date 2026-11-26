@@ -1,4 +1,3 @@
-import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { type Href, usePathname, useRouter } from 'expo-router';
 import { type ComponentRef, type ReactNode, useEffect, useRef, useState } from 'react';
 import { Animated, PanResponder, StyleSheet, View } from 'react-native';
@@ -12,7 +11,6 @@ import { LIVE_BLUR } from '../ui/blur-target';
 import { KyteLogo } from '../ui/brand';
 import { Blur, Touchable } from '../ui/primitives';
 import { OutlineGlyph } from './app-icons';
-import { NowPlayingTile } from './now-playing-tile';
 
 /** Telas abertas a partir da aba puxável do Mapa (a aba Mapa fica marcada nelas). */
 export const MAP_ROUTES = ['/mapa', '/clientes', '/produtos', '/rotas', '/mais'];
@@ -32,7 +30,6 @@ const TABS: TabDef[] = [
   { key: 'mapa', label: 'Mapa', href: '/mapa' },
   { key: 'kyte', label: 'Kyte', href: '/kyte' },
   { key: 'havena', label: 'Falar com o Lucas' },
-  { key: 'musica', label: 'Spotify', href: '/musica' },
   { key: 'ajustes', label: 'Ajustes', href: '/configuracoes' },
 ];
 
@@ -40,28 +37,20 @@ const TABS: TabDef[] = [
  * Barra de abas do celular em pé (referência: Instagram no iOS 26): pílula flutuante de
  * vidro, só ícones, com uma bolha clara atrás do ícone ativo. A bolha desliza ao trocar de
  * aba; arrastando o dedo pela barra ela acompanha (um pouco maior, como uma lente) e a tela
- * troca ao soltar. A Havena (centro) abre por cima, sem trocar de tela.
+ * troca ao soltar. O Lucas abre por cima, sem trocar de tela.
  */
 export function TabBar() {
   const c = useColors();
   const pathname = usePathname();
   const router = useRouter();
-  const { setOverlay, nowPlaying, playing } = usePrototype();
+  const { setOverlay } = usePrototype();
   const lift = useTabBarLift();
   const dark = c.mode === 'dark';
   const ink = dark ? '#F2F2F7' : '#1C1C1E';
   const muted = dark ? '#9A9AA0' : '#6C6C70';
 
   const is = (p: string) => pathname.startsWith(p);
-  const active = MAP_ROUTES.some(is)
-    ? 0
-    : is('/kyte')
-      ? 1
-      : is('/musica')
-        ? 3
-        : is('/configuracoes')
-          ? 4
-          : 0;
+  const active = MAP_ROUTES.some(is) ? 0 : is('/kyte') ? 1 : is('/configuracoes') ? 3 : 0;
 
   // Largura de cada item (medida) e posição da bolha.
   const [width, setWidth] = useState(0);
@@ -171,19 +160,6 @@ export function TabBar() {
     switch (TABS[i]?.key) {
       case 'mapa':
         return <OutlineGlyph glyph="mapa" size={46} color={col} />;
-      case 'musica':
-        return nowPlaying && !is('/musica') ? (
-          <NowPlayingTile
-            cover={nowPlaying.image}
-            tint={nowPlaying.tint}
-            playing={playing}
-            width={60}
-            height={46}
-            radius={12}
-          />
-        ) : (
-          <FontAwesome5 name="spotify" size={44} color={col} />
-        );
       case 'havena':
         return <HavenaOrb size={72} ambient />;
       case 'kyte':

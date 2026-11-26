@@ -51,13 +51,6 @@ const tools = [
     ['endereco'],
   ],
   [
-    'tocar_musica',
-    'Procura e toca uma música no Spotify agora, ou põe na fila.',
-    { busca: { type: 'string' }, fila: { type: 'boolean' } },
-    ['busca'],
-  ],
-  ['proxima_musica', 'Pula para a próxima música.', {}, []],
-  [
     'enviar_whatsapp',
     'Abre o WhatsApp do cliente com a mensagem pronta.',
     { cliente: { type: 'string' }, mensagem: { type: 'string' } },
@@ -69,9 +62,7 @@ const tools = [
 }));
 
 const cases = [
-  ['Havena, passa a música', ['proxima_musica']],
   ['coloca o Marcos na rota pra eu ir agora', ['buscar_cliente_kyte']],
-  ['toca Evidências do Chitãozinho e Xororó', ['tocar_musica']],
   ['manda um zap pro Adriano avisando que eu chego em 10 minutos', ['enviar_whatsapp']],
 ];
 

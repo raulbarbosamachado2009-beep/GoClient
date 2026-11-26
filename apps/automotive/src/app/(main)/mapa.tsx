@@ -1,14 +1,7 @@
 import { can } from '@goclient/core';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { type ComponentRef, type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
-import {
-  Animated,
-  type ImageSourcePropType,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  View,
-} from 'react-native';
+import { Animated, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { callPhone, openWhatsApp } from '../../integrations/contact';
 import { MAPS_ENABLED } from '../../integrations/env';
 import { usePhone, useSystemInsets } from '../../layout/form-factor';
@@ -33,12 +26,8 @@ import { useStops } from '../../map/stops';
 import { useCarPosition, useClientPlaces, useLiveRoute } from '../../map/use-live-map';
 import { CLIENT_FOCUS, DAY_FOCUS, type MapMode, USER } from '../../map/world';
 import { CLIENTS, type MockClient } from '../../mocks/data';
-import { useNowPlaying } from '../../music/now-playing';
-import { ProgressBar } from '../../music/player-parts';
-import { usePrototype } from '../../prototype/state';
 import { concentric, layout, spacing, useColors } from '../../theme';
 import { BlurArea, BlurTargetProvider } from '../../ui/blur-target';
-import { Cover } from '../../ui/brand';
 import { Marquee } from '../../ui/marquee';
 import { Appear, appleEase, Presence, Swap } from '../../ui/motion';
 import {
@@ -85,9 +74,6 @@ export default function MapScreen() {
   // Navegação dentro do GoClient (voz e câmera seguindo o carro).
   const [navigating, setNavigating] = useState(false);
   const [arrivedAt, setArrivedAt] = useState<string | null>(null);
-  // Cartão da direita (multimídia): baixo no início do "Para onde vamos?".
-  const [welcomeCompact, setWelcomeCompact] = useState(true);
-  const [homeH, setHomeH] = useState(0);
   // biome-ignore lint/correctness/useExhaustiveDependencies: troca de destino encerra a navegação
   useEffect(() => {
     setNavigating(false);
@@ -291,7 +277,7 @@ export default function MapScreen() {
   }
 
   // Multimídia: painel de bordo — o mapa num quadro arredondado à esquerda e, à direita, a
-  // coluna de cartões (destino/cliente em cima, música tocando embaixo).
+  // coluna com o cartão do destino/cliente.
   return (
     <View style={{ flex: 1 }}>
       <View style={[styles.mapPanel, { backgroundColor: c.fill }]}>
@@ -336,16 +322,10 @@ export default function MapScreen() {
         </BlurTargetProvider>
       </View>
 
-      {/* Coluna da direita: música em cima e destino embaixo, sempre ocupando a coluna inteira
-          de cima a baixo. Com "Para onde vamos?" (cartão baixo) a música cresce e mostra a capa
-          grande; com um destino (cartão alto) a música encolhe. Os dois mudam de forma juntos,
-          com desfoque. */}
+      {/* Coluna da direita: o cartão de vidro do destino ocupa a coluna inteira, de cima a
+          baixo. */}
       <View style={styles.side}>
-        <MorphColumn
-          top={(expand, artSize) => <NowPlayingCard expand={expand} artSize={artSize} />}
-          compact={!client && welcomeCompact}
-          compactHeight={homeH > 0 ? homeH + spacing[6] * 2 : 0}
-        >
+        <SideCard>
           {/* Trocar de cartão (entrar ou sair de uma rota, ir para outra parada) desliza: o
             atual sai e o novo entra, sem corte seco. */}
           <Swap
@@ -385,191 +365,12 @@ export default function MapScreen() {
                 onClose={() => mapNav()}
               />
             ) : (
-              <WelcomeCard onCompact={setWelcomeCompact} onHomeHeight={setHomeH} />
+              <WelcomeCard />
             )}
           </Swap>
-        </MorphColumn>
+        </SideCard>
       </View>
     </View>
-  );
-}
-
-/**
- * Cartão da música tocando (painel de bordo): o fundo é a própria capa, ampliada e
- * desfocada, com um véu escuro. Capa, nome e artista em cima (tocar abre o player), barra de
- * progresso e os controles anterior / tocar-pausar / próxima embaixo. "Anterior" volta ao
- * início da música se ela já passou dos 3 s (como no Spotify e no iPhone).
- */
-function NowPlayingCard({
-  expand,
-  artSize,
-}: {
-  /** 0 = cartão baixo (só controles), 1 = cartão alto (capa grande em cima). */
-  expand: Animated.AnimatedInterpolation<number>;
-  artSize: number;
-}) {
-  const router = useRouter();
-  const { togglePlaying, next, previous, nowPlaying: chosen } = usePrototype();
-  const np = useNowPlaying();
-  const { track, playing } = np;
-  // Troca de música: capa e nome deslizam para o lado da troca (próxima → para a esquerda,
-  // anterior → para a direita) e o fundo desfocado faz fade entre as capas.
-  const dir = useRef<1 | -1>(1);
-  const back = () => {
-    if (np.positionMs() > 3000) return np.seek(0);
-    dir.current = -1;
-    previous();
-  };
-  const forward = () => {
-    dir.current = 1;
-    next();
-  };
-  const headCover = expand.interpolate({ inputRange: [0, 1], outputRange: [80 + spacing[4], 0] });
-  const headCoverO = expand.interpolate({ inputRange: [0, 0.5], outputRange: [1, 0] });
-  const artScale = expand.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1] });
-  // Nada escolhido ainda: o cartão convida a escolher uma música e abre o Spotify.
-  if (!chosen) {
-    return (
-      <Touchable
-        accessibilityRole="button"
-        accessibilityLabel="Selecione uma música no Spotify"
-        onPress={() => router.push('/musica')}
-        scaleTo={0.98}
-        style={[styles.now, styles.nowEmpty]}
-      >
-        <View style={styles.nowEmptyIcon}>
-          <Icon name="musical-notes" size={44} color="rgba(255,255,255,0.72)" />
-        </View>
-        <View style={{ alignItems: 'center', gap: 2 }}>
-          <Text variant="headline" color="#FFFFFF">
-            Selecione uma música
-          </Text>
-          <Text variant="callout" color="rgba(255,255,255,0.6)">
-            Toque para abrir o Spotify
-          </Text>
-        </View>
-      </Touchable>
-    );
-  }
-  return (
-    <View style={styles.now}>
-      <Backdrop id={track.id} source={track.backdrop} blur={track.backdropBlur} />
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.42)' }]} />
-      <Touchable
-        accessibilityRole="button"
-        accessibilityLabel={`Abrir o player: ${track.title}`}
-        onPress={() => router.push('/player')}
-        style={styles.nowArt}
-      >
-        {artSize > 0 && (
-          <Animated.View style={{ opacity: expand, transform: [{ scale: artScale }] }}>
-            <Swap id={track.id} dir={dir.current}>
-              <Cover color={track.cover} image={track.image} size={artSize} radius={NOW_INNER} />
-            </Swap>
-          </Animated.View>
-        )}
-      </Touchable>
-      <Touchable
-        accessibilityRole="button"
-        accessibilityLabel={`Abrir o player: ${track.title}`}
-        onPress={() => router.push('/player')}
-        style={styles.nowHead}
-      >
-        <Swap id={track.id} dir={dir.current} style={styles.nowHeadRow}>
-          <Animated.View style={{ width: headCover, opacity: headCoverO, overflow: 'hidden' }}>
-            <Cover color={track.cover} image={track.image} size={80} radius={NOW_INNER} />
-          </Animated.View>
-          <View style={{ flex: 1, gap: 2 }}>
-            <Text variant="headline" color="#FFFFFF" numberOfLines={1}>
-              {track.title}
-            </Text>
-            <Text variant="callout" color="rgba(255,255,255,0.72)" numberOfLines={1}>
-              {track.artists}
-            </Text>
-          </View>
-        </Swap>
-      </Touchable>
-      <ProgressBar
-        np={np}
-        height={6}
-        thumb={0}
-        labelColor="rgba(255,255,255,0.72)"
-        showLabels={false}
-      />
-      <View style={styles.nowControls}>
-        <IconButton
-          icon="play-back"
-          size={76}
-          iconSize={42}
-          color="#FFFFFF"
-          accessibilityLabel="Voltar ao início ou música anterior"
-          onPress={back}
-        />
-        <IconButton
-          icon={playing ? 'pause' : 'play'}
-          size={76}
-          iconSize={48}
-          color="#FFFFFF"
-          accessibilityLabel={playing ? 'Pausar' : 'Tocar'}
-          onPress={togglePlaying}
-        />
-        <IconButton
-          icon="play-forward"
-          size={76}
-          iconSize={42}
-          color="#FFFFFF"
-          accessibilityLabel="Próxima"
-          onPress={forward}
-        />
-      </View>
-    </View>
-  );
-}
-
-/**
- * Fundo do cartão da música: a capa ampliada e desfocada. Na troca de música, a capa nova
- * aparece por cima da antiga com fade (a antiga sai quando a nova termina de entrar).
- */
-function Backdrop({
-  id,
-  source,
-  blur,
-}: {
-  id: string;
-  source: ImageSourcePropType;
-  blur?: number;
-}) {
-  const [layers, setLayers] = useState([{ id, source }]);
-  const fade = useRef(new Animated.Value(1)).current;
-  useEffect(() => {
-    setLayers((cur) => (cur[cur.length - 1]?.id === id ? cur : [...cur.slice(-1), { id, source }]));
-  }, [id, source]);
-  useEffect(() => {
-    if (layers.length < 2) return;
-    fade.setValue(0);
-    Animated.timing(fade, {
-      toValue: 1,
-      duration: 520,
-      easing: appleEase,
-      useNativeDriver: false,
-    }).start(({ finished }) => finished && setLayers((cur) => cur.slice(-1)));
-  }, [layers, fade]);
-  return (
-    <>
-      {layers.map((l, i) => (
-        <Animated.Image
-          key={l.id}
-          source={l.source}
-          blurRadius={blur}
-          resizeMode="cover"
-          style={[
-            styles.nowBackdrop,
-            { transform: [{ scale: 1.3 }] },
-            i === layers.length - 1 && layers.length > 1 && { opacity: fade },
-          ]}
-        />
-      ))}
-    </>
   );
 }
 
@@ -856,106 +657,19 @@ function StopButton({ onPress }: { onPress: () => void }) {
 }
 
 /**
- * Coluna da direita: cartão da música em cima e o cartão de vidro do destino embaixo, sempre
- * preenchendo a coluna de cima a baixo. Quando o destino fica baixo ("Para onde vamos?"), a
- * música cresce e ocupa o resto; quando o destino precisa de espaço, a música volta ao
- * tamanho de painel. As duas formas andam juntas (altura e cantos) e um desfoque de movimento
- * passa pelas duas no meio da troca. O conteúdo do destino é montado já no tamanho final e a
- * casca recorta, para nada se espremer durante a animação.
+ * Coluna da direita: o cartão de vidro do destino, de cima a baixo da coluna. O conteúdo
+ * (início, cliente, rota do dia) troca dentro dele.
  */
-function MorphColumn({
-  compact,
-  compactHeight,
-  top,
-  children,
-}: {
-  compact: boolean;
-  compactHeight: number;
-  top: (expand: Animated.AnimatedInterpolation<number>, artSize: number) => ReactNode;
-  children: ReactNode;
-}) {
+function SideCard({ children }: { children: ReactNode }) {
   const c = useColors();
-  const [total, setTotal] = useState(0);
-  const gap = layout.gutter;
-  // Destino alto: a música fica no tamanho de painel e o destino leva o resto.
-  const big = Math.max(total - NOW_H - gap, 0);
-  const small = compactHeight > 0 ? Math.min(compactHeight, big) : big;
-  const target = compact ? small : big;
-  // Capa grande: cabe no espaço que sobra em cima da música quando ela cresce.
-  const grownNow = total - gap - small;
-  const artSize = Math.max(
-    Math.min(SIDE_W - spacing[6] * 2, grownNow - NOW_H - spacing[3]) - spacing[2],
-    0,
-  );
-  const h = useRef(new Animated.Value(0)).current;
-  const m = useRef(new Animated.Value(0)).current;
-  const first = useRef(true);
-  useEffect(() => {
-    if (!total) return;
-    if (first.current) {
-      first.current = false;
-      h.setValue(target);
-      return;
-    }
-    m.setValue(0);
-    Animated.parallel([
-      Animated.timing(h, {
-        toValue: target,
-        duration: 560,
-        easing: appleEase,
-        useNativeDriver: false,
-      }),
-      Animated.timing(m, { toValue: 1, duration: 560, useNativeDriver: false }),
-    ]).start();
-  }, [target, total, h, m]);
-  const nowH = Animated.add(total - gap, Animated.multiply(h, -1));
-  const expand = h.interpolate({
-    inputRange: [Math.min(small, big - 1), big],
-    outputRange: [1, 0],
-    extrapolate: 'clamp',
-  });
-  const blurO = m.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 1, 0] });
-  const webBlur =
-    Platform.OS === 'web'
-      ? {
-          filter: m.interpolate({
-            inputRange: [0, 0.5, 1],
-            outputRange: ['blur(0px)', 'blur(6px)', 'blur(0px)'],
-          }),
-        }
-      : null;
-  const pulse = (tint: 'dark' | 'light') => (
-    <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { opacity: blurO }]}>
-      <Blur radius={18} tint={tint} />
-    </Animated.View>
-  );
   return (
-    <View style={{ flex: 1 }} onLayout={(e) => setTotal(e.nativeEvent.layout.height)}>
-      {total > 0 && (
-        <>
-          <Appear delay={160} distance={40} fade={false}>
-            <Animated.View style={[styles.nowShell, { height: nowH }]}>
-              <Animated.View style={[{ flex: 1 }, webBlur as object]}>
-                {top(expand, artSize)}
-              </Animated.View>
-              {pulse('dark')}
-            </Animated.View>
-          </Appear>
-          <Animated.View
-            style={[styles.morph, { height: h, marginTop: gap, borderColor: c.material.border }]}
-          >
-            <Blur radius={44} tint={c.material.tint} />
-            <View style={[StyleSheet.absoluteFill, { backgroundColor: c.material.fallback }]} />
-            <Animated.View
-              style={[{ height: compact ? Math.max(target, 1) : big }, webBlur as object]}
-            >
-              {children}
-            </Animated.View>
-            {pulse(c.material.tint)}
-          </Animated.View>
-        </>
-      )}
-    </View>
+    <Appear delay={160} distance={40} fade={false} style={{ flex: 1 }}>
+      <View style={[styles.morph, { borderColor: c.material.border }]}>
+        <Blur radius={44} tint={c.material.tint} />
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: c.material.fallback }]} />
+        {children}
+      </View>
+    </Appear>
   );
 }
 
@@ -1216,28 +930,14 @@ function ClientCard({
  * agrupada com linhas grandes, todas no azul do app. Regra 3: a multimídia não monta rotas —
  * só escolhe um cliente ou começa uma rota montada no celular.
  */
-function WelcomeCard({
-  onCompact,
-  onHomeHeight,
-}: {
-  /** O cartão fica baixo (só o início) ou ocupa a coluna (listas). */
-  onCompact: (compact: boolean) => void;
-  /** Altura do conteúdo do início, para o cartão ter só esse tamanho. */
-  onHomeHeight: (h: number) => void;
-}) {
+function WelcomeCard() {
   const stops = useStops();
   const [view, setView] = useState<'home' | 'pick' | 'routes'>('home');
   const count = stops.saved.length;
-  // biome-ignore lint/correctness/useExhaustiveDependencies: avisa só na troca de tela
-  useEffect(() => onCompact(view === 'home'), [view]);
   // Mesma transição da aba "Rotas" do celular: o atual sai deslizando e o novo entra.
   return (
-    <View style={[styles.welcome, view !== 'home' && { justifyContent: 'flex-start' }]}>
-      <Swap
-        id={view}
-        dir={view === 'home' ? -1 : 1}
-        style={view === 'home' ? { gap: spacing[6] } : { flex: 1, gap: spacing[5] }}
-      >
+    <View style={styles.welcome}>
+      <Swap id={view} dir={view === 'home' ? -1 : 1} style={{ flex: 1, gap: spacing[5] }}>
         {view === 'pick' ? (
           <ClientPicker onClose={() => setView('home')} />
         ) : view === 'routes' ? (
@@ -1259,10 +959,8 @@ function WelcomeCard({
             </ScrollView>
           </>
         ) : (
-          <View
-            style={{ gap: spacing[6] }}
-            onLayout={(e) => onHomeHeight(e.nativeEvent.layout.height)}
-          >
+          // Título em cima e as opções embaixo, perto da mão: o cartão ocupa a coluna inteira.
+          <View style={styles.welcomeHome}>
             <View style={{ gap: spacing[1] }}>
               <Text variant="largeTitle" style={{ fontSize: 42, lineHeight: 50 }}>
                 Para onde vamos?
@@ -1314,11 +1012,8 @@ const COMPACT_INNER = concentric(COMPACT_R, spacing[6]);
 const TRIP_INNER = concentric(TRIP_R, spacing[4]);
 
 const LEFT = layout.sidebarWidth + layout.gutter;
-/** Coluna de cartões à direita do mapa e o cartão da música (painel de bordo). */
+/** Coluna de cartões à direita do mapa. */
 const SIDE_W = 480;
-const NOW_H = 232;
-const NOW_R = 48;
-const NOW_INNER = concentric(NOW_R, spacing[6]);
 const MAP_R = 48;
 
 /** Celular em pé: busca/orientação no topo, cartão embaixo (acima das abas). */
@@ -1353,30 +1048,6 @@ const styles = StyleSheet.create({
     bottom: layout.gutter,
     width: SIDE_W,
   },
-  now: {
-    flex: 1,
-    borderRadius: NOW_R,
-    overflow: 'hidden',
-    backgroundColor: '#1C1C1E',
-    paddingHorizontal: spacing[6],
-    paddingVertical: spacing[5],
-    gap: spacing[3],
-  },
-  nowBackdrop: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' },
-  nowControls: { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center' },
-  nowHead: { height: 80 },
-  nowEmpty: { alignItems: 'center', justifyContent: 'center', gap: spacing[4] },
-  nowEmptyIcon: {
-    width: 88,
-    height: 88,
-    borderRadius: NOW_INNER,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  nowHeadRow: { flex: 1, flexDirection: 'row', alignItems: 'center' },
-  // Capa grande: ocupa o espaço que sobra em cima quando o cartão da música cresce.
-  nowArt: { flex: 1, minHeight: 0, alignItems: 'center', justifyContent: 'center' },
   maneuver: { flexDirection: 'row', alignItems: 'center', gap: spacing[6] },
   // Celular: manobra em cima e a faixa de chegada/tempo/distância embaixo.
   guidanceStack: {
@@ -1415,8 +1086,7 @@ const styles = StyleSheet.create({
   tripButton: { borderRadius: TRIP_INNER, width: STOP_W },
   card: { flex: 1, borderRadius: 40, padding: spacing[8] },
   compact: { flex: 1, padding: spacing[6] },
-  morph: { borderRadius: COMPACT_R, overflow: 'hidden', borderWidth: 1 },
-  nowShell: { borderRadius: NOW_R, overflow: 'hidden' },
+  morph: { flex: 1, borderRadius: COMPACT_R, overflow: 'hidden', borderWidth: 1 },
   wideAction: {
     flex: 1,
     height: 96,
@@ -1470,6 +1140,7 @@ const styles = StyleSheet.create({
     padding: spacing[6],
     gap: spacing[6],
   },
+  welcomeHome: { flex: 1, justifyContent: 'space-between', gap: spacing[6] },
   welcomeHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   avatarTile: {
     width: 112,

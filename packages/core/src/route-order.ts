@@ -1,5 +1,5 @@
 /**
- * Ordem manual da rota do dia (lista "Rota" do Mapa, arrastável como a fila do Spotify).
+ * Ordem manual da rota do dia (lista "Rota" do Mapa, arrastável pela alça).
  * Funções puras: a interface só calcula para onde o item foi e grava a nova ordem.
  */
 

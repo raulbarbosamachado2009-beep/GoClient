@@ -9,9 +9,6 @@ import { useSystemInsets } from '../layout/form-factor';
 import { MapWarmup } from '../map/live-map';
 import { AutomotiveFrame } from '../preview/automotive-frame';
 import { PrototypeProvider } from '../prototype/state';
-import { SpotifyLoginHost } from '../spotify/login';
-import { SpotifyNotice } from '../spotify/notice';
-import { SpotifyProvider } from '../spotify/provider';
 import { ThemeProvider, useColors } from '../theme';
 
 export default function RootLayout() {
@@ -19,21 +16,17 @@ export default function RootLayout() {
   return (
     <ScaleProvider scale={automotiveScale}>
       <ThemeProvider>
-        <SpotifyProvider>
-          <PrototypeProvider>
-            <StatusBar hidden />
-            <Frame>
-              {fontsLoaded ? (
-                <>
-                  <Routes />
-                  <SpotifyNotice />
-                  <SpotifyLoginHost />
-                  <MapWarmup />
-                </>
-              ) : null}
-            </Frame>
-          </PrototypeProvider>
-        </SpotifyProvider>
+        <PrototypeProvider>
+          <StatusBar hidden />
+          <Frame>
+            {fontsLoaded ? (
+              <>
+                <Routes />
+                <MapWarmup />
+              </>
+            ) : null}
+          </Frame>
+        </PrototypeProvider>
       </ThemeProvider>
     </ScaleProvider>
   );
@@ -53,7 +46,7 @@ function Frame({ children }: { children: ReactNode }) {
 function Routes() {
   const c = useColors();
   // Telas soltas (boas-vindas, permissões, login, diagnóstico): descem da câmera/entalhe.
-  // O app principal e o player cuidam disso por conta própria (fundos até a borda).
+  // O app principal cuida disso por conta própria (fundos até a borda).
   const top = useSystemInsets().top;
   return (
     <Stack
@@ -66,13 +59,6 @@ function Routes() {
       }}
     >
       <Stack.Screen name="(main)" options={{ contentStyle: { backgroundColor: c.background } }} />
-      <Stack.Screen
-        name="player"
-        options={{
-          animation: 'slide_from_bottom',
-          contentStyle: { backgroundColor: c.background },
-        }}
-      />
     </Stack>
   );
 }

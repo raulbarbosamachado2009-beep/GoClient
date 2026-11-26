@@ -8,25 +8,22 @@ Estado: protótipo navegável de design (sem funcionalidades). Dados fictícios 
 - **Referência:** Apple CarPlay. Barra lateral com hora, sinal e ícones de app; Ajustes no rodapé.
 - **Temas:** claro e escuro com as cores de sistema da Apple (`src/theme.tsx`). A troca acontece em
   Ajustes → Tema (Claro, Escuro, Automático), e todas as telas leem a paleta via `useColors()`.
-  Nenhuma cor fixa fora do tema, exceto na Música, onde a referência pede verde e o player é
-  sempre imersivo/escuro.
+  Nenhuma cor fixa fora do tema.
 - **Materiais (desfoque):** `Material` (cartão do mapa, quadro de carregamento), `Blur` (barra
   lateral) e `BlurBackdrop` (fundo de toda janela/pop-up) em `src/ui/primitives.tsx`. Na Web usam
   `backdrop-filter` com raio forte (40 px); no Android/iOS, o BlurView nativo. A barra lateral fica
   por cima do conteúdo e, no Mapa, o mapa passa por baixo dela.
-- **Player:** o fundo é a própria capa da música, ampliada e com desfoque forte.
 - **Listas:** padrão "inset grouped" do iOS (`Group` + `Row`).
 - **Movimento** (`src/ui/motion.tsx`): entrada escalonada de listas (`Appear`), transição entre
   telas, resposta por mola ao toque, controles com "polegar" deslizante (segmentado, interruptor,
-  indicador da barra lateral e das abas da Música), janela que sobe com mola, player minimizado
-  que sobe ao aparecer.
+  indicador da barra lateral e das abas), janela que sobe com mola.
 
 ## Bordas concêntricas
 
 - Regra: **raio de dentro = raio de fora − espaçamento** (`concentric()` em
   `apps/automotive/src/theme.tsx`). Ex.: cartão com raio 48 e 18 de espaço → peças de dentro 30.
 - Aba do Mapa (celular): raio 64, 28 de espaço na altura média → peças com 36 (`SHEET_INNER`).
-- Mapa (multimídia): "Para onde vamos?" 56/32 → 24; cartão do cliente 48/24 → 24; viagem 32/16 → 16.
+- Mapa (multimídia): o cartão de vidro ocupa a coluna da direita inteira; "Para onde vamos?" 48/24 → 24 (título em cima, opções embaixo); cartão do cliente 48/24 → 24; viagem 32/16 → 16.
 - Onboarding: quadro das ilustrações 56/28 → cartões 28 → avatares 12.
 
 ## Onboarding e login
@@ -55,23 +52,14 @@ aproximar e limites nas bordas. Não há botões de zoom. O mapa real (tiles, GP
 
 ## Interações do protótipo
 
-Funcionam apenas como demonstração visual (sem API, sem Spotify):
+Funcionam apenas como demonstração visual (sem API):
 
-- **Filtros:** categorias de produtos, regiões em Rotas, filtros do Início e da Biblioteca da
-  Música e gêneros da playlist filtram os dados fictícios.
-- **Música:** tocar uma faixa define a fila (lista visível); "próxima"/"anterior" percorrem a fila
-  e o fundo do player troca com transição.
+- **Filtros:** categorias de produtos e regiões em Rotas filtram os dados fictícios.
 - **Janelas:** o desfoque do fundo cresce e diminui gradualmente (`useTween` + `BlurBackdrop`).
   Elementos com desfoque não animam opacidade (`Appear fade={false}`), porque opacidade abaixo de 1
   desliga o desfoque do navegador durante a animação.
 - **Mapa:** sem cliente escolhido, o cartão mostra "Para onde vamos?" com atalhos para Clientes e
   Rotas.
-
-## Capas de música
-
-`assets/covers/` contém capas fornecidas para o protótipo (convertidas para JPG, até 640 px). No
-app final, capas, faixas e artistas vêm do Spotify; essas imagens são apenas conteúdo de exemplo e
-pertencem aos respectivos titulares.
 
 ## Testes visuais (observação)
 
@@ -101,12 +89,11 @@ Por decisão do produto, a interface usa **somente SF Pro** (Display e Text), ob
 | `/clientes` | Lista e ficha do cliente (botão IR) |
 | `/produtos` | Catálogo em cartões ou lista |
 | `/rotas` | Seleção do dia + "Calculando rota" |
-| `/musica`, `/musica/buscar`, `/musica/biblioteca`, `/musica/playlist/[id]`, `/player` | Música (login, início, busca, biblioteca, player; player minimizado só na Música, acima das abas) |
 | `/configuracoes` | Ajustes |
 
 ## Havena (orbe da IA)
 
-- O orbe fica na barra lateral, logo abaixo do Spotify. Tocar nele faz o círculo aparecer grande no canto
+- O orbe fica na barra lateral, logo abaixo do Kyte. Tocar nele faz o círculo aparecer grande no canto
   direito da tela, sem painel nem texto. Tocar fora fecha; tocar no círculo alterna os estados da animação.
 - Atrás do círculo, o desfoque nasce na borda direita e esvanece para a esquerda. Na Web é um único
   `backdrop-filter` com `mask-image` em degradê; no Android/iOS são faixas de `BlurView` sobrepostas
@@ -124,7 +111,7 @@ Por decisão do produto, a interface usa **somente SF Pro** (Display e Text), ob
 
 - `useEdgeFade()` (`src/ui/edge-fade.tsx`): quando há conteúdo escondido acima ou abaixo, a borda da lista
   desfoca e some na cor do fundo. A borda de cima só aparece depois que o usuário começa a rolar.
-- Usado em Clientes, Produtos (cartões e lista), Ajustes e Sua Biblioteca.
+- Usado em Clientes, Produtos (cartões e lista) e Ajustes.
 
 ## Barra lateral
 
@@ -140,27 +127,10 @@ Por decisão do produto, a interface usa **somente SF Pro** (Display e Text), ob
   e a frase some antes da próxima. Fonte SF Pro Display Light, 30 px. Falas fixas de exemplo; a Havena
   ainda não fala. O orbe fica em "falando" enquanto as palavras surgem.
 
-## Música tocando na barra lateral
-
-- Fora da Música, com uma faixa em andamento, o bloco do Spotify mostra a capa levemente desfocada (ainda
-  reconhecível) dentro do quadrado arredondado e barras de equalizador na frente
-  (`src/shell/now-playing-tile.tsx`). As barras usam o tom da capa (a mesma cor do player minimizado),
-  com saturação e brilho altos para destacar.
-- Ao sair da Música, o logo encolhe e some enquanto a capa cresce no lugar; ao voltar, o inverso.
-- Sem áudio no protótipo: o movimento é ruído suave gerado; pausado, as barras param baixas.
-
 ## Alvos de toque (Clientes, Produtos, Rotas, Ajustes)
 
 - Linhas de lista com 112 px de altura mínima, título 28 px e subtítulo 21 px; busca com 88 px; filtros
   com 80 px; seletor segmentado com 84 px; interruptor 112 × 68. Avatares e ícones das linhas maiores.
-- A busca da Música mantém o tamanho anterior (`SearchField compact`).
-
-## Navegação da Música (sem abas)
-
-- Sem menu no rodapé: só o player minimizado embaixo. Início tem a lupa no canto superior direito (vai para
-  Buscar) e o bloco "Sua Biblioteca" na grade (no lugar de "Piscina de Diamante", que segue na Biblioteca).
-- Buscar, Biblioteca e playlists têm botão de voltar (`MusicBack`) com destino explícito; a playlist volta
-  para onde foi aberta (`?from=inicio|biblioteca`). A lupa da Biblioteca também leva a Buscar.
 
 ## Escala em qualquer tela
 
@@ -175,8 +145,6 @@ Por decisão do produto, a interface usa **somente SF Pro** (Display e Text), ob
   sem isso mostra só a cor. `src/ui/blur-target.tsx` organiza as áreas: barra lateral → conteúdo;
   janelas e Havena → conteúdo + barra lateral; cartões do Mapa → mapa. Um desfoque nunca fica dentro da
   área que ele desfoca; onde não há área própria, vale a cor de reserva do material.
-- Fundo do player: capas já desfocadas em `assets/covers-blur` (o `blurRadius` forte no Android, maior
-  que a imagem, derrubava o app ao abrir o player).
 
 ## Celular em pé × multimídia (mesmo app)
 
@@ -189,10 +157,9 @@ O app do Automotive tem dois formatos, escolhidos pela orientação da tela
   usual de apps de celular, sem uma segunda biblioteca de interface.
 
 No celular, a barra lateral vira **barra de abas flutuante** (referência: Instagram no iOS 26):
-pílula de vidro só com ícones — Mapa · Spotify · Havena (orbe no centro) · Kyte · Ajustes —,
+pílula de vidro só com ícones — Mapa · Kyte · Lucas (orbe) · Ajustes —,
 bolha clara atrás do ícone ativo que desliza; arrastar o dedo pela barra move a bolha e troca a
-tela ao soltar. Na Música não há barra própria do Spotify: lupa ao lado da foto do perfil,
-"Sua Biblioteca" no primeiro bloco do Início e botões de voltar em Buscar e Biblioteca. Clientes, Produtos e Rotas abrem pela aba puxável do Mapa.
+tela ao soltar. Clientes, Produtos e Rotas abrem pela aba puxável do Mapa.
 
 **Mapa no celular (referência: Apple Maps):** mapa aberto e uma aba puxável com três alturas,
 proporcionais à tela: recolhida = pílula flutuante só com a busca; média = cartão flutuante
@@ -206,12 +173,11 @@ aba ignoram o toque que encerra um arrasto. Código: `src/map/phone-sheet.tsx`.
 **Havena no celular:** o círculo sobe de baixo e fica embaixo, centrado (236), com a legenda em
 cima. O desfoque nasce embaixo e esvanece para cima com faixas sobrepostas (sem máscara: o
 Safari do iPhone não aplica `backdrop-filter` junto com `mask-image`). As rotas são as mesmas nos dois formatos, então
-girar o celular mantém a tela, a música tocando e o resto do estado.
+girar o celular mantém a tela e o resto do estado.
 
 Adaptações em pé: cartão do Mapa vira painel acima das abas; fichas (cliente, produto) viram
 folha de baixo para cima na largura toda; Produtos em 2 colunas; Rotas com resumo fixo
-embaixo; login e Spotify empilhados; player com capa em cima e controles embaixo; fileiras de
-capas da Música rolam para o lado.
+embaixo; login empilhado.
 
 Cuidado de implementação: para desfazer um `flex: 1` ao empilhar em coluna, use `NO_FLEX`
 (`flexGrow: 0, flexShrink: 0, flexBasis: 'auto'`). `flex: 0` mantém a base 0% na web e o bloco

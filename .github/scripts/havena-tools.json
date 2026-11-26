@@ -1,37 +1,5 @@
 [
   {
-    "name": "musica_controle",
-    "description": "Controla a música que está tocando: próxima, anterior, pausar ou continuar.",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "acao": {
-          "type": "string",
-          "enum": ["proxima", "anterior", "pausar", "continuar"]
-        }
-      },
-      "required": ["acao"]
-    }
-  },
-  {
-    "name": "musica_tocar",
-    "description": "Procura uma música no Spotify (qualquer uma, não só as curtidas) e toca agora, ou põe na fila.",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "busca": {
-          "type": "string",
-          "description": "Nome da música e, se houver, do artista"
-        },
-        "fila": {
-          "type": "boolean",
-          "description": "true = pôr na fila em vez de tocar agora"
-        }
-      },
-      "required": ["busca"]
-    }
-  },
-  {
     "name": "cliente_buscar",
     "description": "Procura um cliente pelo nome no Kyte e devolve nome, telefone e endereço. Use antes de pôr na rota ou mandar WhatsApp.",
     "parameters": {
@@ -159,7 +127,7 @@
       "properties": {
         "tela": {
           "type": "string",
-          "enum": ["mapa", "musica", "kyte", "ajustes"]
+          "enum": ["mapa", "kyte", "ajustes"]
         }
       },
       "required": ["tela"]

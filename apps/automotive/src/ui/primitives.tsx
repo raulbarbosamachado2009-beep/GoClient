@@ -24,15 +24,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { usePhone } from '../layout/form-factor';
-import {
-  layout,
-  nativeDriver,
-  SPOTIFY_FONT,
-  spacing,
-  type TypeVariant,
-  type,
-  useColors,
-} from '../theme';
+import { layout, nativeDriver, spacing, type TypeVariant, type, useColors } from '../theme';
 import { LIVE_BLUR, useBlurTarget } from './blur-target';
 import { useSpring } from './motion';
 
@@ -61,26 +53,7 @@ export interface TextProps extends RNTextProps {
   color?: string;
 }
 
-/** Trecho do app com outra família de letra (a Música usa a do estilo Spotify). */
-const FontScopeContext = createContext<Record<string, string> | null>(null);
-
-export function SpotifyFontScope({ children }: { children: ReactNode }) {
-  return <FontScopeContext.Provider value={SPOTIFY_FONT}>{children}</FontScopeContext.Provider>;
-}
-
-/** Ajusta um estilo de texto à família do trecho (para Text e TextInput soltos). */
-export function useScopedFont() {
-  const map = useContext(FontScopeContext);
-  return (style: StyleProp<import('react-native').TextStyle>) => {
-    if (!map) return style;
-    const flat = StyleSheet.flatten(style) ?? {};
-    const f = flat.fontFamily;
-    return f && map[f] ? [style, { fontFamily: map[f] }] : style;
-  };
-}
-
 export function Text({ variant = 'body', tone = 'primary', color, style, ...rest }: TextProps) {
-  const scoped = useScopedFont();
   const c = useColors();
   const toneColor = {
     primary: c.text,
@@ -90,7 +63,7 @@ export function Text({ variant = 'body', tone = 'primary', color, style, ...rest
     success: c.success,
     danger: c.danger,
   }[tone];
-  return <RNText style={scoped([type[variant], { color: color ?? toneColor }, style])} {...rest} />;
+  return <RNText style={[type[variant], { color: color ?? toneColor }, style]} {...rest} />;
 }
 
 /* ---------------- Toque ---------------- */
@@ -135,7 +108,7 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 /* ---------------- Botões ---------------- */
 
-type ButtonVariant = 'filled' | 'tinted' | 'gray' | 'plain' | 'destructive' | 'music';
+type ButtonVariant = 'filled' | 'tinted' | 'gray' | 'plain' | 'destructive';
 
 export function Button({
   label,
@@ -165,7 +138,6 @@ export function Button({
       bg: c.mode === 'dark' ? 'rgba(255,69,58,0.2)' : 'rgba(255,59,48,0.12)',
       fg: c.danger,
     },
-    music: { bg: c.music.accent, fg: c.music.onAccent },
   };
   const l = look[variant];
   return (
@@ -352,7 +324,7 @@ export function SearchField({
   style?: StyleProp<ViewStyle>;
   background?: string;
   foreground?: string;
-  /** Tamanho anterior (menor), usado na busca da Música. */
+  /** Tamanho menor (busca em listas). */
   compact?: boolean;
 }) {
   const c = useColors();

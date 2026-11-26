@@ -6,7 +6,6 @@ import { WakeListener } from '../../havena/wake';
 import { KyteAgentHost } from '../../kyte/agent';
 import { usePhone, useSystemInsets, useTabBarSpace } from '../../layout/form-factor';
 import { StopsProvider } from '../../map/stops';
-import { SP_BG } from '../../music/phone';
 import { usePrototype } from '../../prototype/state';
 import { Sidebar } from '../../shell/sidebar';
 import { TabBar } from '../../shell/tab-bar';
@@ -23,7 +22,7 @@ export default function MainLayout() {
   const c = useColors();
   const { overlay } = usePrototype();
   const pathname = usePathname();
-  // Dentro da Música, as abas trocam o conteúdo sem refazer a transição da seção inteira.
+  // A transição acontece por seção (subpáginas trocam o conteúdo sem refazê-la).
   const section = pathname.split('/')[1] ?? '';
   // Áreas de desfoque no Android (ver ui/blur-target.tsx): a barra lateral desfoca o
   // conteúdo; janelas e o Lucas desfocam o conteúdo + a barra lateral.
@@ -32,8 +31,8 @@ export default function MainLayout() {
   const phone = usePhone();
   // O Mapa passa por baixo da barra (lateral ou de abas), que é translúcida.
   const underBar = section === 'mapa';
-  // No celular, o Spotify também vai até o rodapé, por trás da barra de abas flutuante.
-  const fullHeight = underBar || section === 'musica' || section === 'kyte';
+  // No celular, o Kyte também vai até o rodapé, por trás da barra de abas flutuante.
+  const fullHeight = underBar || section === 'kyte';
   const system = useSystemInsets();
   const tabSpace = useTabBarSpace();
   // Liga o motor de voz logo ao abrir o app: a primeira resposta do Lucas já sai na hora.
@@ -58,7 +57,6 @@ export default function MainLayout() {
               // Celular: o fundo vai até a borda de cima; o conteúdo desce da câmera/entalhe.
               // (O Mapa vai inteiro até a borda e afasta só os próprios controles.)
               paddingTop: phone && !underBar && section !== 'kyte' ? system.top : 0,
-              backgroundColor: phone && section === 'musica' ? SP_BG : undefined,
             }}
           >
             {/* Dentro das telas não há área definida: cada tela define a sua (ex.: o Mapa). */}
