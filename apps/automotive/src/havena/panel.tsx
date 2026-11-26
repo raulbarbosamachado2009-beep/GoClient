@@ -292,21 +292,21 @@ function FadingBlur({ enter }: { enter: Animated.Value }) {
  */
 /** Web: faixas do desfoque do celular (altura relativa à tela e raio de cada uma). */
 const WEB_BANDS = [
-  { h: 1, blur: 1, sat: 102 },
-  { h: 0.86, blur: 2, sat: 104 },
-  { h: 0.72, blur: 3, sat: 106 },
-  { h: 0.6, blur: 4, sat: 108 },
-  { h: 0.48, blur: 5.5, sat: 110 },
-  { h: 0.38, blur: 7, sat: 112 },
-  { h: 0.28, blur: 8, sat: 114 },
-  { h: 0.18, blur: 9, sat: 116 },
+  { h: 0.6, blur: 1, sat: 102 },
+  { h: 0.516, blur: 2, sat: 104 },
+  { h: 0.432, blur: 3, sat: 106 },
+  { h: 0.36, blur: 4, sat: 108 },
+  { h: 0.288, blur: 5.5, sat: 110 },
+  { h: 0.228, blur: 7, sat: 112 },
+  { h: 0.168, blur: 8, sat: 114 },
+  { h: 0.108, blur: 9, sat: 116 },
 ];
 
 const PHONE_BANDS = [
-  { h: 1, intensity: 12 },
-  { h: 0.75, intensity: 22 },
-  { h: 0.52, intensity: 34 },
-  { h: 0.32, intensity: 48 },
+  { h: 0.6, intensity: 12 },
+  { h: 0.45, intensity: 22 },
+  { h: 0.312, intensity: 34 },
+  { h: 0.192, intensity: 48 },
 ];
 
 function RisingBlur({ enter, leaving }: { enter: Animated.Value; leaving: boolean }) {
@@ -359,7 +359,7 @@ function RisingBlur({ enter, leaving }: { enter: Animated.Value; leaving: boolea
         <Animated.View style={[StyleSheet.absoluteFill, { opacity: fade }]}>
           <LinearGradient
             colors={['rgba(0,0,0,0)', shade]}
-            locations={[0.25, 0.95]}
+            locations={[0.5, 0.97]}
             start={{ x: 0, y: 0 }}
             end={{ x: 0, y: 1 }}
             style={StyleSheet.absoluteFill}
@@ -399,7 +399,7 @@ function RisingBlur({ enter, leaving }: { enter: Animated.Value; leaving: boolea
       {/* Escurece mais embaixo, onde ficam a nuvem e a legenda. */}
       <LinearGradient
         colors={['rgba(0,0,0,0)', shade]}
-        locations={[0.25, 0.95]}
+        locations={[0.5, 0.97]}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
         style={StyleSheet.absoluteFill}

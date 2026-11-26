@@ -5,7 +5,7 @@ Leia este arquivo antes de começar qualquer trabalho.
 
 ## Estado atual do app
 
-_Última atualização: 2026-11-26 11:38 — o Lucas virou a nuvenzinha do logo, com animações de desenho animado; ligação de voz simulada no WhatsApp com cartão mínimo que segue pelas páginas (PR #12 aguardando revisão)._
+_Última atualização: 2026-11-26 12:46 — WhatsApp do celular no desenho do iPhone (tela cheia) com ligação em tela cheia; Lucas no meio da barra de abas, nuvem fluida e desfoque mais embaixo (PR #12 aguardando revisão)._
 
 - **Automotive (`apps/automotive`)** é onde está quase todo o produto: Mapa (OSM + OpenRouteService,
   navegação com voz), Kyte (telas próprias sobre a janela do Kyte) e o assistente de voz Lucas.
@@ -16,6 +16,28 @@ _Última atualização: 2026-11-26 11:38 — o Lucas virou a nuvenzinha do logo,
 - Regras de negócio em `packages/core` (com testes); visual só com `@goclient/design-tokens`.
 
 ## Mudanças
+
+### 2026-11-26 12:46 — Celular: WhatsApp no desenho do iPhone, Lucas no meio da barra e mais fluido
+
+Quinta rodada, só para o celular em pé (a multimídia não muda):
+
+- **WhatsApp do celular** com telas próprias no desenho do WhatsApp do iPhone
+  (`whatsapp/sim/phone.tsx`): Conversas (título grande, pesquisa, filtros Todas, Não lidas,
+  Favoritos e Grupos), conversa aberta (cabeçalho com voltar, foto, nome e botão de ligar;
+  balões; campo de mensagem com microfone), dados do contato com rolagem (o nome aparece no
+  cabeçalho ao rolar; Ligar, Mensagem, Favorito; favoritos, limpar e bloquear), Ligações
+  (favoritos e ligações recentes com ⓘ) e nova conversa/ligação. **Tela cheia**: o fundo vai
+  até as bordas e passa por trás da barra de abas. O botão redondo do canto esquerdo alterna
+  Conversas ↔ Ligações. Sem vídeo e só dados fictícios.
+- **Ligação em tela cheia** no celular (`CallScreen`): minimizar, nome e "Chamando…"/duração,
+  foto no meio e painel com Alto-falante, Encerrar e Silenciar. Minimizada, vira o cartão
+  mínimo no canto (toque para abrir de novo).
+- **Lucas no meio da barra de abas** do celular.
+- **Nuvem do Lucas sem travar:** as animações agora são só `transform`/`opacity` na GPU
+  (CSS @keyframes na web, driver nativo no app), sem JavaScript a cada quadro. Mesmos
+  movimentos de antes.
+- **Desfoque atrás do Lucas mais embaixo** no celular (mesma intensidade, começando mais
+  perto do rodapé).
 
 ### 2026-11-26 11:38 — Lucas nuvem animado e ligação de voz no WhatsApp
 

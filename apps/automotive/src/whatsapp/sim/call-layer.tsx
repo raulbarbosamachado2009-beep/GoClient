@@ -1,12 +1,21 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
+import type { ComponentProps } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { Animated, PanResponder, StyleSheet, Text, View } from 'react-native';
 import { usePhone, useSystemInsets, useTabBarSpace } from '../../layout/form-factor';
 import { FONT, nativeDriver } from '../../theme';
 import { appleEase, Presence } from '../../ui/motion';
 import { Touchable } from '../../ui/primitives';
-import { hangUp, type LiveCall, toggleMute, useCallStatus, useLiveCall } from './call';
+import {
+  hangUp,
+  type LiveCall,
+  minimizeCall,
+  toggleMute,
+  toggleSpeaker,
+  useCallStatus,
+  useLiveCall,
+} from './call';
 
 /**
  * Painel da ligação de voz (simulada), no visual do WhatsApp Web: cartão escuro com foto,
@@ -18,6 +27,8 @@ import { hangUp, type LiveCall, toggleMute, useCallStatus, useLiveCall } from '.
  *   Arrastar para cima ou para baixo troca o canto (superior ↔ inferior); tocar volta
  *   para o WhatsApp.
  */
+type IconName = ComponentProps<typeof Ionicons>['name'];
+
 const C = {
   card: '#161717',
   top: '#242626',
@@ -199,8 +210,11 @@ export function CallPanel({ k }: { k: number }) {
   );
 }
 
-/** Cartão mínimo nas outras páginas (canto superior ou inferior direito). */
-export function CallMini({ hidden }: { hidden: boolean }) {
+/**
+ * Cartão mínimo (canto superior ou inferior direito). Multimídia: nas páginas fora do
+ * WhatsApp. Celular: quando a ligação em tela cheia é minimizada, em qualquer página.
+ */
+export function CallMini({ onWhatsApp }: { onWhatsApp: boolean }) {
   const call = useLiveCall();
   const router = useRouter();
   const phone = usePhone();
@@ -221,7 +235,7 @@ export function CallMini({ hidden }: { hidden: boolean }) {
     }),
   ).current;
 
-  const k = phone ? 1.3 : 1.6;
+  const k = phone ? 1.75 : 1.6;
   const edge = phone ? 16 : 24;
   const place =
     corner === 'top'
@@ -230,7 +244,7 @@ export function CallMini({ hidden }: { hidden: boolean }) {
 
   return (
     <Presence
-      show={!!call && !hidden}
+      show={!!call && (phone ? call.minimized : !onWhatsApp)}
       distance={corner === 'top' ? -20 : 20}
       style={[styles.mini, place, { right: edge }]}
     >
@@ -241,8 +255,8 @@ export function CallMini({ hidden }: { hidden: boolean }) {
         >
           <Touchable
             accessibilityRole="button"
-            accessibilityLabel={`Ligação com ${call.name}. Abrir o WhatsApp`}
-            onPress={() => router.push('/whatsapp')}
+            accessibilityLabel={`Ligação com ${call.name}. Abrir a ligação`}
+            onPress={() => (phone ? minimizeCall(false) : router.push('/whatsapp'))}
             scaleTo={0.97}
             style={{
               flexDirection: 'row',
@@ -251,7 +265,7 @@ export function CallMini({ hidden }: { hidden: boolean }) {
               paddingVertical: 8 * k,
               paddingLeft: 8 * k,
               paddingRight: 8 * k,
-              width: phone ? 300 : 400,
+              width: phone ? 460 : 400,
               borderRadius: 999,
               backgroundColor: C.card,
             }}
@@ -276,6 +290,129 @@ export function CallMini({ hidden }: { hidden: boolean }) {
             </Touchable>
           </Touchable>
         </Animated.View>
+      )}
+    </Presence>
+  );
+}
+
+/**
+ * Celular: ligação em tela cheia, no desenho do WhatsApp do iPhone: minimizar no canto,
+ * nome e "Chamando…"/duração no alto, a foto no meio e o painel de botões embaixo
+ * (alto-falante, encerrar e silenciar). Sem vídeo. Fica por cima de tudo, inclusive da
+ * barra de abas; "minimizar" deixa só o cartão mínimo.
+ */
+export function CallScreen() {
+  const call = useLiveCall();
+  const system = useSystemInsets();
+  const status = useCallStatus(call);
+  const show = !!call && !call.minimized;
+  // Unidades do celular (720 de largura) a partir dos pontos do iPhone (393).
+  const u = (pt: number) => Math.round((pt * 720) / 393);
+  const button = (
+    icon: IconName,
+    label: string,
+    onPress: () => void,
+    opts: { on?: boolean; red?: boolean } = {},
+  ) => (
+    <View style={{ alignItems: 'center', gap: u(8), flex: 1 }}>
+      <Touchable
+        accessibilityRole="button"
+        accessibilityLabel={label}
+        accessibilityState={{ selected: !!opts.on }}
+        onPress={onPress}
+        scaleTo={0.92}
+        style={[
+          styles.center,
+          {
+            width: u(72),
+            height: u(72),
+            borderRadius: u(36),
+            backgroundColor: opts.red ? '#D92D3A' : opts.on ? '#FFFFFF' : '#0B0B0B',
+          },
+        ]}
+      >
+        {opts.red ? (
+          <HangUpIcon size={u(30)} />
+        ) : (
+          <Ionicons name={icon} size={u(28)} color={opts.on ? '#111111' : '#FFFFFF'} />
+        )}
+      </Touchable>
+      <Text style={{ fontFamily: FONT.displayRegular, fontSize: u(15), color: '#FFFFFF' }}>
+        {label}
+      </Text>
+    </View>
+  );
+  return (
+    <Presence show={show} distance={40} style={StyleSheet.absoluteFill}>
+      {call && (
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: '#0B0B0B' }]}>
+          <View style={{ paddingTop: system.top + u(16), paddingHorizontal: u(20) }}>
+            <Touchable
+              accessibilityRole="button"
+              accessibilityLabel="Minimizar ligação"
+              onPress={() => minimizeCall(true)}
+              scaleTo={0.9}
+              style={[
+                styles.center,
+                {
+                  position: 'absolute',
+                  left: u(20),
+                  top: system.top + u(16),
+                  width: u(48),
+                  height: u(48),
+                  borderRadius: u(24),
+                  backgroundColor: '#1C1D1D',
+                  zIndex: 1,
+                },
+              ]}
+            >
+              <Ionicons name="contract" size={u(22)} color="#FFFFFF" />
+            </Touchable>
+            <View style={{ alignItems: 'center', paddingHorizontal: u(60) }}>
+              <Text
+                numberOfLines={1}
+                style={{ fontFamily: FONT.displaySemibold, fontSize: u(24), color: '#FFFFFF' }}
+              >
+                {call.name}
+              </Text>
+              <Text
+                style={{
+                  fontFamily: FONT.displayRegular,
+                  fontSize: u(16),
+                  color: '#9A9EA1',
+                  fontVariant: ['tabular-nums'],
+                }}
+              >
+                {call.status === 'ringing' ? 'Chamando…' : status}
+              </Text>
+            </View>
+          </View>
+          <View style={[styles.center, { flex: 1 }]}>
+            <View style={[styles.center, { width: u(200), height: u(200) }]}>
+              <Ringing size={u(200)} on={call.status === 'ringing'} />
+              <Avatar size={u(200)} group={call.group} />
+            </View>
+          </View>
+          <View
+            style={{
+              marginHorizontal: u(16),
+              marginBottom: u(28),
+              paddingVertical: u(24),
+              paddingHorizontal: u(12),
+              borderRadius: u(36),
+              backgroundColor: '#1C1D1D',
+              flexDirection: 'row',
+            }}
+          >
+            {button(call.speaker ? 'volume-high' : 'volume-medium', 'Alto-falante', toggleSpeaker, {
+              on: call.speaker,
+            })}
+            {button('call', 'Encerrar', hangUp, { red: true })}
+            {button(call.muted ? 'mic-off' : 'mic-off-outline', 'Silenciar', toggleMute, {
+              on: call.muted,
+            })}
+          </View>
+        </View>
       )}
     </Presence>
   );

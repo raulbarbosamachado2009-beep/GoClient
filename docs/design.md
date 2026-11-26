@@ -105,8 +105,8 @@ Por decisão do produto, a interface usa **somente SF Pro** (Display e Text), ob
   cinco círculos e dois olhos em pílula, para os olhos, a boca e o corpo se mexerem separados.
 - Animação estilo desenho animado, sem "pulsar" de tamanho: em repouso flutua, pisca e olha para os lados;
   ouvindo inclina a cabeça, arregala os olhos e acena; pensando olha para cima; falando abre a boca por
-  sílabas e quica junto. Nos ícones da barra lateral e da barra de abas (`ambient`) só flutua e pisca, em
-  laços do driver nativo.
+  sílabas e quica junto. Só `transform`/`opacity` (CSS @keyframes na web, driver nativo no app), sem
+  JavaScript por quadro: o relógio em JS travava no celular. Nos ícones (`ambient`) só flutua e pisca.
 - Protótipo: não há comando de voz.
 
 ## Esmaecido nas bordas das listas

@@ -30,8 +30,9 @@ interface TabDef {
 const TABS: TabDef[] = [
   { key: 'mapa', label: 'Mapa', href: '/mapa' },
   { key: 'kyte', label: 'Kyte', href: '/kyte' },
-  { key: 'whatsapp', label: 'WhatsApp', href: '/whatsapp' },
+  // O Lucas fica no meio da barra (pedido do usuário em 26/11/2026).
   { key: 'havena', label: 'Falar com o Lucas' },
+  { key: 'whatsapp', label: 'WhatsApp', href: '/whatsapp' },
   { key: 'ajustes', label: 'Ajustes', href: '/configuracoes' },
 ];
 

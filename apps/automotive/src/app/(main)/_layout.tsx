@@ -1,6 +1,6 @@
 import { Slot, usePathname } from 'expo-router';
 import { type ComponentRef, useEffect, useRef } from 'react';
-import { Animated, StyleSheet, View } from 'react-native';
+import { Animated, Platform, StyleSheet, View } from 'react-native';
 import { warmVoice } from '../../havena/voice';
 import { WakeListener } from '../../havena/wake';
 import { KyteAgentHost } from '../../kyte/agent';
@@ -12,7 +12,7 @@ import { TabBar } from '../../shell/tab-bar';
 import { layout, useColors } from '../../theme';
 import { BlurArea, BlurTargetProvider } from '../../ui/blur-target';
 import { ScreenTransition, usePageTransition } from '../../ui/motion';
-import { CallMini } from '../../whatsapp/sim/call-layer';
+import { CallMini, CallScreen } from '../../whatsapp/sim/call-layer';
 
 /**
  * Estrutura das telas principais. Multimídia (ou celular deitado): barra lateral do CarPlay
@@ -33,7 +33,10 @@ export default function MainLayout() {
   // O Mapa passa por baixo da barra (lateral ou de abas), que é translúcida.
   const underBar = section === 'mapa';
   // No celular, o Kyte também vai até o rodapé, por trás da barra de abas flutuante.
-  const fullHeight = underBar || section === 'kyte';
+  // O WhatsApp simulado do celular (Preview) também é tela cheia: passa por trás da barra
+  // de abas e vai até a borda de cima, afastando só o próprio conteúdo.
+  const waFull = phone && section === 'whatsapp' && Platform.OS === 'web';
+  const fullHeight = underBar || section === 'kyte' || waFull;
   const system = useSystemInsets();
   const tabSpace = useTabBarSpace();
   // Liga o motor de voz logo ao abrir o app: a primeira resposta do Lucas já sai na hora.
@@ -57,7 +60,7 @@ export default function MainLayout() {
               marginBottom: phone && !fullHeight ? tabSpace : 0,
               // Celular: o fundo vai até a borda de cima; o conteúdo desce da câmera/entalhe.
               // (O Mapa vai inteiro até a borda e afasta só os próprios controles.)
-              paddingTop: phone && !underBar && section !== 'kyte' ? system.top : 0,
+              paddingTop: phone && !underBar && section !== 'kyte' && !waFull ? system.top : 0,
             }}
           >
             {/* Dentro das telas não há área definida: cada tela define a sua (ex.: o Mapa). */}
@@ -72,7 +75,9 @@ export default function MainLayout() {
           </BlurTargetProvider>
         </BlurArea>
         {/* Ligação do WhatsApp em andamento: fora do WhatsApp vira um cartão mínimo. */}
-        <CallMini hidden={section === 'whatsapp'} />
+        <CallMini onWhatsApp={section === 'whatsapp'} />
+        {/* Celular: a ligação abre em tela cheia, por cima da barra de abas. */}
+        {phone && <CallScreen />}
         {overlay && (
           <BlurTargetProvider value={screen}>
             <View style={StyleSheet.absoluteFill}>{overlay}</View>

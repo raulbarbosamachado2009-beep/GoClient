@@ -16,6 +16,13 @@ export interface LiveCall {
   /** Quando foi atendida (ms), para o contador. */
   since: number;
   muted: boolean;
+  /** Alto-falante ligado (tela cheia do celular). */
+  speaker: boolean;
+  /**
+   * Celular: a ligação abre em tela cheia; "minimizar" a reduz ao cartão mínimo, que fica
+   * por cima de todas as páginas até ser aberto de novo. (Na multimídia não se usa.)
+   */
+  minimized: boolean;
 }
 
 /** Tempo até o contato fictício "atender". */
@@ -32,7 +39,7 @@ function set(next: LiveCall | null) {
 
 export function startCall(who: { contact: string; name: string; group: boolean }) {
   if (answerTimer) clearTimeout(answerTimer);
-  set({ ...who, status: 'ringing', since: 0, muted: false });
+  set({ ...who, status: 'ringing', since: 0, muted: false, speaker: false, minimized: false });
   answerTimer = setTimeout(() => {
     answerTimer = null;
     if (current) set({ ...current, status: 'active', since: Date.now() });
@@ -47,6 +54,14 @@ export function hangUp() {
 
 export function toggleMute() {
   if (current) set({ ...current, muted: !current.muted });
+}
+
+export function toggleSpeaker() {
+  if (current) set({ ...current, speaker: !current.speaker });
+}
+
+export function minimizeCall(minimized: boolean) {
+  if (current) set({ ...current, minimized });
 }
 
 function subscribe(l: () => void) {

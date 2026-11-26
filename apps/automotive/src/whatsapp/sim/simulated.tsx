@@ -36,6 +36,7 @@ import {
   type SimContact,
   type SimMessage,
 } from './data';
+import { PhoneWhatsApp } from './phone';
 
 /**
  * WhatsApp **simulado** (Preview): as telas do WhatsApp Web redesenhadas no GoClient, com
@@ -195,6 +196,12 @@ type Confirm = { kind: 'block' | 'clear' | 'delete'; chat: string } | null;
 let loadedOnce = false;
 
 export function WhatsAppSim() {
+  // Celular em pé: telas próprias no desenho do WhatsApp do iPhone (pedido de 26/11/2026).
+  if (usePhone()) return <PhoneWhatsApp />;
+  return <WhatsAppCar />;
+}
+
+function WhatsAppCar() {
   const P = usePalette();
   const S = useSizes();
   const [loading, setLoading] = useState(!loadedOnce);
