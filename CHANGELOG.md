@@ -5,7 +5,7 @@ Leia este arquivo antes de começar qualquer trabalho.
 
 ## Estado atual do app
 
-_Última atualização: 2026-11-26 09:15 — WhatsApp no menu (WhatsApp Web dentro do app) e o Lucas avisando o próximo cliente (PR aguardando revisão; vem depois do PR que remove o Spotify)._
+_Última atualização: 2026-11-26 09:55 — WhatsApp simulado no Preview da multimídia para refinar o design (PR aguardando revisão)._
 
 - **Automotive (`apps/automotive`)** é onde está quase todo o produto: Mapa (OSM + OpenRouteService,
   navegação com voz), Kyte (telas próprias sobre a janela do Kyte) e o assistente de voz Lucas.
@@ -15,6 +15,24 @@ _Última atualização: 2026-11-26 09:15 — WhatsApp no menu (WhatsApp Web dent
 - Regras de negócio em `packages/core` (com testes); visual só com `@goclient/design-tokens`.
 
 ## Mudanças
+
+### 2026-11-26 09:55 — WhatsApp simulado no Preview (multimídia)
+
+Pedido do usuário: como foi feito com o Kyte, a aba WhatsApp do Preview abre um WhatsApp
+simulado, sem login, para refinar a interface da multimídia antes das funções reais (a versão
+do celular vem depois).
+
+- Telas (com base nos prints do WhatsApp Web enviados): carregamento; conversas com busca e
+  filtros (Tudo, Não lidas, Favoritas, Grupos) e painel vazio; conversa aberta com envio de
+  mensagens só na tela; menu da conversa só com Pesquisar, Selecionar mensagens, Bloquear,
+  Limpar conversa e Apagar conversa (os três últimos pedem confirmação); dados do contato com
+  rolagem; botão "+" com Nova conversa e Novo contato; Ligações (favoritos e recentes) e
+  Dados da ligação.
+- Cores do WhatsApp nos temas claro e escuro, bordas concêntricas, alvos de toque grandes.
+- Dados 100% fictícios (`whatsapp/sim/data.ts`); nada dos prints foi copiado.
+- No app instalado nada muda: a aba continua abrindo o WhatsApp Web de verdade.
+- Arquivos: `apps/automotive/src/whatsapp/sim/simulated.tsx`, `whatsapp/sim/data.ts`,
+  `app/(main)/whatsapp.tsx`.
 
 ### 2026-11-26 09:15 — WhatsApp no menu e o Lucas avisando o próximo cliente
 

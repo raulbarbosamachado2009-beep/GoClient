@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import { usePhone } from '../../layout/form-factor';
 import { concentric, useColors } from '../../theme';
 import { AppIntro, type IntroFeature } from '../../ui/app-intro';
@@ -7,6 +7,7 @@ import { Presence } from '../../ui/motion';
 import { Icon, Text, Touchable } from '../../ui/primitives';
 import { WA_GREEN, WhatsAppLogo } from '../../whatsapp/brand';
 import type { WhatsAppMessage } from '../../whatsapp/bridge';
+import { WhatsAppSim } from '../../whatsapp/sim/simulated';
 import {
   currentDraft,
   type Draft,
@@ -41,6 +42,12 @@ const FEATURES: IntroFeature[] = [
  * uma faixa no topo lembra de tocar em enviar; ao sair a mensagem, o Lucas diz "Enviado!".
  */
 export default function WhatsAppScreen() {
+  // Preview: WhatsApp simulado, sem login, para refinar o design antes das funções reais.
+  if (Platform.OS === 'web') return <WhatsAppSim />;
+  return <RealWhatsApp />;
+}
+
+function RealWhatsApp() {
   const [open, setOpen] = useState(whatsappLinked);
   const [draft, setLocal] = useState<Draft | null>(currentDraft);
   const [sentTo, setSentTo] = useState<string | null>(null);
