@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { type ReactNode, useEffect, useMemo, useRef } from 'react';
 import { Animated, Easing, Platform, StyleSheet, View, type ViewStyle } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { nativeDriver } from '../theme';
@@ -153,11 +153,13 @@ const LEAN: Record<LucasState, { rot: number; y: number; s: number }> = {
   sad: { rot: -3, y: 0.06, s: 0.93 },
 };
 /** Boca em cada estado: visível ou não e o tamanho parado (fração da boca cheia). */
+/** Boca parada falando (o laço TALK varia em torno dela). */
+const TALK_BASE = { sx: 0.8, sy: 0.4 };
 const MOUTHS: Record<LucasState, { on: number; sx: number; sy: number }> = {
   idle: { on: 0, sx: 0.6, sy: 0.15 },
   listen: { on: 0, sx: 0.6, sy: 0.15 },
   think: { on: 0, sx: 0.6, sy: 0.15 },
-  speak: { on: 1, sx: 0.8, sy: 0.4 },
+  speak: { on: 1, sx: TALK_BASE.sx, sy: TALK_BASE.sy },
   joke: { on: 1, sx: 1.1, sy: 1 },
   sad: { on: 1, sx: 0.42, sy: 0.14 },
 };
@@ -200,6 +202,7 @@ const GLANCE: Loop = {
  */
 const TALK: Loop = {
   ms: 1700,
+  // Relativo ao tamanho parado da boca falando (MOUTHS.speak).
   frames: [
     { p: 0, sx: 0.8, sy: 0.36 },
     { p: 9, sx: 0.9, sy: 0.66 },
@@ -211,16 +214,17 @@ const TALK: Loop = {
     { p: 74, sx: 0.86, sy: 0.56 },
     { p: 86, sx: 0.79, sy: 0.38 },
     { p: 100, sx: 0.8, sy: 0.36 },
-  ],
+  ].map((f, i, all) => ({
+    p: f.p,
+    // Começa e termina em 1 (repouso da camada), para ligar e desligar sem salto.
+    sx: i === 0 || i === all.length - 1 ? 1 : f.sx / TALK_BASE.sx,
+    sy: i === 0 || i === all.length - 1 ? 1 : f.sy / TALK_BASE.sy,
+  })),
 };
-/** Boca rindo: aberta, pulsando rápido junto com os pulinhos. */
+/** Boca rindo: aberta, pulsando rápido junto com os pulinhos (relativo a MOUTHS.joke). */
 const LAUGH: Loop = {
   ms: 500,
-  frames: [
-    { p: 0, sx: 1.1, sy: 1 },
-    { p: 50, sx: 1.04, sy: 0.72 },
-    { p: 100, sx: 1.1, sy: 1 },
-  ],
+  frames: [{ p: 0 }, { p: 50, sx: 0.95, sy: 0.72 }, { p: 100 }],
 };
 /** Olhos compreendendo: apertam de leve a cada aceno (em sincronia com o corpo). */
 const NOD_EYES: Loop = {
@@ -241,6 +245,10 @@ const POSE_TRANSITION: object | false = web && {
   transitionProperty: 'transform, opacity',
   transitionDuration: '450ms',
   transitionTimingFunction: 'cubic-bezier(0.25, 0.1, 0.25, 1)',
+};
+const MOUTH_TRANSITION: object | false = web && {
+  transitionProperty: 'border-radius',
+  transitionDuration: '300ms',
 };
 
 export function LucasCloud({
@@ -263,12 +271,9 @@ export function LucasCloud({
   const eyeW = EYE.w * k;
   const eyeH = EYE.h * k;
 
-  const body = useLoop(`body_${st}`, BODY[st], w, h, true);
+  // O piscar nunca desliga (um laço só). Os outros laços ficam em camadas próprias que
+  // entram e saem sem corte (ver LoopLayer).
   const blink = useLoop('blink', BLINK, eyeW, eyeH, true);
-  const glance = useLoop('glance', GLANCE, eyeW, eyeH, st === 'idle');
-  const talk = useLoop('talk', TALK, 1, 1, st === 'speak');
-  const laugh = useLoop('laugh', LAUGH, 1, 1, st === 'joke');
-  const nod = useLoop('nod', NOD_EYES, eyeW, eyeH, st === 'listen');
 
   const pose = EYES[st];
   const lean = usePose(LEAN[st].rot);
@@ -280,6 +285,8 @@ export function LucasCloud({
   const eyeS = usePose(pose.s);
   const eyeSY = usePose(pose.sy);
   const mouthOn = usePose(mouth.on);
+  const mouthSX = usePose(mouth.sx);
+  const mouthSY = usePose(mouth.sy);
 
   const eye = (x: number) => (
     <Animated.View
@@ -310,7 +317,7 @@ export function LucasCloud({
           { transform: [{ translateY: sink }, { rotate: deg(lean) }, { scale: shrink }] },
         ]}
       >
-        <Animated.View style={[styles.fill, { transformOrigin: 'center bottom' }, body]}>
+        <BodyLayers st={st} w={w} h={h}>
           <Svg width={w} height={h} viewBox={`0 0 ${VW} ${VH}`} style={StyleSheet.absoluteFill}>
             {LOBES.map((l) => (
               <Circle key={`${l.cx}-${l.cy}`} cx={l.cx} cy={l.cy} r={l.r} fill={LUCAS_BLUE} />
@@ -330,12 +337,12 @@ export function LucasCloud({
               },
             ]}
           >
-            <Animated.View style={[styles.fill, glance]}>
-              <Animated.View style={[styles.fill, nod]}>
+            <LoopLayer loop={GLANCE} on={st === 'idle'} w={eyeW} h={eyeH}>
+              <LoopLayer loop={NOD_EYES} on={st === 'listen'} w={eyeW} h={eyeH}>
                 {eye(EYE.left)}
                 {eye(EYE.right)}
-              </Animated.View>
-            </Animated.View>
+              </LoopLayer>
+            </LoopLayer>
           </Animated.View>
           {!ambient && (
             <Animated.View
@@ -351,32 +358,222 @@ export function LucasCloud({
                 POSE_TRANSITION,
               ]}
             >
+              {/* Tamanho parado da boca (troca suave) e, dentro, os laços de falar e rir,
+                  relativos a ele: entram e saem sem corte. */}
               <Animated.View
                 style={[
-                  styles.mouth,
+                  styles.fill,
                   POSE_TRANSITION,
-                  // Rindo, a boca vira um "D" (reta em cima, redonda embaixo).
-                  st === 'joke'
-                    ? {
-                        borderTopLeftRadius: (MOUTH.h * k) / 6,
-                        borderTopRightRadius: (MOUTH.h * k) / 6,
-                        borderBottomLeftRadius: (MOUTH.h * k) / 1.4,
-                        borderBottomRightRadius: (MOUTH.h * k) / 1.4,
-                      }
-                    : { borderRadius: (MOUTH.h * k) / 2 },
-                  st === 'speak'
-                    ? talk
-                    : st === 'joke'
-                      ? laugh
-                      : { transform: [{ scaleX: mouth.sx }, { scaleY: mouth.sy }] },
+                  { transform: [{ scaleX: mouthSX }, { scaleY: mouthSY }] },
                 ]}
-              />
+              >
+                <LoopLayer loop={TALK} on={st === 'speak'} w={1} h={1}>
+                  <LoopLayer loop={LAUGH} on={st === 'joke'} w={1} h={1}>
+                    <View
+                      style={[
+                        styles.fill,
+                        styles.mouth,
+                        MOUTH_TRANSITION,
+                        // Rindo, a boca vira um "D" (reta em cima, redonda embaixo).
+                        st === 'joke'
+                          ? {
+                              borderTopLeftRadius: (MOUTH.h * k) / 6,
+                              borderTopRightRadius: (MOUTH.h * k) / 6,
+                              borderBottomLeftRadius: (MOUTH.h * k) / 1.4,
+                              borderBottomRightRadius: (MOUTH.h * k) / 1.4,
+                            }
+                          : { borderRadius: (MOUTH.h * k) / 2 },
+                      ]}
+                    />
+                  </LoopLayer>
+                </LoopLayer>
+              </Animated.View>
             </Animated.View>
           )}
-        </Animated.View>
+        </BodyLayers>
       </Animated.View>
     </View>
   );
+}
+
+const STATES: LucasState[] = ['idle', 'listen', 'think', 'speak', 'joke', 'sad'];
+
+/**
+ * Corpo: uma camada por estado, uma dentro da outra. Só a do estado atual balança; as
+ * outras ficam em repouso. Trocar de estado não reinicia nada de forma seca: a camada que
+ * sai volta ao repouso suave a partir de onde estava e a nova começa do repouso.
+ */
+function BodyLayers({
+  st,
+  w,
+  h,
+  children,
+}: {
+  st: LucasState;
+  w: number;
+  h: number;
+  children: ReactNode;
+}) {
+  return STATES.reduceRight<ReactNode>(
+    (inner, s) => (
+      <LoopLayer key={s} loop={BODY[s]} on={st === s} w={w} h={h} origin="center bottom">
+        {inner}
+      </LoopLayer>
+    ),
+    children,
+  );
+}
+
+/** Quadros de um laço para a Web Animations API (cada trecho com a curva suave). */
+function webFrames(loop: Loop, w: number, h: number): Keyframe[] {
+  return loop.frames.map((f) => ({ offset: f.p / 100, transform: css(f, w, h), easing: EASE }));
+}
+
+/** Tempo para voltar ao repouso (ou sair dele) ao trocar de estado. */
+const SETTLE_MS = 380;
+
+/**
+ * Camada com um laço de quadros-chave que liga e desliga **sem corte** (o vídeo do usuário
+ * de 26/11/2026 mostrava saltos: trocar o @keyframes reiniciava o laço no meio do
+ * movimento).
+ *
+ * - Web: Web Animations API. Ao desligar, lê a transformação atual e vai dela até o repouso;
+ *   ao ligar, se ainda estiver voltando, termina a volta antes de começar o laço.
+ * - Nativo: valor de 0 a 1 no driver nativo. Ao desligar, segue até a ponta mais próxima do
+ *   laço (as duas são o repouso); ao ligar, começa do repouso.
+ */
+function LoopLayer({
+  loop,
+  on,
+  w,
+  h,
+  origin,
+  children,
+}: {
+  loop: Loop;
+  on: boolean;
+  w: number;
+  h: number;
+  origin?: string;
+  children: ReactNode;
+}) {
+  // biome-ignore lint/suspicious/noExplicitAny: nó do DOM (Web) por trás do View.
+  const el = useRef<any>(null);
+  const anim = useRef<Animation | null>(null);
+  const phase = useRef(new Animated.Value(0)).current;
+  const native = useRef<Animated.CompositeAnimation | null>(null);
+  const frames = useMemo(() => (web ? webFrames(loop, w, h) : []), [loop, w, h]);
+
+  // Web
+  useEffect(() => {
+    if (!web) return;
+    const node = el.current as HTMLElement | null;
+    if (!node || typeof node.animate !== 'function') return;
+    const current = anim.current;
+    const startLoop = () => {
+      anim.current = node.animate(frames, {
+        duration: loop.ms,
+        iterations: Number.POSITIVE_INFINITY,
+      });
+    };
+    const settle = (ms: number, then?: () => void) => {
+      const from = getComputedStyle(node).transform;
+      current?.cancel();
+      if (!from || from === 'none') {
+        anim.current = null;
+        then?.();
+        return;
+      }
+      const a = node.animate([{ transform: from }, { transform: 'none' }], {
+        duration: ms,
+        easing: 'cubic-bezier(0.25, 0.1, 0.25, 1)',
+      });
+      anim.current = a;
+      a.onfinish = () => {
+        if (anim.current !== a) return;
+        anim.current = null;
+        then?.();
+      };
+    };
+    if (on) settle(160, startLoop);
+    else if (current) settle(SETTLE_MS);
+  }, [on, frames, loop.ms]);
+  useEffect(() => () => anim.current?.cancel(), []);
+
+  // Nativo
+  useEffect(() => {
+    if (web) return;
+    native.current?.stop();
+    phase.stopAnimation((v) => {
+      const toRest = (cb?: () => void) => {
+        const end = on || v >= 0.5 ? 1 : 0;
+        const ms = Math.min(SETTLE_MS, Math.abs(end - v) * loop.ms);
+        if (ms < 16) {
+          phase.setValue(0);
+          cb?.();
+          return;
+        }
+        const a = Animated.timing(phase, {
+          toValue: end,
+          duration: ms,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: nativeDriver,
+        });
+        native.current = a;
+        a.start(({ finished }) => {
+          if (!finished) return;
+          phase.setValue(0);
+          cb?.();
+        });
+      };
+      if (!on) return toRest();
+      toRest(() => {
+        const l = Animated.loop(
+          Animated.timing(phase, {
+            toValue: 1,
+            duration: loop.ms,
+            easing: Easing.linear,
+            useNativeDriver: nativeDriver,
+          }),
+        );
+        native.current = l;
+        l.start();
+      });
+    });
+    return () => native.current?.stop();
+  }, [on, loop, phase]);
+
+  const nativeStyle = useMemo(() => {
+    if (web) return null;
+    const input = loop.frames.map((f) => f.p / 100);
+    const pick = (fn: (f: Frame) => number) => ({
+      inputRange: input,
+      outputRange: loop.frames.map(fn),
+    });
+    return {
+      transform: [
+        { translateX: phase.interpolate(pick((f) => (f.tx ?? 0) * w)) },
+        { translateY: phase.interpolate(pick((f) => (f.ty ?? 0) * h)) },
+        {
+          rotate: phase.interpolate({
+            inputRange: input,
+            outputRange: loop.frames.map((f) => `${f.rot ?? 0}deg`),
+          }),
+        },
+        { scaleX: phase.interpolate(pick((f) => f.sx ?? 1)) },
+        { scaleY: phase.interpolate(pick((f) => f.sy ?? 1)) },
+      ],
+    };
+  }, [loop, w, h, phase]);
+
+  const base = [styles.fill, origin ? { transformOrigin: origin } : null];
+  if (web)
+    return (
+      <View ref={el} style={[base, { willChange: 'transform' } as object]}>
+        {children}
+      </View>
+    );
+  return <Animated.View style={[base, nativeStyle]}>{children}</Animated.View>;
 }
 
 const deg = (v: number | Animated.Value) =>

@@ -5,7 +5,7 @@ Leia este arquivo antes de começar qualquer trabalho.
 
 ## Estado atual do app
 
-_Última atualização: 2026-11-26 14:08 — Sexta rodada: abertura só com a nuvem, login que muda de forma, nuvem animada no lugar do logo, Lucas com expressões (compreendendo, rindo, triste), conversa do WhatsApp em tela cheia no celular (PR #12 aguardando revisão)._
+_Última atualização: 2026-11-26 14:40 — Nuvem do Lucas sem cortes secos ao trocar de expressão (PR #13 aguardando revisão)._
 
 - **Automotive (`apps/automotive`)** é onde está quase todo o produto: Mapa (OSM + OpenRouteService,
   navegação com voz), Kyte (telas próprias sobre a janela do Kyte) e o assistente de voz Lucas.
@@ -16,6 +16,22 @@ _Última atualização: 2026-11-26 14:08 — Sexta rodada: abertura só com a nu
 - Regras de negócio em `packages/core` (com testes); visual só com `@goclient/design-tokens`.
 
 ## Mudanças
+
+### 2026-11-26 14:40 — Nuvem do Lucas sem cortes secos
+
+O usuário mandou um vídeo com a nuvem "travando". Analisando os quadros, os saltos aconteciam
+toda vez que o Lucas trocava de expressão (ouvindo → falando → parado): cada troca
+substituía a animação em laço por outra, que recomeçava do zero no meio do movimento.
+
+- Cada laço (corpo de cada expressão, olhar para os lados, acenar, falar, rir) agora fica
+  numa camada própria. Ao trocar de expressão, a camada que sai volta ao repouso suave a
+  partir de onde estava, e a nova começa do repouso. Na web isso usa a Web Animations API e no
+  app usa o driver nativo. Continua sem JavaScript a cada quadro.
+- A boca falando e rindo varia em torno do tamanho parado, que também muda suave. O formato
+  de "D" da risada agora entra com transição.
+- Medição no Preview (celular, 22 s de conversa de demonstração): o maior salto da nuvem
+  numa troca de expressão caiu de 6 px para 2,7 px por quadro, e esse resto é movimento
+  contínuo, sem corte.
 
 ### 2026-11-26 14:08 — Nuvem no lugar do logo, login que muda de forma e Lucas com expressões
 
