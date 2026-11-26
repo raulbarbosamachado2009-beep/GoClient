@@ -7,6 +7,7 @@ import {
   Platform,
   View,
 } from 'react-native';
+import { useFrameScale } from '../preview/automotive-frame';
 import { useColors } from '../theme';
 import { type MapMode, MapWorld, USER, WORLD } from './world';
 
@@ -102,6 +103,11 @@ export function PannableMap({ mode, focus }: { mode: MapMode; focus?: { x: numbe
 
   const touchesOf = (e: GestureResponderEvent) => e.nativeEvent.touches;
 
+  // Escala da moldura, lida dentro dos gestos (o PanResponder é criado uma vez só).
+  const scaleNow = useFrameScale();
+  const frameScale = useRef(scaleNow);
+  frameScale.current = scaleNow;
+
   const responder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
@@ -140,7 +146,9 @@ export function PannableMap({ mode, focus }: { mode: MapMode; focus?: { x: numbe
           return;
         }
         if (g.pinching) return;
-        apply(clamp({ s: state.current.s, tx: g.startTx + gs.dx, ty: g.startTy + gs.dy }));
+        // dx/dy chegam em pixels da tela; a moldura pode estar reduzida (celular, multimídia).
+        const k = frameScale.current;
+        apply(clamp({ s: state.current.s, tx: g.startTx + gs.dx / k, ty: g.startTy + gs.dy / k }));
       },
       onPanResponderRelease: (_e, gs) => {
         // Inércia: continua deslizando na direção do gesto e desacelera.
@@ -148,8 +156,8 @@ export function PannableMap({ mode, focus }: { mode: MapMode; focus?: { x: numbe
         animateTo(
           clamp({
             s: state.current.s,
-            tx: state.current.tx + gs.vx * v,
-            ty: state.current.ty + gs.vy * v,
+            tx: state.current.tx + (gs.vx * v) / frameScale.current,
+            ty: state.current.ty + (gs.vy * v) / frameScale.current,
           }),
         );
       },
@@ -182,7 +190,12 @@ export function PannableMap({ mode, focus }: { mode: MapMode; focus?: { x: numbe
       ref={container}
       onLayout={onLayout}
       style={
-        { flex: 1, overflow: 'hidden', backgroundColor: c.map.ground, cursor: 'grab' } as object
+        {
+          flex: 1,
+          overflow: 'hidden',
+          backgroundColor: c.map.ground,
+          ...(Platform.OS === 'web' ? { cursor: 'grab' } : null),
+        } as object
       }
       {...responder.panHandlers}
     >

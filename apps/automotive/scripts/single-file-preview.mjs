@@ -37,15 +37,25 @@ const chunks = readdirSync(jsDir)
 const fontRefs = new Set();
 const allJs = [runtime, common, ...chunks, entry].filter(Boolean);
 for (const p of allJs) {
-  for (const m of readFileSync(join(dist, p), 'utf8').matchAll(/"(\/assets\/[^"]+\.(?:ttf|otf))"/g))
+  for (const m of readFileSync(join(dist, p), 'utf8').matchAll(
+    /"(\/assets\/[^"]+\.(?:ttf|otf|png|jpe?g))"/g,
+  ))
     fontRefs.add(m[1]);
 }
 const fontData = new Map(
   [...fontRefs].map((ref) => [
     ref,
-    `data:font/${ref.endsWith('.otf') ? 'otf' : 'ttf'};base64,${readFileSync(join(dist, ref)).toString('base64')}`,
+    `data:${mimeOf(ref)};base64,${readFileSync(join(dist, ref)).toString('base64')}`,
   ]),
 );
+
+function mimeOf(ref) {
+  const path = ref.split('?')[0];
+  if (path.endsWith('.otf')) return 'font/otf';
+  if (path.endsWith('.ttf')) return 'font/ttf';
+  if (path.endsWith('.png')) return 'image/png';
+  return 'image/jpeg';
+}
 
 const read = (p) => {
   let src = readFileSync(join(dist, p), 'utf8');
@@ -67,6 +77,8 @@ const shim = `
     history[m] = function () { try { return orig.apply(null, arguments); } catch (e) { return undefined; } };
   });
   try { if (location.pathname !== '/') history.replaceState(null, '', '/'); } catch (e) {}
+  // Marca o Preview publicado: a página dele bloqueia iframes de outros sites (ex.: Kyte Web).
+  globalThis.__GOCLIENT_PREVIEW__ = true;
 })();`;
 
 const scripts = [
@@ -90,5 +102,5 @@ const out = html
 mkdirSync(outDir, { recursive: true });
 writeFileSync(join(outDir, 'index.html'), out);
 console.log(
-  `Preview gerado: ${join(outDir, 'index.html')} (${(out.length / 1024 / 1024).toFixed(1)} MB, ${chunks.length} chunks, ${fontData.size} fontes)`,
+  `Preview gerado: ${join(outDir, 'index.html')} (${(out.length / 1024 / 1024).toFixed(1)} MB, ${chunks.length} chunks, ${fontData.size} arquivos embutidos: fontes e imagens)`,
 );

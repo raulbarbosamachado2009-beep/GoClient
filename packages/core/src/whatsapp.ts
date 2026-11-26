@@ -18,3 +18,17 @@ export function buildWhatsAppLink(phone: string, message?: string): string | nul
   const base = `https://wa.me/${normalized}`;
   return message ? `${base}?text=${encodeURIComponent(message)}` : base;
 }
+
+/** Endereço do WhatsApp Web (o mesmo do site oficial). */
+export const WHATSAPP_WEB_URL = 'https://web.whatsapp.com/';
+
+/**
+ * Conversa aberta no WhatsApp Web com a mensagem já escrita na caixa de texto
+ * (`/send?phone=…&text=…`, link do próprio WhatsApp). Não envia: a pessoa toca em enviar.
+ */
+export function buildWhatsAppWebSend(phone: string, message?: string): string | null {
+  const normalized = normalizeBrazilianPhone(phone);
+  if (!normalized) return null;
+  const text = message ? `&text=${encodeURIComponent(message)}` : '';
+  return `${WHATSAPP_WEB_URL}send?phone=${normalized}${text}`;
+}

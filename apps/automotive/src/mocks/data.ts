@@ -1,3 +1,5 @@
+import type { ImageSourcePropType } from 'react-native';
+
 /**
  * Dados FICTÍCIOS, usados só para o design das telas. Nenhuma tela lê a API nesta fase.
  */
@@ -329,79 +331,4 @@ export const PRODUCTS: MockProduct[] = [
     icon: 'shirt-outline',
     tint: '#6B5E3A',
   },
-];
-
-/* ---------- Música (fictício) ---------- */
-
-export interface MockTrack {
-  title: string;
-  artists: string;
-  album: string;
-  cover: string;
-  duration: string;
-}
-
-export const NOW_PLAYING: MockTrack = {
-  title: 'Horizonte Aberto',
-  artists: 'Lua Ventura, Os Marés, DJ Calango',
-  album: 'Estrada Livre',
-  cover: '#1F7A45',
-  duration: '3:42',
-};
-
-export interface MockPlaylist {
-  id: string;
-  name: string;
-  owner: string;
-  cover: string;
-  kind: 'Playlist' | 'Podcast' | 'Álbum';
-  liked?: boolean;
-}
-
-export const PLAYLISTS: MockPlaylist[] = [
-  {
-    id: 'l1',
-    name: 'Músicas Curtidas',
-    owner: 'Raul Barbosa',
-    cover: '#5B4BDB',
-    kind: 'Playlist',
-    liked: true,
-  },
-  { id: 'l2', name: 'Estrada Livre', owner: 'Raul Barbosa', cover: '#1F7A45', kind: 'Playlist' },
-  { id: 'l3', name: 'Foco no Trânsito', owner: 'Raul Barbosa', cover: '#2E6E8E', kind: 'Playlist' },
-  {
-    id: 'l4',
-    name: 'Sertanejo de Bolso',
-    owner: 'Raul Barbosa',
-    cover: '#A2475E',
-    kind: 'Playlist',
-  },
-  { id: 'l5', name: 'Treino', owner: 'Raul Barbosa', cover: '#3B3F46', kind: 'Playlist' },
-  { id: 'l6', name: 'Noite de Sexta', owner: 'Raul Barbosa', cover: '#8A3FA0', kind: 'Playlist' },
-  {
-    id: 'l7',
-    name: 'Seus episódios',
-    owner: 'Episódios salvos e baixados',
-    cover: '#1E6B44',
-    kind: 'Podcast',
-  },
-];
-
-export const SHOWS = [
-  { id: 's1', name: 'Vendas na Estrada', cover: '#C9A227' },
-  { id: 's2', name: 'Bom Dia, Rodovia', cover: '#2E6E8E' },
-  { id: 's3', name: 'Papo de Representante', cover: '#6C4FA3' },
-  { id: 's4', name: 'Hora do Café', cover: '#B5652B' },
-];
-
-export const BROWSE = [
-  { id: 'b1', name: 'Música', color: '#D63A7A' },
-  { id: 'b2', name: 'Podcasts', color: '#4E8A1E' },
-  { id: 'b3', name: 'Audiolivros', color: '#2C4FB0' },
-  { id: 'b4', name: 'Eventos ao vivo', color: '#8E5AA8' },
-];
-
-export const QUEUE = [
-  { title: 'Rota 66 Graus', artists: 'Os Marés', cover: '#2E6E8E' },
-  { title: 'Poeira e Sol', artists: 'Lua Ventura', cover: '#B5652B' },
 ];

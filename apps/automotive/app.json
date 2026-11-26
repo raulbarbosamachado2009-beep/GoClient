@@ -5,14 +5,14 @@
     "scheme": "goclient-automotive",
     "version": "0.1.0",
     "platforms": ["android", "web"],
-    "orientation": "landscape",
+    "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#000000",
     "android": {
       "package": "com.goclient.automotive",
       "adaptiveIcon": {
-        "backgroundColor": "#000000",
+        "backgroundColor": "#D8FF01",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -22,7 +22,7 @@
       "output": "single",
       "favicon": "./assets/favicon.png"
     },
-    "plugins": ["expo-router", "expo-status-bar", "expo-font"],
+    "plugins": ["expo-router", "expo-status-bar", "expo-font", "expo-secure-store"],
     "experiments": {
       "typedRoutes": true
     }

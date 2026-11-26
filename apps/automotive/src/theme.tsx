@@ -1,5 +1,6 @@
 import { createContext, type ReactNode, useContext, useMemo, useState } from 'react';
 import { Platform, type TextStyle, useColorScheme } from 'react-native';
+import { LIVE_BLUR } from './ui/blur-target';
 
 /**
  * Tema do GoClient Automotive — linguagem visual do Apple CarPlay.
@@ -44,18 +45,6 @@ export interface Palette {
     route: string;
     routeCasing: string;
   };
-  music: {
-    background: string;
-    card: string;
-    cardBorder: string;
-    ambient: string;
-    accent: string;
-    onAccent: string;
-    miniPlayer: string;
-    tabBar: string;
-    search: string;
-    onSearch: string;
-  };
 }
 
 const dark: Palette = {
@@ -75,7 +64,11 @@ const dark: Palette = {
   danger: '#FF453A',
   warning: '#FFD60A',
   scrim: 'rgba(0,0,0,0.55)',
-  material: { tint: 'dark', fallback: 'rgba(30,30,32,0.72)', border: 'rgba(255,255,255,0.08)' },
+  material: {
+    tint: 'dark',
+    fallback: LIVE_BLUR ? 'rgba(28,28,30,0.74)' : 'rgba(28,28,30,0.94)',
+    border: 'rgba(255,255,255,0.1)',
+  },
   sidebar: '#0C0C0D',
   map: {
     ground: '#1B1D21',
@@ -89,18 +82,6 @@ const dark: Palette = {
     label: '#8D929B',
     route: '#0A84FF',
     routeCasing: '#0A4A8F',
-  },
-  music: {
-    background: '#121212',
-    card: '#262626',
-    cardBorder: '#323232',
-    ambient: '#0E4D29',
-    accent: '#1ED760',
-    onAccent: '#000000',
-    miniPlayer: '#1A4D2E',
-    tabBar: '#0B0B0B',
-    search: '#E9E9E9',
-    onSearch: '#121212',
   },
 };
 
@@ -121,7 +102,11 @@ const light: Palette = {
   danger: '#FF3B30',
   warning: '#FFCC00',
   scrim: 'rgba(0,0,0,0.28)',
-  material: { tint: 'light', fallback: 'rgba(246,246,248,0.78)', border: 'rgba(0,0,0,0.06)' },
+  material: {
+    tint: 'light',
+    fallback: LIVE_BLUR ? 'rgba(244,244,247,0.84)' : 'rgba(244,244,247,0.96)',
+    border: 'rgba(255,255,255,0.6)',
+  },
   sidebar: '#E6E6EB',
   map: {
     ground: '#F1EEE8',
@@ -136,18 +121,6 @@ const light: Palette = {
     route: '#007AFF',
     routeCasing: '#0A5BC4',
   },
-  music: {
-    background: '#FFFFFF',
-    card: '#F0F0F0',
-    cardBorder: '#E4E4E4',
-    ambient: '#BFEACF',
-    accent: '#1ED760',
-    onAccent: '#000000',
-    miniPlayer: '#1A4D2E',
-    tabBar: '#FAFAFA',
-    search: '#EDEDED',
-    onSearch: '#121212',
-  },
 };
 
 export const palettes = { dark, light } as const;
@@ -156,6 +129,7 @@ export const palettes = { dark, light } as const;
 
 /** Famílias registradas no carregamento (ver `fonts.ts`). */
 export const FONT = {
+  displayLight: 'SFProDisplay-Light',
   displayRegular: 'SFProDisplay-Regular',
   displayMedium: 'SFProDisplay-Medium',
   displaySemibold: 'SFProDisplay-Semibold',
@@ -202,13 +176,22 @@ export const spacing = {
 export const layout = {
   width: 1600,
   height: 900,
-  sidebarWidth: 120,
+  sidebarWidth: 204,
   gutter: 24,
   /** Alvo mínimo de toque no carro. */
   touch: 76,
-  miniPlayerHeight: 96,
   radius: { sm: 12, md: 18, lg: 24, xl: 32 },
 } as const;
+
+/**
+ * Bordas concêntricas: o raio de dentro é o raio de fora menos o espaço entre as bordas
+ * (ex.: cartão com raio 48 e 18 de espaçamento → peças de dentro com raio 30). Assim as
+ * curvas de dentro e de fora ficam paralelas, como nos aparelhos da Apple. Nunca fica
+ * abaixo de `min`, para a peça de dentro não virar um canto vivo.
+ */
+export function concentric(outer: number, padding: number, min = 8): number {
+  return Math.max(outer - padding, min);
+}
 
 export const nativeDriver = Platform.OS !== 'web';
 

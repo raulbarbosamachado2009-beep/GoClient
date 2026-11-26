@@ -81,20 +81,17 @@ describe('API', () => {
     expect(res.status).toBe(400);
   });
 
-  it('GET /v1/me reflete a Regra 1 no Automotive', async () => {
+  it('GET /v1/me no Automotive: cadastra à mão, mas não monta rotas (Regra 3)', async () => {
     const res = await call('/v1/me', 'automotive');
     const body = (await res.json()) as {
       organizationId: string;
       permissions: Record<string, Record<string, boolean>>;
     };
     expect(body.organizationId).toBe(DEV_ORGANIZATION_ID);
-    expect(body.permissions.customer).toEqual({
-      read: true,
-      create: false,
-      update: false,
-      delete: false,
-    });
-    expect(body.permissions.route?.update).toBe(true);
+    expect(body.permissions.customer?.read).toBe(true);
+    expect(body.permissions.customer?.create).toBe(true);
+    expect(body.permissions.route?.update).toBe(false);
+    expect(body.permissions.route?.reorder).toBe(true);
   });
 
   it('GET /v1/me libera a edição no Mobile', async () => {
@@ -120,18 +117,15 @@ describe('Sincronização', () => {
     expect(results[0]?.version).toBeGreaterThan(0);
   });
 
-  it('Automotive não cria cliente manualmente (Regra 1, aplicada no servidor)', async () => {
+  it('Automotive também cria cliente manualmente (Regra 1 retirada)', async () => {
     const otherId = randomUUID();
     const res = await call('/v1/sync/push', 'automotive', {
-      mutations: [upsert(otherId, customer(otherId, 'Bloqueado'))],
+      mutations: [upsert(otherId, customer(otherId, 'Do carro'))],
     });
     const { results } = (await res.json()) as {
-      results: Array<{ status: string; reason: string }>;
+      results: Array<{ status: string }>;
     };
-    expect(results[0]).toMatchObject({
-      status: 'rejected',
-      reason: 'automotive_manual_edit_blocked',
-    });
+    expect(results[0]?.status).toBe('applied');
   });
 
   it('reenvio da mesma mutação é idempotente', async () => {
@@ -161,7 +155,11 @@ describe('Sincronização', () => {
       cursor: string;
       hasMore: boolean;
     };
-    expect(body.changes.map((c) => c.record.name)).toEqual(['Mercado Central', 'Idempotente']);
+    expect(body.changes.map((c) => c.record.name)).toEqual([
+      'Mercado Central',
+      'Do carro',
+      'Idempotente',
+    ]);
     expect(body.hasMore).toBe(false);
 
     const next = (await (

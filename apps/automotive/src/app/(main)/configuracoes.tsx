@@ -1,7 +1,15 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
+import { useWakeEnabled } from '../../havena/settings';
+import { MAPS_ENABLED } from '../../integrations/env';
+import { kyteAgent, noteKyteLogged, reloadKyteAgent } from '../../kyte/agent';
+import { clearKyteData } from '../../kyte/store';
+import { usePhone } from '../../layout/form-factor';
+import { usePrototype } from '../../prototype/state';
 import { spacing, type ThemePreference, useColors, useTheme } from '../../theme';
+import { KyteLogo } from '../../ui/brand';
+import { useEdgeFade } from '../../ui/edge-fade';
 import { Appear } from '../../ui/motion';
 import {
   AppIcon,
@@ -16,20 +24,25 @@ import {
 
 /**
  * Ajustes no estilo do iOS: perfil, aparência (claro/escuro funcionando no protótipo),
- * idioma, Havena, navegação, integrações, dados e sair.
+ * idioma, Lucas, navegação, integrações, dados e sair.
  */
 export default function SettingsScreen() {
   const c = useColors();
   const { preference, setPreference } = useTheme();
   const router = useRouter();
-  const [wakeWord, setWakeWord] = useState(true);
+  const [wakeWord, setWakeWord] = useWakeEnabled();
   const [voiceReplies, setVoiceReplies] = useState(true);
   const [offline, setOffline] = useState(true);
+  const { kyteOpen, setKyteOpen } = usePrototype();
+  const phone = usePhone();
+  // Multimídia: ícones, linhas e recuos maiores (alvos de toque com o carro em movimento).
+  const ic = phone ? 68 : 104;
+  const inset = phone ? 128 : 184;
 
   const sections = [
-    <Group key="perfil" inset={148}>
+    <Group key="perfil" inset={phone ? 148 : 212}>
       <Row
-        leading={<Avatar name="Raul Barbosa" size={96} />}
+        leading={<Avatar name="Raul Barbosa" size={phone ? 96 : 140} />}
         title="Raul Barbosa"
         subtitle="Perfil, conta e plano Pro"
         chevron
@@ -39,15 +52,15 @@ export default function SettingsScreen() {
 
     <View key="aparencia">
       <SectionHeader title="Aparência" />
-      <Group inset={112}>
+      <Group inset={inset}>
         <Row
-          leading={<AppIcon icon="contrast" color="#0A84FF" size={56} />}
+          leading={<AppIcon icon="contrast" color="#0A84FF" size={ic} />}
           title="Tema"
           trailing={
             <Segmented<ThemePreference>
               value={preference}
               onChange={setPreference}
-              segmentWidth={150}
+              segmentWidth={phone ? 118 : 240}
               options={[
                 { value: 'light', label: 'Claro' },
                 { value: 'dark', label: 'Escuro' },
@@ -57,7 +70,7 @@ export default function SettingsScreen() {
           }
         />
         <Row
-          leading={<AppIcon icon="language" color="#5856D6" size={56} />}
+          leading={<AppIcon icon="language" color="#5856D6" size={ic} />}
           title="Idioma"
           value="Português (Brasil)"
           chevron
@@ -66,16 +79,17 @@ export default function SettingsScreen() {
       </Group>
     </View>,
 
-    <View key="havena">
-      <SectionHeader title="Havena" />
-      <Group inset={112}>
+    <View key="lucas">
+      <SectionHeader title="Lucas" />
+      <Group inset={inset}>
         <Row
-          leading={<AppIcon icon="mic" color="#FF375F" size={56} />}
-          title='Ativar com "Oi, Havena"'
+          leading={<AppIcon icon="mic" color="#FF375F" size={ic} />}
+          title='Ativar com "Olá, Lucas"'
+          subtitle='Também: "bom dia", "oh IA" e "olá, inteligência artificial"'
           trailing={<Switch value={wakeWord} onChange={setWakeWord} />}
         />
         <Row
-          leading={<AppIcon icon="volume-high" color="#FF9F0A" size={56} />}
+          leading={<AppIcon icon="volume-high" color="#FF9F0A" size={ic} />}
           title="Respostas por voz"
           trailing={<Switch value={voiceReplies} onChange={setVoiceReplies} />}
         />
@@ -84,47 +98,68 @@ export default function SettingsScreen() {
 
     <View key="integracoes">
       <SectionHeader title="Navegação e integrações" />
-      <Group inset={112}>
+      <Group inset={inset}>
         <Row
-          leading={<AppIcon icon="navigate" color="#30D158" size={56} />}
-          title="App de navegação"
-          value="GoClient"
-          chevron
-          onPress={() => {}}
+          leading={<AppIcon icon="map" color="#30D158" size={ic} />}
+          title="Mapa"
+          value={MAPS_ENABLED ? 'OpenStreetMap' : 'Demonstração (sem chave)'}
         />
         <Row
-          leading={<AppIcon icon="musical-notes" color="#1ED760" glyph="#000" size={56} />}
-          title="Spotify"
-          value="Não conectado"
-          chevron
-          onPress={() => {}}
+          leading={<AppIcon icon="navigate" color="#30D158" size={ic} />}
+          title="Navegação com voz"
+          value={MAPS_ENABLED ? 'No GoClient, por dentro dos bairros' : 'Demonstração'}
         />
         <Row
-          leading={<AppIcon icon="storefront" color="#AC8E68" size={56} />}
+          leading={<KyteLogo size={ic} />}
           title="Kyte"
-          value="Importar planilhas"
+          value={kyteOpen ? 'Conectado' : 'Desconectado'}
           chevron
-          onPress={() => {}}
+          onPress={() => router.replace('/kyte')}
         />
+        {kyteOpen && (
+          <Row
+            title="Diagnóstico do Kyte"
+            chevron
+            onPress={() => router.replace('/kyte?secao=diagnostico')}
+          />
+        )}
+        {kyteOpen && (
+          <Row
+            title="Sair do Kyte"
+            titleColor={c.danger}
+            onPress={() => {
+              // Sai da conta do Kyte (as janelas do app usam o mesmo login).
+              kyteAgent
+                .logout()
+                .catch(() => {})
+                .finally(() => {
+                  noteKyteLogged(false);
+                  clearKyteData();
+                  reloadKyteAgent();
+                  setKyteOpen(false);
+                });
+            }}
+          />
+        )}
       </Group>
     </View>,
 
     <View key="dados">
       <SectionHeader title="Dados e privacidade" />
-      <Group inset={112}>
+      <Group inset={inset}>
         <Row
-          leading={<AppIcon icon="cloud-offline" color="#64D2FF" glyph="#003A55" size={56} />}
+          leading={<AppIcon icon="cloud-offline" color="#64D2FF" glyph="#003A55" size={ic} />}
           title="Modo offline"
           trailing={<Switch value={offline} onChange={setOffline} />}
         />
         <Row
-          leading={<AppIcon icon="hand-left" color="#0A84FF" size={56} />}
+          leading={<AppIcon icon="hand-left" color="#0A84FF" size={ic} />}
           title="Permissões"
           chevron
           onPress={() => {}}
         />
         <Row
-          leading={<AppIcon icon="information-circle" color="#8E8E93" size={56} />}
+          leading={<AppIcon icon="information-circle" color="#8E8E93" size={ic} />}
           title="Sobre"
           value="Versão 0.1.0"
           chevron
@@ -142,16 +177,24 @@ export default function SettingsScreen() {
     </Group>,
   ];
 
+  const fade = useEdgeFade();
   return (
     <View style={styles.page}>
       <PageHeader title="Ajustes" subtitle="Conta, preferências e integrações" />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-        {sections.map((s, i) => (
-          <Appear key={s.key} delay={i * 50} distance={12}>
-            {s}
-          </Appear>
-        ))}
-      </ScrollView>
+      <View style={{ flex: 1 }}>
+        <ScrollView
+          {...fade.scrollProps}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.content}
+        >
+          {sections.map((s, i) => (
+            <Appear key={s.key} delay={i * 50} distance={12}>
+              {s}
+            </Appear>
+          ))}
+        </ScrollView>
+        {fade.edges}
+      </View>
     </View>
   );
 }

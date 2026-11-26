@@ -1,15 +1,10 @@
 import { createContext, type ReactNode, useContext, useMemo, useState } from 'react';
-import { type MockTrack, NOW_PLAYING } from '../mocks/data';
 
-/**
- * Estado APENAS visual do protótipo de design: o que está aberto, minimizado ou
- * selecionado. Nada aqui é persistido nem fala com a API.
- */
+/** Estado da interface: o que está aberto por cima das telas. */
 interface PrototypeState {
-  musicConnected: boolean;
-  setMusicConnected: (v: boolean) => void;
-  nowPlaying: MockTrack | null;
-  setNowPlaying: (t: MockTrack | null) => void;
+  /** Janela do Kyte aberta (o login em si fica salvo nos cookies da janela). */
+  kyteOpen: boolean;
+  setKyteOpen: (v: boolean) => void;
   overlay: ReactNode;
   setOverlay: (node: ReactNode) => void;
 }
@@ -17,12 +12,11 @@ interface PrototypeState {
 const Ctx = createContext<PrototypeState | null>(null);
 
 export function PrototypeProvider({ children }: { children: ReactNode }) {
-  const [musicConnected, setMusicConnected] = useState(false);
-  const [nowPlaying, setNowPlaying] = useState<MockTrack | null>(null);
+  const [kyteOpen, setKyteOpen] = useState(false);
   const [overlay, setOverlay] = useState<ReactNode>(null);
-  const value = useMemo(
-    () => ({ musicConnected, setMusicConnected, nowPlaying, setNowPlaying, overlay, setOverlay }),
-    [musicConnected, nowPlaying, overlay],
+  const value = useMemo<PrototypeState>(
+    () => ({ kyteOpen, setKyteOpen, overlay, setOverlay }),
+    [kyteOpen, overlay],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
@@ -32,5 +26,3 @@ export function usePrototype(): PrototypeState {
   if (!ctx) throw new Error('usePrototype fora do PrototypeProvider');
   return ctx;
 }
-
-export { NOW_PLAYING };

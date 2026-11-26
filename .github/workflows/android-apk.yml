@@ -1,0 +1,112 @@
+# Gera o APK do GoClient Automotive a cada envio para a main e publica na página de Releases
+# do repositório (versão "automotive-latest"), sempre com o mesmo nome de arquivo.
+#
+# Uso familiar: o APK é assinado com a chave de depuração padrão do modelo do Expo. Ela é a
+# mesma em todas as compilações, então cada versão nova instala por cima da anterior sem
+# perder dados. Não serve para publicar na Play Store.
+name: Android APK
+
+on:
+  push:
+    branches: [main, "debug/**"]
+    paths:
+      - "apps/automotive/**"
+      - "packages/**"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/android-apk.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    # Chaves das integrações (Settings → Secrets and variables → Actions → Secrets).
+    # Sem elas o APK sai com o mapa em modo de demonstração e o Lucas só com comandos fixos.
+    env:
+      EXPO_PUBLIC_ORS_API_KEY: ${{ secrets.ORS_API_KEY }}
+      EXPO_PUBLIC_NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Android SDK (plataforma 37, build-tools 37, NDK 27.1)
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
+            "platforms;android-37.0" "build-tools;37.0.0" "ndk;27.1.12297006" "cmake;3.22.1" > /dev/null
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Gerar projeto Android (Expo prebuild)
+        working-directory: apps/automotive
+        run: pnpm exec expo prebuild --platform android --no-install --clean
+
+      - name: Número da versão = número desta execução
+        working-directory: apps/automotive/android
+        run: sed -i "s/versionCode 1$/versionCode ${{ github.run_number }}/" app/build.gradle
+
+      - name: Integrações nesta compilação
+        run: |
+          [ -n "$EXPO_PUBLIC_ORS_API_KEY" ] && echo "Mapa (OpenRouteService): com chave" || echo "Mapa: demonstração (sem segredo ORS_API_KEY)"
+          [ -n "$EXPO_PUBLIC_NVIDIA_API_KEY" ] && echo "Havena (NVIDIA): com chave" || echo "Havena: só comandos fixos (sem segredo NVIDIA_API_KEY)"
+
+      # Tenta até 3 vezes: às vezes o portal de plugins do Gradle falha no download.
+      # R8 (encolher/ofuscar o código) desligado: no modelo do Expo 58 ele vem ligado e
+      # quebrava o banco interno do WorkManager (usado pelo react-native-maps), fechando
+      # o app logo ao abrir. Para um app de uso familiar o ganho de tamanho não compensa.
+      - name: Compilar APK
+        working-directory: apps/automotive/android
+        run: |
+          for i in 1 2 3; do
+            ./gradlew assembleRelease -Pandroid.enableMinifyInReleaseBuilds=false -PreactNativeArchitectures=${{ startsWith(github.ref, 'refs/heads/debug/') && 'x86_64' || 'arm64-v8a,armeabi-v7a' }} && exit 0
+            echo "Tentativa $i falhou; tentando de novo em 20 s"; sleep 20
+          done
+          exit 1
+
+      - name: Renomear
+        run: |
+          mkdir -p out
+          cp apps/automotive/android/app/build/outputs/apk/release/app-release.apk out/GoClient-Automotive.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GoClient-Automotive-${{ github.run_number }}
+          path: out/GoClient-Automotive.apk
+
+      - name: Mover a etiqueta automotive-latest para este commit
+        if: github.ref == 'refs/heads/main'
+        run: |
+          git tag -f automotive-latest
+          git push -f origin automotive-latest
+
+      - uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main'
+        with:
+          tag_name: automotive-latest
+          name: GoClient Automotive (mais recente)
+          body: |
+            Versão ${{ github.run_number }} · commit ${{ github.sha }}
+
+            Para instalar: baixe GoClient-Automotive.apk no aparelho Android e abra o arquivo.
+            Na primeira vez, permita "instalar apps desta fonte". Atualizar = instalar por cima.
+          files: out/GoClient-Automotive.apk
+          make_latest: true

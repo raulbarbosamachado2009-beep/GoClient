@@ -1,9 +1,13 @@
 import { useRouter } from 'expo-router';
 import { ScrollView, StyleSheet, View } from 'react-native';
+import { callPhone, openWhatsApp } from '../../integrations/contact';
+import { NO_FLEX, usePhone } from '../../layout/form-factor';
+import { useMapNav } from '../../map/map-nav';
 import { CLIENTS, type MockClient } from '../../mocks/data';
 import { usePrototype } from '../../prototype/state';
-import { Sheet } from '../../shell/sheet';
+import { Sheet, useSheetClose } from '../../shell/sheet';
 import { layout, spacing, useColors } from '../../theme';
+import { useEdgeFade } from '../../ui/edge-fade';
 import { Appear } from '../../ui/motion';
 import {
   Avatar,
@@ -23,47 +27,60 @@ import {
 export default function ClientsScreen() {
   const { setOverlay } = usePrototype();
   const open = (client: MockClient) => setOverlay(<ClientDetails client={client} />);
+  const fade = useEdgeFade();
 
   return (
     <View style={styles.page}>
       <PageHeader title="Clientes" subtitle={`${CLIENTS.length} clientes na sua carteira`} />
       <SearchField placeholder="Buscar por nome, loja ou cidade" />
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: spacing[10] }}
-      >
-        <Group inset={124}>
-          {CLIENTS.map((client, i) => (
-            <Appear key={client.id} delay={i * 35} distance={10}>
-              <Row
-                leading={<Avatar name={client.name} size={76} />}
-                title={client.tradeName}
-                subtitle={`${client.name} · ${client.address}`}
-                value={client.region}
-                chevron
-                onPress={() => open(client)}
-              />
-            </Appear>
-          ))}
-        </Group>
-      </ScrollView>
+      <View style={{ flex: 1 }}>
+        <ScrollView
+          {...fade.scrollProps}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: spacing[10] }}
+        >
+          <Group inset={148}>
+            {CLIENTS.map((client, i) => (
+              <Appear key={client.id} delay={i * 35} distance={10}>
+                <Row
+                  leading={<Avatar name={client.name} size={92} />}
+                  title={client.tradeName}
+                  subtitle={`${client.name} · ${client.address}`}
+                  value={client.region}
+                  chevron
+                  onPress={() => open(client)}
+                />
+              </Appear>
+            ))}
+          </Group>
+        </ScrollView>
+        {fade.edges}
+      </View>
     </View>
   );
 }
 
 /** Ficha do cliente no estilo do app Contatos. */
 function ClientDetails({ client }: { client: MockClient }) {
-  const c = useColors();
   const { setOverlay } = usePrototype();
-  const router = useRouter();
-  const close = () => setOverlay(null);
-  const go = () => {
-    close();
-    router.replace({ pathname: '/mapa', params: { rota: 'cliente', id: client.id } });
-  };
+  return (
+    <Sheet onClose={() => setOverlay(null)} style={{ width: 1120, height: 800 }}>
+      <ClientDetailsContent client={client} />
+    </Sheet>
+  );
+}
+
+function ClientDetailsContent({ client }: { client: MockClient }) {
+  const c = useColors();
+  const _router = useRouter();
+  const mapNav = useMapNav();
+  const close = useSheetClose();
+  const phone = usePhone();
+  // Fecha a ficha com a animação e só então abre o mapa com a rota.
+  const go = () => close(() => mapNav({ rota: 'cliente', id: client.id }));
 
   return (
-    <Sheet onClose={close} style={{ width: 1120, height: 800 }}>
+    <>
       <View style={styles.sheetTop}>
         <View style={{ width: 76 }} />
         <View style={{ alignItems: 'center', gap: spacing[2] }}>
@@ -79,14 +96,17 @@ function ClientDetails({ client }: { client: MockClient }) {
           size={64}
           iconSize={30}
           accessibilityLabel="Fechar"
-          onPress={close}
+          onPress={() => close()}
         />
       </View>
 
-      <View style={styles.actions}>
-        <QuickAction icon="call" label="Ligar" />
-        <QuickAction icon="logo-whatsapp" label="WhatsApp" />
-        <QuickAction icon="mail" label="E-mail" />
+      <View style={[styles.actions, phone && { flexWrap: 'wrap' }]}>
+        <QuickAction icon="call" label="Ligar" onPress={() => callPhone(client.phone)} />
+        <QuickAction
+          icon="logo-whatsapp"
+          label="WhatsApp"
+          onPress={() => openWhatsApp(client.phone)}
+        />
         <Touchable
           accessibilityRole="button"
           onPress={go}
@@ -99,15 +119,19 @@ function ClientDetails({ client }: { client: MockClient }) {
         </Touchable>
       </View>
 
-      <View style={styles.sheetBody}>
-        <View style={{ flex: 1 }}>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={[styles.sheetBody, phone && { flexDirection: 'column' }]}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={phone ? NO_FLEX : { flex: 1 }}>
           <Group>
             <Row title="Endereço" subtitle={`${client.address} · ${client.district}`} />
             <Row title="Telefone" subtitle={client.phone} />
             <Row title="Última visita" subtitle={client.lastVisit} />
           </Group>
         </View>
-        <View style={{ flex: 1 }}>
+        <View style={phone ? NO_FLEX : { flex: 1 }}>
           <SectionHeader title="Últimas compras" />
           <Group>
             {client.purchases.map((p) => (
@@ -115,15 +139,27 @@ function ClientDetails({ client }: { client: MockClient }) {
             ))}
           </Group>
         </View>
-      </View>
-    </Sheet>
+      </ScrollView>
+    </>
   );
 }
 
-function QuickAction({ icon, label }: { icon: IconName; label: string }) {
+function QuickAction({
+  icon,
+  label,
+  onPress,
+}: {
+  icon: IconName;
+  label: string;
+  onPress?: () => void;
+}) {
   const c = useColors();
   return (
-    <Touchable accessibilityRole="button" style={[styles.quick, { backgroundColor: c.fill }]}>
+    <Touchable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={[styles.quick, { backgroundColor: c.fill }]}
+    >
       <Icon name={icon} size={34} color={c.accent} />
       <Text variant="subhead" tone="accent">
         {label}
@@ -159,5 +195,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: spacing[3],
   },
-  sheetBody: { flex: 1, flexDirection: 'row', gap: spacing[6], padding: spacing[8] },
+  sheetBody: { flexGrow: 1, flexDirection: 'row', gap: spacing[6], padding: spacing[8] },
 });

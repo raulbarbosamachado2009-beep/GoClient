@@ -1,9 +1,17 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
-import { type ComponentProps, type ReactNode, useRef, useState } from 'react';
+import {
+  type ComponentProps,
+  createContext,
+  type ReactNode,
+  useContext,
+  useRef,
+  useState,
+} from 'react';
 import {
   Animated,
+  Platform,
   Pressable,
   type PressableProps,
   Text as RNText,
@@ -15,7 +23,9 @@ import {
   type ViewProps,
   type ViewStyle,
 } from 'react-native';
+import { usePhone } from '../layout/form-factor';
 import { layout, nativeDriver, spacing, type TypeVariant, type, useColors } from '../theme';
+import { LIVE_BLUR, useBlurTarget } from './blur-target';
 import { useSpring } from './motion';
 
 export type IconName = ComponentProps<typeof Ionicons>['name'];
@@ -98,7 +108,7 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 /* ---------------- Botões ---------------- */
 
-type ButtonVariant = 'filled' | 'tinted' | 'gray' | 'plain' | 'destructive' | 'music';
+type ButtonVariant = 'filled' | 'tinted' | 'gray' | 'plain' | 'destructive';
 
 export function Button({
   label,
@@ -111,7 +121,8 @@ export function Button({
   label: string;
   icon?: IconName;
   variant?: ButtonVariant;
-  size?: 'md' | 'lg';
+  /** `xl`: ícone e texto maiores, para botões grandes de toque no carro. */
+  size?: 'md' | 'lg' | 'xl';
   style?: StyleProp<ViewStyle>;
 }) {
   const c = useColors();
@@ -127,7 +138,6 @@ export function Button({
       bg: c.mode === 'dark' ? 'rgba(255,69,58,0.2)' : 'rgba(255,59,48,0.12)',
       fg: c.danger,
     },
-    music: { bg: c.music.accent, fg: c.music.onAccent },
   };
   const l = look[variant];
   return (
@@ -137,15 +147,21 @@ export function Button({
       style={[
         styles.button,
         {
-          height: size === 'lg' ? 84 : layout.touch - 4,
+          height: size === 'md' ? layout.touch - 4 : 84,
           backgroundColor: l.bg,
           opacity: rest.disabled ? 0.4 : 1,
         },
         style,
       ]}
     >
-      {icon && <Icon name={icon} size={size === 'lg' ? 32 : 28} color={l.fg} />}
-      <Text variant="headline" color={l.fg}>
+      {icon && (
+        <Icon name={icon} size={size === 'xl' ? 44 : size === 'lg' ? 32 : 28} color={l.fg} />
+      )}
+      <Text
+        variant="headline"
+        color={l.fg}
+        style={size === 'xl' ? { fontSize: 34, lineHeight: 40 } : undefined}
+      >
         {label}
       </Text>
     </Touchable>
@@ -194,10 +210,16 @@ export function Avatar({
   name,
   size = 64,
   square = false,
+  radius,
+  colors = ['#A6ABB8', '#858994'],
 }: {
   name: string;
   size?: number;
   square?: boolean;
+  /** Raio dos cantos (para seguir as bordas concêntricas de quem o contém). */
+  radius?: number;
+  /** Degradê do fundo (padrão: cinza). */
+  colors?: readonly [string, string];
 }) {
   const initials = name
     .split(' ')
@@ -208,10 +230,14 @@ export function Avatar({
     .toUpperCase();
   return (
     <LinearGradient
-      colors={['#A6ABB8', '#858994']}
+      colors={colors}
       style={[
         styles.center,
-        { width: size, height: size, borderRadius: square ? size * 0.26 : size / 2 },
+        {
+          width: size,
+          height: size,
+          borderRadius: radius ?? (square ? size * 0.26 : size / 2),
+        },
       ]}
     >
       <RNText
@@ -275,8 +301,8 @@ export function Chip({
       onPress={onPress}
       style={[styles.chip, { backgroundColor: bg }]}
     >
-      {icon && <Icon name={icon} size={26} color={fg} />}
-      <Text variant="bodyStrong" color={fg}>
+      {icon && <Icon name={icon} size={30} color={fg} />}
+      <Text variant="bodyStrong" color={fg} style={{ fontSize: 28, lineHeight: 34 }}>
         {label}
       </Text>
     </Touchable>
@@ -288,27 +314,53 @@ export function SearchField({
   style,
   background,
   foreground,
+  compact = false,
+  value,
+  onChangeText,
 }: {
   placeholder: string;
+  value?: string;
+  onChangeText?: (text: string) => void;
   style?: StyleProp<ViewStyle>;
   background?: string;
   foreground?: string;
+  /** Tamanho menor (busca em listas). */
+  compact?: boolean;
 }) {
   const c = useColors();
   const fg = foreground ?? c.text;
   return (
-    <View style={[styles.search, { backgroundColor: background ?? c.fill }, style]}>
-      <Icon name="search" size={28} color={foreground ? `${foreground}99` : c.textSecondary} />
+    <View
+      style={[
+        styles.search,
+        { backgroundColor: background ?? c.fill },
+        compact && { height: 72 },
+        style,
+      ]}
+    >
+      <Icon
+        name="search"
+        size={compact ? 28 : 34}
+        color={foreground ? `${foreground}99` : c.textSecondary}
+      />
       <TextInput
         placeholder={placeholder}
+        value={value}
+        onChangeText={onChangeText}
+        returnKeyType="search"
         placeholderTextColor={foreground ? `${foreground}88` : c.textSecondary}
-        style={[type.body, { flex: 1, color: fg, height: '100%' }, webNoOutline]}
+        style={[
+          type.body,
+          { flex: 1, color: fg, height: '100%', fontSize: compact ? 24 : 28 },
+          webNoOutline,
+        ]}
       />
     </View>
   );
 }
 
-const webNoOutline = { outlineStyle: 'none' } as object;
+/** Tira o contorno de foco do navegador; no Android/iOS não se aplica. */
+const webNoOutline = (Platform.OS === 'web' ? { outlineStyle: 'none' } : null) as object;
 
 /** Controle segmentado do iOS, com o "polegar" deslizando entre as opções. */
 export function Segmented<T extends string>({
@@ -353,8 +405,20 @@ export function Segmented<T extends string>({
           onPress={() => onChange(o.value)}
           style={[styles.segment, { width: segmentWidth }]}
         >
-          {o.icon && <Icon name={o.icon} size={24} />}
-          {o.label && <Text variant="subhead">{o.label}</Text>}
+          {o.icon && <Icon name={o.icon} size={30} />}
+          {o.label && (
+            <Text
+              variant="subhead"
+              numberOfLines={1}
+              style={
+                segmentWidth < 150
+                  ? { fontSize: 21, lineHeight: 26 }
+                  : { fontSize: 31, lineHeight: 37 }
+              }
+            >
+              {o.label}
+            </Text>
+          )}
         </Pressable>
       ))}
     </View>
@@ -364,15 +428,23 @@ export function Segmented<T extends string>({
 /** Interruptor do iOS com o botão deslizando por mola. */
 export function Switch({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
   const c = useColors();
-  const x = useSpring(value ? 36 : 0);
+  const phone = usePhone();
+  // Multimídia: interruptor maior (132 × 80).
+  const x = useSpring(value ? (phone ? 44 : 60) : 0);
   return (
     <Pressable
       accessibilityRole="switch"
       accessibilityState={{ checked: value }}
       onPress={() => onChange(!value)}
-      style={[styles.switch, { backgroundColor: value ? c.success : c.fillStrong }]}
+      style={[
+        styles.switch,
+        !phone && styles.switchCar,
+        { backgroundColor: value ? c.success : c.fillStrong },
+      ]}
     >
-      <Animated.View style={[styles.knob, { transform: [{ translateX: x }] }]} />
+      <Animated.View
+        style={[styles.knob, !phone && styles.knobCar, { transform: [{ translateX: x }] }]}
+      />
     </Pressable>
   );
 }
@@ -429,39 +501,47 @@ export function Row({
   titleColor?: string;
 }) {
   const c = useColors();
+  const phone = usePhone();
   const [pressed, setPressed] = useState(false);
+  const t = phone ? rowTextPhone : rowText;
   const content = (
     <>
       {leading}
       <View style={{ flex: 1, gap: 2 }}>
-        <Text variant="body" color={titleColor} numberOfLines={1}>
+        <Text variant="body" color={titleColor} numberOfLines={1} style={t.title}>
           {title}
         </Text>
         {subtitle && (
-          <Text variant="caption" tone="secondary" numberOfLines={1}>
+          <Text variant="caption" tone="secondary" numberOfLines={1} style={t.subtitle}>
             {subtitle}
           </Text>
         )}
       </View>
       {value && (
-        <Text variant="body" tone="secondary" numberOfLines={1}>
+        <Text
+          variant="body"
+          tone="secondary"
+          numberOfLines={1}
+          style={[t.title, phone && { maxWidth: 200 }]}
+        >
           {value}
         </Text>
       )}
       {trailing}
-      {chevron && <Icon name="chevron-forward" size={26} color={c.textTertiary} />}
+      {chevron && <Icon name="chevron-forward" size={phone ? 32 : 46} color={c.textTertiary} />}
     </>
   );
   // Sem ação, a linha é só um contêiner: controles dentro dela (interruptor, seletor)
   // continuam recebendo toques normalmente.
-  if (!onPress) return <View style={styles.row}>{content}</View>;
+  const rowStyle = [styles.row, !phone && styles.rowCar];
+  if (!onPress) return <View style={rowStyle}>{content}</View>;
   return (
     <Pressable
       accessibilityRole="button"
       onPress={onPress}
       onPressIn={() => setPressed(true)}
       onPressOut={() => setPressed(false)}
-      style={[styles.row, pressed && { backgroundColor: c.fill }]}
+      style={[rowStyle, pressed && { backgroundColor: c.fill }]}
     >
       {content}
     </Pressable>
@@ -469,9 +549,14 @@ export function Row({
 }
 
 export function SectionHeader({ title, action }: { title: string; action?: ReactNode }) {
+  const phone = usePhone();
   return (
     <View style={styles.sectionHeader}>
-      <Text variant="subhead" tone="secondary">
+      <Text
+        variant="subhead"
+        tone="secondary"
+        style={phone ? { fontSize: 25, lineHeight: 31 } : { fontSize: 32, lineHeight: 38 }}
+      >
         {title}
       </Text>
       {action}
@@ -511,28 +596,84 @@ export function PageHeader({
   );
 }
 
-/** Material translúcido (desfoque do conteúdo de trás), usado sobre o mapa. */
+/**
+ * Desfoque do que está atrás. Na Web usa `backdrop-filter` com raio forte (o expo-blur
+ * limita a ~20 px); no Android/iOS usa o BlurView nativo na intensidade máxima.
+ */
+export function Blur({ radius = 40, tint }: { radius?: number; tint: 'dark' | 'light' }) {
+  if (Platform.OS === 'web') {
+    const f = `blur(${radius.toFixed(1)}px) saturate(${100 + (80 * Math.min(radius, 40)) / 40}%)`;
+    return (
+      <View
+        pointerEvents="none"
+        style={[StyleSheet.absoluteFill, { backdropFilter: f, WebkitBackdropFilter: f } as object]}
+      />
+    );
+  }
+  // Android: sem desfoque ao vivo (ver LIVE_BLUR); quem usa já tem a cor de reserva.
+  if (!LIVE_BLUR) return null;
+  return <NativeBlur radius={radius} tint={tint} />;
+}
+
+/** Android/iOS: BlurView nativo apontando para a área de trás (ver ui/blur-target.tsx). */
+function NativeBlur({ radius, tint }: { radius: number; tint: 'dark' | 'light' }) {
+  const target = useBlurTarget();
+  return (
+    <BlurView
+      tint={tint}
+      intensity={Math.min(100, (radius / 40) * 100)}
+      blurTarget={target ?? undefined}
+      blurMethod={target ? 'dimezisBlurView' : 'none'}
+      style={StyleSheet.absoluteFill}
+      pointerEvents="none"
+    />
+  );
+}
+
+/**
+ * Material translúcido (estilo iOS): desfoque forte + camada de cor quase opaca, como na
+ * referência do cartão do cliente. Usado sobre o mapa e na barra lateral.
+ */
 export function Material({
   style,
   children,
-  intensity = 60,
+  radius = 44,
   ...rest
-}: ViewProps & { intensity?: number }) {
+}: ViewProps & { radius?: number }) {
   const c = useColors();
   return (
     <View
       style={[{ overflow: 'hidden', borderWidth: 1, borderColor: c.material.border }, style]}
       {...rest}
     >
-      <BlurView
-        tint={c.material.tint}
-        intensity={intensity}
-        experimentalBlurMethod="dimezisBlurView"
-        style={StyleSheet.absoluteFill}
-      />
+      <Blur radius={radius} tint={c.material.tint} />
       <View style={[StyleSheet.absoluteFill, { backgroundColor: c.material.fallback }]} />
       {children}
     </View>
+  );
+}
+
+/** Fundo de janelas e pop-ups: desfoca toda a tela atrás (referência: imagem 1). */
+/**
+ * Fundo de janelas e pop-ups: desfoca a tela atrás (referência: imagem 1).
+ * `progress` (0→1) aumenta o raio do desfoque e o tom aos poucos, para que o desfoque
+ * entre e saia numa transição — e não de uma vez.
+ */
+export function BlurBackdrop({
+  onPress,
+  progress = 1,
+}: {
+  onPress?: () => void;
+  progress?: number;
+}) {
+  const c = useColors();
+  const tint =
+    c.mode === 'dark' ? `rgba(0,0,0,${0.35 * progress})` : `rgba(200,200,206,${0.35 * progress})`;
+  return (
+    <Pressable accessibilityLabel="Fechar janela" onPress={onPress} style={StyleSheet.absoluteFill}>
+      <Blur radius={22 * progress} tint={c.material.tint} />
+      <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: tint }]} />
+    </Pressable>
   );
 }
 
@@ -547,6 +688,17 @@ function lighten(hex: string, amount: number): string {
   return `#${ch(16)}${ch(8)}${ch(0)}`;
 }
 
+/** Textos das linhas de lista, maiores para tocar e ler no carro. */
+const rowText = StyleSheet.create({
+  title: { fontSize: 38, lineHeight: 46 },
+  subtitle: { fontSize: 29, lineHeight: 36 },
+});
+/** Celular em pé: medidas do iOS (corpo 17 pt, legenda 15 pt) na tela de 720. */
+const rowTextPhone = StyleSheet.create({
+  title: { fontSize: 31, lineHeight: 38 },
+  subtitle: { fontSize: 26, lineHeight: 32 },
+});
+
 const styles = StyleSheet.create({
   center: { alignItems: 'center', justifyContent: 'center' },
   button: {
@@ -558,28 +710,28 @@ const styles = StyleSheet.create({
     borderRadius: layout.radius.md,
   },
   chip: {
-    height: 64,
-    paddingHorizontal: spacing[6],
-    borderRadius: 32,
+    height: 80,
+    paddingHorizontal: spacing[8],
+    borderRadius: 40,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[2],
   },
   search: {
-    height: 72,
+    height: 88,
     borderRadius: layout.radius.md,
     paddingHorizontal: spacing[5],
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[3],
   },
-  segmented: { height: 68, borderRadius: 16, padding: 4, flexDirection: 'row' },
+  segmented: { height: 84, borderRadius: 20, padding: 4, flexDirection: 'row' },
   thumb: {
     position: 'absolute',
     top: 4,
     left: 4,
     bottom: 4,
-    borderRadius: 13,
+    borderRadius: 16,
     shadowColor: '#000',
     shadowOpacity: 0.12,
     shadowRadius: 6,
@@ -591,11 +743,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: spacing[2],
   },
-  switch: { width: 92, height: 56, borderRadius: 28, padding: 4 },
+  switch: { width: 112, height: 68, borderRadius: 34, padding: 4 },
+  switchCar: { width: 152, height: 92, borderRadius: 46 },
+  knobCar: { width: 84, height: 84, borderRadius: 42 },
   knob: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: '#FFFFFF',
     shadowColor: '#000',
     shadowOpacity: 0.18,
@@ -605,11 +759,13 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing[5],
-    minHeight: 88,
+    gap: spacing[6],
+    minHeight: 112,
     paddingHorizontal: spacing[6],
-    paddingVertical: spacing[3],
+    paddingVertical: spacing[4],
   },
+  // Multimídia: linhas mais altas (Ajustes e listas).
+  rowCar: { minHeight: 168, paddingHorizontal: spacing[8] },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
