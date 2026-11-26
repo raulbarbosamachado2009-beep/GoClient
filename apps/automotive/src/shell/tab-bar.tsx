@@ -1,7 +1,7 @@
 import { type Href, usePathname, useRouter } from 'expo-router';
 import { type ComponentRef, type ReactNode, useEffect, useRef, useState } from 'react';
 import { Animated, PanResponder, StyleSheet, View } from 'react-native';
-import { HavenaOrb } from '../havena/orb';
+import { LucasCloud } from '../havena/cloud';
 import { HavenaPanel } from '../havena/panel';
 import { TAB_BAR_BOTTOM, useTabBarLift } from '../layout/form-factor';
 import { useFrameScale } from '../preview/automotive-frame';
@@ -171,7 +171,7 @@ export function TabBar() {
       case 'mapa':
         return <OutlineGlyph glyph="mapa" size={46} color={col} />;
       case 'havena':
-        return <HavenaOrb size={72} ambient />;
+        return <LucasCloud size={72} ambient />;
       case 'kyte':
         return <KyteLogo size={50} />;
       case 'whatsapp':

@@ -2,7 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { type Href, usePathname, useRouter } from 'expo-router';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { Animated, Image, StyleSheet, View } from 'react-native';
-import { HavenaOrb } from '../havena/orb';
+import { LucasCloud } from '../havena/cloud';
 import { HavenaPanel } from '../havena/panel';
 import { usePrototype } from '../prototype/state';
 import { concentric, layout, spacing, useColors } from '../theme';
@@ -116,7 +116,7 @@ export function Sidebar() {
             </Tile>
           ))}
           <Tile top={ITEMS.length * SLOT} label="Falar com o Lucas" onPress={openHavena}>
-            <HavenaOrb size={ICON - 8} ambient />
+            <LucasCloud size={ICON - 8} ambient />
           </Tile>
         </View>
 

@@ -24,6 +24,8 @@ import { usePhone } from '../../layout/form-factor';
 import { FONT, useColors } from '../../theme';
 import { Appear, Presence } from '../../ui/motion';
 import { Touchable } from '../../ui/primitives';
+import { startCall } from './call';
+import { CallPanel } from './call-layer';
 import {
   CALLS,
   CHATS,
@@ -286,6 +288,31 @@ export function WhatsAppSim() {
     else setConfirm({ kind: k, chat: chat.id });
   };
 
+  // Ligação de voz simulada: abre o painel de chamada e deixa o balão "Ligação de voz" na conversa.
+  const ring = (contactId: string) => {
+    const who = contactOf(contactId);
+    if (!who) return;
+    startCall({ contact: who.id, name: who.name, group: !!who.members });
+    const now = new Date();
+    const time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    const msg: SimMessage = {
+      id: `c${now.getTime()}`,
+      out: true,
+      text: 'Ligação de voz',
+      time,
+      day: 'Hoje',
+      kind: 'call',
+    };
+    setChats((cur) => {
+      const had = cur.find((c) => c.id === contactId);
+      const base = had ?? { id: contactId, contact: contactId, unread: 0, messages: [] };
+      return [
+        { ...base, messages: [...base.messages, msg] },
+        ...cur.filter((c) => c.id !== contactId),
+      ];
+    });
+  };
+
   // Botão ao lado do "+": Conversas ↔ Ligações (substitui o trilho lateral).
   const toggle = (t: Tab) => {
     setTab(t);
@@ -306,6 +333,7 @@ export function WhatsAppSim() {
         contactOf={contactOf}
         selected={call}
         onSelect={setCall}
+        onCall={ring}
         unread={unreadTotal}
         onToggle={() => toggle('chats')}
       />
@@ -351,6 +379,7 @@ export function WhatsAppSim() {
           contactOf={contactOf}
           onClose={() => setCall(null)}
           onMessage={openChat}
+          onCall={ring}
         />
       ) : (
         <CallsEmpty P={P} S={S} />
@@ -364,6 +393,7 @@ export function WhatsAppSim() {
           chat={chat}
           blocked={blocked.has(chat.id)}
           onClose={() => setProfile(false)}
+          onCall={() => ring(chat.contact)}
           onFind={() => {
             setProfile(false);
             setFinding('');
@@ -393,6 +423,7 @@ export function WhatsAppSim() {
           selecting={selecting}
           onBack={() => setOpen(null)}
           onProfile={() => setProfile(true)}
+          onCall={() => ring(chat.contact)}
           onMenu={() => setMenu(true)}
           onFind={setFinding}
           onSelect={setSelecting}
@@ -437,9 +468,12 @@ export function WhatsAppSim() {
           ]}
         >
           {leftPane}
+          {/* Ligação em andamento: embaixo da lista, como no WhatsApp Web. */}
+          {!S.phone && <CallPanel k={S.k * 0.85} />}
         </View>
       )}
       {(!S.phone || showRight) && <View style={{ flex: 1 }}>{rightPane}</View>}
+      {S.phone && <CallPanel k={S.k * 0.85} />}
 
       <Presence show={menu && !!chat} distance={-10} style={StyleSheet.absoluteFill}>
         <ChatMenu
@@ -973,7 +1007,11 @@ function LastLine({ P, S, msg }: { P: Palette; S: Sizes; msg?: SimMessage }) {
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
       {msg.out && <Icon name="checkmark-done" size={S.sub} color={P.tick} />}
       {msg.kind && (
-        <Icon name={msg.kind === 'photo' ? 'camera' : 'document-text'} size={S.sub} color={P.sub} />
+        <Icon
+          name={msg.kind === 'photo' ? 'camera' : msg.kind === 'call' ? 'call' : 'document-text'}
+          size={S.sub}
+          color={P.sub}
+        />
       )}
       <Text size={S.sub} color={P.sub} lines={1} style={{ flex: 1 }}>
         {msg.from ? `${msg.from}: ` : ''}
@@ -1132,6 +1170,7 @@ function Conversation({
   selecting,
   onBack,
   onProfile,
+  onCall,
   onMenu,
   onFind,
   onSelect,
@@ -1148,6 +1187,7 @@ function Conversation({
   selecting: Set<string> | null;
   onBack: () => void;
   onProfile: () => void;
+  onCall: () => void;
   onMenu: () => void;
   onFind: (q: string | null) => void;
   onSelect: (s: Set<string> | null) => void;
@@ -1215,7 +1255,7 @@ function Conversation({
             </Text>
           </View>
         </Pressable>
-        <IconButton P={P} S={S} name="call-outline" label="Ligação de voz" />
+        <IconButton P={P} S={S} name="call-outline" label="Ligação de voz" onPress={onCall} />
         {!S.phone && (
           <IconButton P={P} S={S} name="search" label="Pesquisar" onPress={() => onFind('')} />
         )}
@@ -1443,6 +1483,43 @@ function Bubble({
               <Icon name="image-outline" size={72} color={P.sub} />
             </View>
           )}
+          {msg.kind === 'call' && (
+            // Balão da ligação, como no WhatsApp Web: ícone redondo + "Ligação de voz".
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: Math.round(12 * S.k),
+                paddingVertical: Math.round(10 * S.k),
+                paddingLeft: Math.round(10 * S.k),
+                paddingRight: Math.round(40 * S.k),
+                borderRadius: R - 2,
+                backgroundColor: P.dark ? 'rgba(0,0,0,0.18)' : 'rgba(0,0,0,0.04)',
+              }}
+            >
+              <View
+                style={[
+                  styles.center,
+                  {
+                    width: Math.round(36 * S.k),
+                    height: Math.round(36 * S.k),
+                    borderRadius: 18 * S.k,
+                    backgroundColor: P.panel,
+                  },
+                ]}
+              >
+                <Icon name="call" size={Math.round(18 * S.k)} color={P.green} />
+              </View>
+              <View>
+                <Text size={S.name} color={P.ink}>
+                  {msg.text}
+                </Text>
+                <Text size={S.small} color={P.sub}>
+                  {msg.out ? 'Efetuada' : 'Recebida'}
+                </Text>
+              </View>
+            </View>
+          )}
           {msg.kind === 'doc' && (
             <View
               style={{
@@ -1466,7 +1543,7 @@ function Bubble({
             </View>
           )}
           <View style={{ flexDirection: 'row', alignItems: 'flex-end', flexWrap: 'wrap', gap: 10 }}>
-            {msg.kind !== 'doc' && (
+            {msg.kind !== 'doc' && msg.kind !== 'call' && (
               <Text size={S.sub} color={P.ink} style={{ flexShrink: 1 }}>
                 {msg.text}
               </Text>
@@ -1750,6 +1827,7 @@ function Profile({
   chat,
   blocked,
   onClose,
+  onCall,
   onFind,
   onFavorite,
   onAsk,
@@ -1761,6 +1839,7 @@ function Profile({
   chat: SimChat;
   blocked: boolean;
   onClose: () => void;
+  onCall: () => void;
   onFind: () => void;
   onFavorite: () => void;
   onAsk: (k: 'block' | 'clear' | 'delete') => void;
@@ -1768,7 +1847,7 @@ function Profile({
 }) {
   const [muted, setMuted] = useState(false);
   const group = !!contact.members;
-  const media = chat.messages.filter((m) => m.kind).length;
+  const media = chat.messages.filter((m) => m.kind && m.kind !== 'call').length;
   const action = (icon: IconName, label: string, onPress?: () => void) => (
     <Touchable
       key={label}
@@ -1845,7 +1924,7 @@ function Profile({
             {group ? `Grupo · ${contact.members?.length ?? 0} participantes` : contact.phone}
           </Text>
           <View style={{ flexDirection: 'row', gap: Math.round(16 * S.k), marginTop: 16 }}>
-            {action('call-outline', 'Ligar')}
+            {action('call-outline', 'Ligar', onCall)}
             {action('search', 'Pesquisar', onFind)}
           </View>
         </Appear>
@@ -1863,7 +1942,7 @@ function Profile({
             style={{ flexDirection: 'row', gap: 12, paddingHorizontal: S.pad, paddingBottom: 12 }}
           >
             {chat.messages
-              .filter((m) => m.kind)
+              .filter((m) => m.kind && m.kind !== 'call')
               .map((m) => (
                 <View
                   key={m.id}
@@ -2213,6 +2292,7 @@ function CallsList({
   contactOf,
   selected,
   onSelect,
+  onCall,
   unread,
   onToggle,
 }: {
@@ -2222,6 +2302,7 @@ function CallsList({
   contactOf: (id: string) => SimContact | undefined;
   selected: string | null;
   onSelect: (id: string) => void;
+  onCall: (id: string) => void;
   unread: number;
   onToggle: () => void;
 }) {
@@ -2297,7 +2378,13 @@ function CallsList({
                 title={c.name}
                 right={
                   <View style={{ flexDirection: 'row' }}>
-                    <IconButton P={P} S={S} name="call-outline" label={`Ligar para ${c.name}`} />
+                    <IconButton
+                      P={P}
+                      S={S}
+                      name="call-outline"
+                      label={`Ligar para ${c.name}`}
+                      onPress={() => onCall(c.id)}
+                    />
                   </View>
                 }
               />
@@ -2377,6 +2464,7 @@ function CallDetail({
   contactOf,
   onClose,
   onMessage,
+  onCall,
 }: {
   P: Palette;
   S: Sizes;
@@ -2384,6 +2472,7 @@ function CallDetail({
   contactOf: (id: string) => SimContact | undefined;
   onClose: () => void;
   onMessage: (id: string) => void;
+  onCall: (id: string) => void;
 }) {
   const who = contactOf(call.contact);
   const R = 32;
@@ -2410,7 +2499,13 @@ function CallDetail({
               label="Mensagem"
               onPress={() => onMessage(call.contact)}
             />
-            <IconButton P={P} S={S} name="call-outline" label="Ligar" />
+            <IconButton
+              P={P}
+              S={S}
+              name="call-outline"
+              label="Ligar"
+              onPress={() => onCall(call.contact)}
+            />
           </View>
           <View style={{ height: 1, backgroundColor: P.line }} />
           <View style={{ padding: 24, gap: 18 }}>

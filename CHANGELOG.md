@@ -5,17 +5,36 @@ Leia este arquivo antes de começar qualquer trabalho.
 
 ## Estado atual do app
 
-_Última atualização: 2026-11-26 11:25 — novo logo (nuvem azul), cartão do WhatsApp no Mapa só com a última mensagem, WhatsApp maior com fontes SF Pro e sem ligação de vídeo (PR #12 aguardando revisão)._
+_Última atualização: 2026-11-26 11:38 — o Lucas virou a nuvenzinha do logo, com animações de desenho animado; ligação de voz simulada no WhatsApp com cartão mínimo que segue pelas páginas (PR #12 aguardando revisão)._
 
 - **Automotive (`apps/automotive`)** é onde está quase todo o produto: Mapa (OSM + OpenRouteService,
   navegação com voz), Kyte (telas próprias sobre a janela do Kyte) e o assistente de voz Lucas.
   Não há mais Música/Spotify; no lugar entrou a aba **WhatsApp** (WhatsApp Web dentro do
-  app, número da equipe). O Lucas avisa o próximo cliente da rota pelo WhatsApp. Roda no carro (paisagem) e no celular (em pé, com aba puxável estilo Apple Maps).
+  app, número da equipe). O Lucas (a nuvenzinha do logo) avisa o próximo cliente da rota pelo WhatsApp. Roda no carro (paisagem) e no celular (em pé, com aba puxável estilo Apple Maps).
 - **Modo claro é o padrão** (o escuro continua em Ajustes → Tema). Login com fundo "aurora" em azuis.
 - **Mobile e Web** ainda são telas de diagnóstico; **API** (`apps/api`) com Hono + Drizzle.
 - Regras de negócio em `packages/core` (com testes); visual só com `@goclient/design-tokens`.
 
 ## Mudanças
+
+### 2026-11-26 11:38 — Lucas nuvem animado e ligação de voz no WhatsApp
+
+Quarta rodada de ajustes do usuário:
+
+- **Lucas é a nuvenzinha do logo** no lugar da bola azul (`src/havena/cloud.tsx`; o orbe
+  `orb.tsx` foi removido). Fundo da imagem removido (`assets/lucas-cloud.png`) e a forma
+  redesenhada em vetor para animar olhos, boca e corpo separados. Animação de desenho animado
+  (sem só aumentar e diminuir): parado ele flutua, pisca e olha para os lados; ouvindo inclina
+  a cabeça, arregala os olhos e acena; pensando olha para cima; falando abre a boca por
+  sílabas e quica junto. No Preview a demonstração passa pelos três momentos. Na barra lateral
+  e na barra de abas só flutua e pisca (laços do driver nativo).
+- **Ligação de voz no WhatsApp simulado** (`whatsapp/sim/call.ts` e `call-layer.tsx`): ligar
+  (cabeçalho da conversa, dados do contato, favoritos ou dados da ligação) abre o painel escuro
+  do WhatsApp Web embaixo da lista, com foto, nome, "Chamando…" e depois a duração, microfone e
+  desligar. Sem câmera (vídeo removido). A conversa ganha o balão "Ligação de voz".
+- **Cartão mínimo da chamada:** em qualquer outra página a ligação continua num cartão com
+  foto, nome, duração e desligar, no canto superior direito; arrastar para baixo leva ao canto
+  inferior (e para cima volta). Tocar no cartão volta ao WhatsApp.
 
 ### 2026-11-26 11:25 — Novo logo, cartões do Mapa no estilo CarPlay e WhatsApp com fontes da Apple
 

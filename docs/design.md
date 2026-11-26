@@ -100,11 +100,13 @@ Por decisão do produto, a interface usa **somente SF Pro** (Display e Text), ob
   (o BlurView não aceita máscara). O desfoque tem intensidade fixa e entra e sai deslizando pela
   direita junto com o círculo: animar o raio a cada quadro fazia o navegador recompor o desfoque do cartão
   do Mapa atrás dele (o cartão sumia e voltava).
-- Visual do orbe copiado da referência enviada: aquarela com creme no topo, azul-claro no meio e azul forte
-  embaixo, sem brilho de vidro nem sombra. As manchas derivam em volta de pontos fixos.
-- O componente OrbBloop recebido usa WebGPU (pacote `vgpu`) e depende de arquivos que não vieram junto
-  (shader WGSL, `gpu-runtime`, `use-orb-audio`). WebGPU não roda na central multimídia em React Native,
-  então `src/havena/orb.tsx` usa SVG. Os estados `idle`, `listen`, `think` e `speak` só mudam o ritmo.
+- Desde 26/11/2026 o Lucas é a nuvenzinha do logo (no lugar do orbe em aquarela), em `src/havena/cloud.tsx`.
+  A forma foi tirada do logo enviado (fundo removido em `assets/lucas-cloud.png`) e redesenhada em vetor:
+  cinco círculos e dois olhos em pílula, para os olhos, a boca e o corpo se mexerem separados.
+- Animação estilo desenho animado, sem "pulsar" de tamanho: em repouso flutua, pisca e olha para os lados;
+  ouvindo inclina a cabeça, arregala os olhos e acena; pensando olha para cima; falando abre a boca por
+  sílabas e quica junto. Nos ícones da barra lateral e da barra de abas (`ambient`) só flutua e pisca, em
+  laços do driver nativo.
 - Protótipo: não há comando de voz.
 
 ## Esmaecido nas bordas das listas

@@ -23,7 +23,7 @@ export interface SimMessage {
   /** Quem mandou, nos grupos. */
   from?: string;
   /** Anexo de exemplo (foto de produto ou documento). */
-  kind?: 'photo' | 'doc';
+  kind?: 'photo' | 'doc' | 'call';
 }
 
 export interface SimChat {

@@ -1,7 +1,7 @@
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { Animated, Easing, StyleSheet, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
-import { HavenaOrb } from '../havena/orb';
+import { LucasCloud } from '../havena/cloud';
 import { concentric, nativeDriver, useColors } from '../theme';
 import { appleEase } from '../ui/motion';
 import { Icon, type IconName, Text } from '../ui/primitives';
@@ -310,7 +310,7 @@ export function VoiceScene() {
   return (
     <View style={[styles.box, { alignItems: 'center', justifyContent: 'center' }]}>
       <View>
-        <HavenaOrb size={168} state="speak" />
+        <LucasCloud size={168} state="speak" />
       </View>
       <View key={round} style={styles.bubbles}>
         {LINES.map((l, i) => (

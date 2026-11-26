@@ -19,7 +19,7 @@ const GAP_MS = 380; // silêncio entre frases
 /**
  * Legenda do Lucas: as palavras surgem uma a uma, como se ele estivesse falando, e a frase
  * some antes da próxima. Cada palavra entra com fade, subindo de leve e (na Web) saindo de um
- * pequeno desfoque. `onSpeaking` avisa quando há palavras surgindo, para o orbe acompanhar.
+ * pequeno desfoque. `onSpeaking` avisa quando há palavras surgindo, para a nuvem acompanhar.
  */
 export function HavenaCaption({
   width,

@@ -12,6 +12,7 @@ import { TabBar } from '../../shell/tab-bar';
 import { layout, useColors } from '../../theme';
 import { BlurArea, BlurTargetProvider } from '../../ui/blur-target';
 import { ScreenTransition, usePageTransition } from '../../ui/motion';
+import { CallMini } from '../../whatsapp/sim/call-layer';
 
 /**
  * Estrutura das telas principais. Multimídia (ou celular deitado): barra lateral do CarPlay
@@ -70,6 +71,8 @@ export default function MainLayout() {
             {phone ? <TabBar /> : <Sidebar />}
           </BlurTargetProvider>
         </BlurArea>
+        {/* Ligação do WhatsApp em andamento: fora do WhatsApp vira um cartão mínimo. */}
+        <CallMini hidden={section === 'whatsapp'} />
         {overlay && (
           <BlurTargetProvider value={screen}>
             <View style={StyleSheet.absoluteFill}>{overlay}</View>
