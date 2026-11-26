@@ -9,7 +9,11 @@ import { CarSearch } from '../../map/car-search';
 import { ClientPicker } from '../../map/client-picker';
 import { LiveMap, type MapPin } from '../../map/live-map';
 import { useMapNav } from '../../map/map-nav';
-import { type Guidance as TurnGuidance, useTurnByTurn } from '../../map/navigation';
+import {
+  secondsToFirstStop,
+  type Guidance as TurnGuidance,
+  useTurnByTurn,
+} from '../../map/navigation';
 import { PannableMap } from '../../map/pannable-map';
 import { ExploreSheet, RouteSheet, type TripInfo } from '../../map/phone-sheet';
 import { RouteQueue } from '../../map/route-queue';
@@ -23,6 +27,7 @@ import {
 import { OptionGroup, OptionRow, SavedRoutes } from '../../map/saved-routes';
 import { SheetLock } from '../../map/sheet-context';
 import { useStops } from '../../map/stops';
+import { districtOf, publishTrip } from '../../map/trip';
 import { useCarPosition, useClientPlaces, useLiveRoute } from '../../map/use-live-map';
 import { CLIENT_FOCUS, DAY_FOCUS, type MapMode, USER } from '../../map/world';
 import { CLIENTS, type MockClient } from '../../mocks/data';
@@ -189,6 +194,33 @@ export default function MapScreen() {
     mode === 'day' && routeClients.length > 1
       ? `Parada ${wrap(stop, routeClients.length) + 1} de ${routeClients.length}`
       : undefined;
+
+  // Conta ao Lucas quem é a próxima parada e quanto falta para chegar nela ("Lucas, avisa
+  // o próximo cliente"). No Preview (sem mapa real), um tempo de exemplo.
+  const firstStop = mode !== 'day' || wrap(stop, routeClients.length) === 0;
+  const nextSeconds = !live
+    ? mode === 'day'
+      ? 6 * 60
+      : 18 * 60
+    : guidance
+      ? guidance.toStopSeconds
+      : route && firstStop
+        ? secondsToFirstStop(route)
+        : null;
+  const nextMinute = nextSeconds === null ? null : Math.round(nextSeconds / 30);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: publica quando parada ou tempo mudam
+  useEffect(() => {
+    publishTrip(
+      client
+        ? {
+            next: { name: client.name, district: districtOf(client), phone: client.phone },
+            secondsToNext: nextSeconds,
+            navigating,
+            at: Date.now(),
+          }
+        : null,
+    );
+  }, [client?.id, nextMinute, navigating]);
 
   // Celular em pé: mapa aberto + aba puxável (estilo Apple Maps) no lugar dos cartões.
   if (phone) {

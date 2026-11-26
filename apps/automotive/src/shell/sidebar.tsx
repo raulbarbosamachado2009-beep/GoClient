@@ -9,6 +9,7 @@ import { concentric, layout, spacing, useColors } from '../theme';
 import { KyteLogo } from '../ui/brand';
 import { useSpring } from '../ui/motion';
 import { Blur, Text, Touchable } from '../ui/primitives';
+import { WhatsAppLogo } from '../whatsapp/brand';
 import { type AppGlyph, MapAppIcon, OutlineGlyph } from './app-icons';
 
 interface Item {
@@ -24,6 +25,7 @@ const MAP_DARK = require('../../assets/map/map-dark.jpg');
 const ITEMS: Item[] = [
   { href: '/mapa', match: '/mapa', label: 'Mapa', glyph: 'mapa' },
   { href: '/kyte', match: '/kyte', label: 'Kyte', glyph: 'kyte' },
+  { href: '/whatsapp', match: '/whatsapp', label: 'WhatsApp', glyph: 'whatsapp' },
 ];
 
 /**
@@ -113,6 +115,8 @@ export function Sidebar() {
             >
               {item.glyph === 'kyte' ? (
                 <KyteLogo size={ICON} />
+              ) : item.glyph === 'whatsapp' ? (
+                <WhatsAppLogo size={ICON} />
               ) : (
                 <View style={[styles.icon, { overflow: 'hidden' }]}>
                   <MapAppIcon size={ICON} dark={dark} />

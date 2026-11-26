@@ -10,6 +10,7 @@ import { useColors } from '../theme';
 import { LIVE_BLUR } from '../ui/blur-target';
 import { KyteLogo } from '../ui/brand';
 import { Blur, Touchable } from '../ui/primitives';
+import { WhatsAppLogo } from '../whatsapp/brand';
 import { OutlineGlyph } from './app-icons';
 
 /** Telas abertas a partir da aba puxável do Mapa (a aba Mapa fica marcada nelas). */
@@ -29,6 +30,7 @@ interface TabDef {
 const TABS: TabDef[] = [
   { key: 'mapa', label: 'Mapa', href: '/mapa' },
   { key: 'kyte', label: 'Kyte', href: '/kyte' },
+  { key: 'whatsapp', label: 'WhatsApp', href: '/whatsapp' },
   { key: 'havena', label: 'Falar com o Lucas' },
   { key: 'ajustes', label: 'Ajustes', href: '/configuracoes' },
 ];
@@ -50,7 +52,15 @@ export function TabBar() {
   const muted = dark ? '#9A9AA0' : '#6C6C70';
 
   const is = (p: string) => pathname.startsWith(p);
-  const active = MAP_ROUTES.some(is) ? 0 : is('/kyte') ? 1 : is('/configuracoes') ? 3 : 0;
+  const active = MAP_ROUTES.some(is)
+    ? 0
+    : is('/kyte')
+      ? 1
+      : is('/whatsapp')
+        ? 2
+        : is('/configuracoes')
+          ? 4
+          : 0;
 
   // Largura de cada item (medida) e posição da bolha.
   const [width, setWidth] = useState(0);
@@ -164,6 +174,8 @@ export function TabBar() {
         return <HavenaOrb size={72} ambient />;
       case 'kyte':
         return <KyteLogo size={50} />;
+      case 'whatsapp':
+        return <WhatsAppLogo size={50} />;
       default:
         return <OutlineGlyph glyph="ajustes" size={46} color={col} />;
     }
