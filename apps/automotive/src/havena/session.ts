@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 import { useStops } from '../map/stops';
 import { usePrototype } from '../prototype/state';
-import { useSpotify } from '../spotify/provider';
 import { ask, BRAIN_ENABLED, type Message } from './brain';
 import { useContinuousListener } from './listener';
 import { fixedCommand, yesNo } from './offline';
@@ -50,12 +49,11 @@ const greet = (greeting?: string) =>
   greeting === 'Bom dia!' ? 'Bom dia! Pode falar.' : 'Oi! Pode falar.';
 
 export function useHavenaSession(open: boolean, wakeStart?: WakeStart) {
-  const spotify = useSpotify();
   const proto = usePrototype();
   const stops = useStops();
   const router = useRouter();
-  const deps = useRef<HavenaDeps>({ spotify, proto, stops, router });
-  deps.current = { spotify, proto, stops, router };
+  const deps = useRef<HavenaDeps>({ proto, stops, router });
+  deps.current = { proto, stops, router };
 
   const [phase, setPhase] = useState<Phase>('idle');
   const [caption, setCaption] = useState('');
@@ -186,7 +184,7 @@ export function useHavenaSession(open: boolean, wakeStart?: WakeStart) {
       if (quick) return speak(quick);
       if (!BRAIN_ENABLED)
         return speak(
-          'Sem a inteligência na nuvem, eu só entendo comandos simples, como passar a música ou dizer as horas.',
+          'Sem a inteligência na nuvem, eu só entendo comandos simples, como abrir o mapa, mostrar a rota do dia ou dizer as horas.',
         );
 
       think('Pensando…');

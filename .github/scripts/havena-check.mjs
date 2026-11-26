@@ -45,19 +45,16 @@ const fake = {
     week: { count: 0, total: 'R$ 0,00' },
     month: { count: 158, total: 'R$ 27.913,00' },
   }),
-  musica_tocar: ({ busca }) => `Tocando: ${busca}`,
-  musica_controle: () => 'feito',
 };
 const CONFIRM = ['rota_colocar', 'whatsapp', 'kyte_novo_cliente', 'kyte_novo_produto'];
 
 const cases = [
   'coloca o Adilsom na rota',
   'me leva no Adilsom agora',
-  'toca Evidências do Chitãozinho e Xororó',
   'quanto eu vendi ontem?',
   'manda um zap pro Adilsom dizendo que eu chego em dez minutos',
   'coloca o Adriano na rota',
-  'passa a música',
+  'abre o Kyte',
   'me leva até a Alvarenga',
   'bora pro iguatemi',
   'coloca o Adíuson na rota',

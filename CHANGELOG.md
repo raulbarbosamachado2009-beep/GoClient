@@ -5,15 +5,38 @@ Leia este arquivo antes de começar qualquer trabalho.
 
 ## Estado atual do app
 
-_Última atualização: 2026-11-24 15:44 — Lucas atende a qualquer cumprimento com o nome; fala da pessoa aparece mais rápido; tudo junto na main (PR #6)._
+_Última atualização: 2026-11-25 23:25 — Spotify removido de todo o app (aguardando revisão no Preview antes de entrar na main)._
 
 - **Automotive (`apps/automotive`)** é onde está quase todo o produto: Mapa (OSM + OpenRouteService,
-  navegação com voz), Kyte (telas próprias sobre a janela do Kyte), Música (Spotify App Remote) e
-  assistente de voz. Roda no carro (paisagem) e no celular (em pé, com aba puxável estilo Apple Maps).
+  navegação com voz), Kyte (telas próprias sobre a janela do Kyte) e o assistente de voz Lucas.
+  Não há mais Música/Spotify; o WhatsApp deve ocupar esse lugar numa próxima etapa. Roda no carro (paisagem) e no celular (em pé, com aba puxável estilo Apple Maps).
 - **Mobile e Web** ainda são telas de diagnóstico; **API** (`apps/api`) com Hono + Drizzle.
 - Regras de negócio em `packages/core` (com testes); visual só com `@goclient/design-tokens`.
 
 ## Mudanças
+
+### 2026-11-25 23:25 — Spotify removido de todo o app
+
+Pedido do usuário: a integração com o Spotify não é o foco do app e dava muito trabalho. Tudo
+que era do Spotify saiu; o WhatsApp entra no lugar numa próxima etapa (ainda não feito).
+
+- Telas: saíram a Música (`/musica`, buscar, biblioteca, playlists), o player (`/player`), o
+  mini player e o cartão da música do Mapa.
+- Multimídia: a barra lateral fica Mapa · Kyte · Lucas · Ajustes. No Mapa, o cartão de vidro do
+  destino ocupa a coluna da direita inteira; em "Para onde vamos?" o título fica em cima e as
+  opções embaixo, perto da mão.
+- Celular: a barra de abas fica Mapa · Kyte · Lucas · Ajustes.
+- Código: removidos `src/spotify/`, `src/music/`, o módulo nativo `modules/spotify-remote`
+  (SDK App Remote), as capas de exemplo (`assets/covers*`), a fonte Figtree, as cores e a
+  variante de botão da Música, e o estado de reprodução do `PrototypeProvider`.
+- Lucas: saíram as ferramentas `musica_controle` e `musica_tocar` e os comandos fixos de música
+  (passar, voltar, pausar, continuar); "abre o Spotify/música" não existe mais. Teste novo em
+  `apps/automotive/src/havena/offline.test.ts`.
+- Ajustes: saiu a linha do Spotify (conta/desconectar).
+- Configuração: saiu `EXPO_PUBLIC_SPOTIFY_CLIENT_ID` (app.config.js, `integrations/env.ts` e o
+  workflow do APK). O segredo `SPOTIFY_CLIENT_ID` do GitHub pode ser apagado.
+- Documentação: seção do Spotify retirada de `docs/integrations.md`, `docs/architecture.md`,
+  `docs/design.md`, README e CLAUDE.md; scripts de teste do modelo sem ferramentas de música.
 
 ### 2026-11-24 15:44 — Lucas atende a qualquer cumprimento e tudo vai para a main
 

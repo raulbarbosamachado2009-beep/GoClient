@@ -76,7 +76,7 @@ usam **dados fictícios** (`apps/automotive/src/mocks/`) e não falam com a API.
    1600 × 900 px, ~10", orientação paisagem, 4 GB de RAM (o requisito mínimo).
 2. Inicie o emulador e rode `pnpm dev:automotive`, depois tecle `a`.
 3. Enquanto o app usar só módulos incluídos no Expo Go, ele abre no Expo Go. Quando entrarem
-   módulos nativos próprios (ex.: Spotify App Remote), use um build de desenvolvimento:
+   módulos nativos próprios, use um build de desenvolvimento:
    `pnpm --filter @goclient/automotive exec expo run:android`.
 
 O app encontra a API automaticamente: no emulador usa `10.0.2.2:4000`; num aparelho na mesma

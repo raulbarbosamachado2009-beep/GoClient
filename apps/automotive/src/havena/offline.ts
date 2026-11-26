@@ -16,39 +16,14 @@ const norm = (t: string) =>
 
 export function fixedCommand(text: string, d: HavenaDeps): string | null {
   const t = norm(stripWakePhrase(text)).replace(/^(lucas)\s*/, '');
-  if (/^(passa|pula|proxima|avanca)( a)?( (musica|faixa))?$|^proxima (musica|faixa)$/.test(t)) {
-    d.proto.next();
-    return 'Próxima música.';
-  }
-  if (/^(volta|anterior|musica anterior|volta a musica)$/.test(t)) {
-    d.proto.previous();
-    return 'Voltei a música.';
-  }
-  if (/^(pausa|pausar|para( a musica)?|parar( a musica)?|silencio)$/.test(t)) {
-    if (d.proto.playing) d.proto.togglePlaying();
-    return 'Música pausada.';
-  }
-  if (/^(continua|continuar|despausa|volta a tocar|toca|tocar|play)$/.test(t)) {
-    if (!d.proto.playing) d.proto.togglePlaying();
-    return 'Continuando.';
-  }
   if (/^(mostra |abre |abrir )?(a )?rota do dia$/.test(t)) {
     d.stops.showDay();
     return 'Mostrando a rota do dia.';
   }
-  const open =
-    /^(abre|abrir|vai para|ir para|mostra)( o| a)? (mapa|spotify|musica|kyte|ajustes)$/.exec(t);
+  const open = /^(abre|abrir|vai para|ir para|mostra)( o| a)? (mapa|kyte|ajustes)$/.exec(t);
   if (open) {
     const where = open[3];
-    d.router.replace(
-      where === 'mapa'
-        ? '/mapa'
-        : where === 'kyte'
-          ? '/kyte'
-          : where === 'ajustes'
-            ? '/configuracoes'
-            : '/musica',
-    );
+    d.router.replace(where === 'mapa' ? '/mapa' : where === 'kyte' ? '/kyte' : '/configuracoes');
     return 'Abrindo.';
   }
   return null;

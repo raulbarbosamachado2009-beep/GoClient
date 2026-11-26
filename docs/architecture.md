@@ -25,7 +25,6 @@ flowchart LR
   IDP[Provedor de identidade<br/>JWT/JWKS]
   AI[Provedores de IA<br/>local ou nuvem]
   KYTE[Kyte<br/>planilhas]
-  SPOT[Spotify<br/>App Remote SDK]
 
   A & M --> NAT
   A & M & W & D --> CORE
@@ -36,7 +35,6 @@ flowchart LR
   API -->|valida tokens| IDP
   API -->|Havena| AI
   API -->|importação/exportação| KYTE
-  A & M -->|controle de reprodução no dispositivo| SPOT
 ```
 
 Princípios:
@@ -215,7 +213,6 @@ Resumo (detalhes e fontes em `docs/integrations.md`):
 | Integração | Situação | Abordagem |
 |---|---|---|
 | Kyte | Sem API pública documentada | Importação/exportação por planilha (formatos oficiais do Kyte Web); vínculos em `external_links`; contato comercial para API |
-| Spotify | Modo de desenvolvimento limitado a 5 usuários; cota estendida exige 250 mil MAU | App Remote SDK no dispositivo (controle do app Spotify instalado); risco de produto registrado |
 | WhatsApp | Links `wa.me` | Implementado em `core/whatsapp.ts` |
 | Mapas/rotas | A definir | Otimização de sequência no servidor; provedor de distâncias a escolher (ADR futura) |
 
@@ -226,7 +223,6 @@ Resumo (detalhes e fontes em `docs/integrations.md`):
 | Clientes | `core/entities` (Customer), permissões, WhatsApp | sync de `customers` | fase futura |
 | Produtos | `core/entities` (Product) | sync de `products` | fase futura |
 | Rotas | `core/entities` (Route, Visit) | tabelas prontas; otimizador em fase própria | fase futura |
-| Música | — | — | Automotive/Mobile, via SDK nativo |
 | Havena | `core/havena` | `/v1/havena/tools` | fase futura |
 | Configurações | permissões `settings`/`integration` | fase futura | fase futura |
 

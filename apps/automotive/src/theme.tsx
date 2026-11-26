@@ -45,18 +45,6 @@ export interface Palette {
     route: string;
     routeCasing: string;
   };
-  music: {
-    background: string;
-    card: string;
-    cardBorder: string;
-    ambient: string;
-    accent: string;
-    onAccent: string;
-    miniPlayer: string;
-    tabBar: string;
-    search: string;
-    onSearch: string;
-  };
 }
 
 const dark: Palette = {
@@ -94,18 +82,6 @@ const dark: Palette = {
     label: '#8D929B',
     route: '#0A84FF',
     routeCasing: '#0A4A8F',
-  },
-  music: {
-    background: '#121212',
-    card: '#262626',
-    cardBorder: '#323232',
-    ambient: '#0E4D29',
-    accent: '#1ED760',
-    onAccent: '#000000',
-    miniPlayer: '#1A4D2E',
-    tabBar: '#0B0B0B',
-    search: '#E9E9E9',
-    onSearch: '#121212',
   },
 };
 
@@ -145,18 +121,6 @@ const light: Palette = {
     route: '#007AFF',
     routeCasing: '#0A5BC4',
   },
-  music: {
-    background: '#FFFFFF',
-    card: '#F0F0F0',
-    cardBorder: '#E4E4E4',
-    ambient: '#BFEACF',
-    accent: '#1ED760',
-    onAccent: '#000000',
-    miniPlayer: '#1A4D2E',
-    tabBar: '#FAFAFA',
-    search: '#EDEDED',
-    onSearch: '#121212',
-  },
 };
 
 export const palettes = { dark, light } as const;
@@ -173,24 +137,7 @@ export const FONT = {
   textRegular: 'SFProText-Regular',
   textMedium: 'SFProText-Medium',
   textSemibold: 'SFProText-Semibold',
-  // Música: Figtree (livre, OFL), a mais parecida com a fonte do Spotify, que não é liberada.
-  spRegular: 'Figtree-Regular',
-  spMedium: 'Figtree-Medium',
-  spBold: 'Figtree-Bold',
-  spBlack: 'Figtree-ExtraBold',
 } as const;
-
-/** Troca SF Pro pela fonte da Música, mantendo o peso. */
-export const SPOTIFY_FONT: Record<string, string> = {
-  [FONT.displayLight]: FONT.spRegular,
-  [FONT.displayRegular]: FONT.spRegular,
-  [FONT.displayMedium]: FONT.spMedium,
-  [FONT.displaySemibold]: FONT.spBold,
-  [FONT.displayBold]: FONT.spBlack,
-  [FONT.textRegular]: FONT.spRegular,
-  [FONT.textMedium]: FONT.spMedium,
-  [FONT.textSemibold]: FONT.spBold,
-};
 
 /**
  * Como no iOS: SF Pro Display a partir de 20 pt, SF Pro Text abaixo disso. O peso vem da
@@ -233,7 +180,6 @@ export const layout = {
   gutter: 24,
   /** Alvo mínimo de toque no carro. */
   touch: 76,
-  miniPlayerHeight: 96,
   radius: { sm: 12, md: 18, lg: 24, xl: 32 },
 } as const;
 

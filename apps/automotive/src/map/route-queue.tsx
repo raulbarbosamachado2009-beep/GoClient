@@ -28,7 +28,7 @@ const HANDLE_DATA = { dataSet: { reorderHandle: 'true' } } as object;
 
 /**
  * Lista "Rota" do cartão do cliente: os clientes escolhidos para visitar, na ordem da
- * visita. Arrasta-se pela alça (≡) para mudar a ordem, como a fila do Spotify; as outras
+ * visita. Arrasta-se pela alça (≡) para mudar a ordem, como numa lista do iOS; as outras
  * linhas abrem espaço com mola. Tocar numa linha vai até aquela parada.
  */
 export function RouteQueue({
@@ -256,7 +256,7 @@ function QueueRow({
     }),
   ).current;
   const district = client.district.split(' · ')[0];
-  // Linha levantada: cresce um pouco e ganha sombra, como na fila do Spotify.
+  // Linha levantada: cresce um pouco e ganha sombra, como nas listas do iOS.
   const lifted = lift
     ? {
         transform: [

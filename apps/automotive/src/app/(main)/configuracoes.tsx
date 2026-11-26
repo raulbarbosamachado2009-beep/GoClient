@@ -7,7 +7,6 @@ import { kyteAgent, noteKyteLogged, reloadKyteAgent } from '../../kyte/agent';
 import { clearKyteData } from '../../kyte/store';
 import { usePhone } from '../../layout/form-factor';
 import { usePrototype } from '../../prototype/state';
-import { useSpotify } from '../../spotify/provider';
 import { spacing, type ThemePreference, useColors, useTheme } from '../../theme';
 import { KyteLogo } from '../../ui/brand';
 import { useEdgeFade } from '../../ui/edge-fade';
@@ -34,17 +33,11 @@ export default function SettingsScreen() {
   const [wakeWord, setWakeWord] = useWakeEnabled();
   const [voiceReplies, setVoiceReplies] = useState(true);
   const [offline, setOffline] = useState(true);
-  const sp = useSpotify();
   const { kyteOpen, setKyteOpen } = usePrototype();
   const phone = usePhone();
   // Multimídia: ícones, linhas e recuos maiores (alvos de toque com o carro em movimento).
   const ic = phone ? 68 : 104;
   const inset = phone ? 128 : 184;
-  const spotifyValue = !sp.enabled
-    ? 'Demonstração (sem Client ID)'
-    : sp.active
-      ? sp.active.name
-      : 'Não conectado';
 
   const sections = [
     <Group key="perfil" inset={phone ? 148 : 212}>
@@ -116,22 +109,6 @@ export default function SettingsScreen() {
           title="Navegação com voz"
           value={MAPS_ENABLED ? 'No GoClient, por dentro dos bairros' : 'Demonstração'}
         />
-        <Row
-          leading={<AppIcon icon="musical-notes" color="#1ED760" glyph="#000" size={ic} />}
-          title="Spotify"
-          value={spotifyValue}
-          chevron={sp.enabled}
-          onPress={() =>
-            sp.enabled ? (sp.active ? router.replace('/musica') : sp.openLogin()) : undefined
-          }
-        />
-        {sp.enabled && sp.active && (
-          <Row
-            title={`Desconectar ${sp.active.name} do Spotify`}
-            titleColor={c.danger}
-            onPress={() => sp.active && sp.removeAccount(sp.active.id)}
-          />
-        )}
         <Row
           leading={<KyteLogo size={ic} />}
           title="Kyte"
