@@ -283,3 +283,16 @@ export function initials(name: string): string {
     (words[0]?.[0] ?? '') + (words.length > 1 ? (words[words.length - 1]?.[0] ?? '') : '')
   ).toUpperCase();
 }
+
+/** Últimas mensagens (uma por conversa, da mais recente), para o cartão do WhatsApp no Mapa. */
+export function recentMessages(
+  n: number,
+): { id: string; name: string; text: string; time: string }[] {
+  return CHATS.slice(0, n).flatMap((c) => {
+    const who = CONTACTS.find((k) => k.id === c.contact);
+    const last = c.messages[c.messages.length - 1];
+    if (!who || !last) return [];
+    const text = `${last.from ? `${last.from}: ` : last.out ? 'Você: ' : ''}${last.text}`;
+    return [{ id: c.id, name: who.name, text, time: last.time }];
+  });
+}

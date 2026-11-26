@@ -46,7 +46,7 @@ import {
  * nova conversa, novo contato, ligações e dados da ligação.
  *
  * Visual fiel ao WhatsApp Web atual (pedido do usuário em 26/11/2026): fonte do sistema,
- * cores, proporções, balões com "rabinho" e avatares padrão do WhatsApp, tudo ampliado ~1,35×
+ * cores, proporções, balões com "rabinho" e avatares padrão do WhatsApp, tudo ampliado ~1,7×
  * para a tela do carro. Sem o trilho lateral: o botão ao lado do "+" alterna Conversas ↔
  * Ligações e mostra o ícone do destino (ligação nas conversas, conversa nas ligações).
  */
@@ -118,16 +118,17 @@ function usePalette() {
 type Palette = ReturnType<typeof usePalette>;
 
 /**
- * Medidas do WhatsApp Web ×1,35 (multimídia, 1600×900) e ×1,3 (celular): cabeçalho 64,
+ * Medidas do WhatsApp Web ×1,7 (multimídia, 1600×900) e ×1,4 (celular): cabeçalho 64,
  * título 22, nome 17, texto 14, linha 72 e avatar 49 no original.
  */
 function useSizes() {
   const phone = usePhone();
-  const k = phone ? 1.3 : 1.35;
+  // Multimídia: elementos grandes como no resto do app (pedido do usuário).
+  const k = phone ? 1.4 : 1.7;
   return {
     phone,
     k,
-    list: phone ? 0 : 620,
+    list: phone ? 0 : 680,
     title: Math.round(22 * k),
     name: Math.round(17 * k),
     sub: Math.round(14.5 * k),
@@ -816,9 +817,11 @@ function ChatList({
         onChange={setQ}
         placeholder="Pesquisar ou começar uma nova conversa"
       />
-      <View
-        style={{
-          flexDirection: 'row',
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={{ flexGrow: 0, flexShrink: 0 }}
+        contentContainerStyle={{
           gap: Math.round(8 * S.k),
           paddingHorizontal: S.pad,
           paddingVertical: Math.round(10 * S.k),
@@ -846,7 +849,7 @@ function ChatList({
           on={filter === 'groups'}
           onPress={() => setFilter('groups')}
         />
-      </View>
+      </ScrollView>
       <ScrollView
         contentContainerStyle={{ paddingBottom: 32 }}
         showsVerticalScrollIndicator={false}
@@ -952,7 +955,8 @@ function EmptyCard({
   actions: { icon: IconName; label: string; onPress?: () => void }[];
   footer: string;
 }) {
-  const k = S.k;
+  // O painel vazio usa uma escala um pouco menor para o cartão e os atalhos caberem.
+  const k = Math.min(S.k, 1.45);
   const tile = Math.round(60 * k);
   return (
     <View style={[styles.center, { flex: 1, backgroundColor: P.bar, padding: 48 }]}>
@@ -2183,8 +2187,9 @@ function CallsList({
   return (
     <View style={{ flex: 1 }}>
       <Header P={P} S={S}>
-        <Text size={S.title} weight="bold" color={P.ink} style={{ flex: 1 }}>
-          Ligações
+        {/* O título continua "WhatsApp" também nas Ligações (pedido do usuário). */}
+        <Text size={S.title} weight="bold" color={P.greenInk} style={{ flex: 1 }}>
+          WhatsApp
         </Text>
         <View>
           <IconButton

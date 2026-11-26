@@ -56,7 +56,12 @@ export function OnboardingLayout({
   const mid = phone || scene === null;
   const copy = (
     <View style={[styles.copy, mid ? styles.copyPhone : styles.copyCar]}>
-      <Appear key={`b-${sceneKey}`} distance={12} style={mid ? styles.centerSelf : undefined}>
+      {/* O logo (sem selo nem ícone) fica parado ao trocar de etapa no login. */}
+      <Appear
+        key={hero || badge ? `b-${sceneKey}` : 'logo'}
+        distance={12}
+        style={mid ? styles.centerSelf : undefined}
+      >
         {hero ? (
           hero
         ) : badge ? (

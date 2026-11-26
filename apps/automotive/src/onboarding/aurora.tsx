@@ -5,7 +5,8 @@ import { useColors } from '../theme';
 
 /**
  * Fundo "aurora" da tela de login (pedido do usuário em 26/11/2026): quatro brilhos suaves
- * nos cantos (roxo, amarelo, rosa e azul) sobre um degradê lilás → rosa.
+ * em tons de azul (royal, céu, anil e ciano) sobre um degradê azul-claro, no formato do
+ * componente de referência (o usuário pediu azul e variantes no lugar de roxo/rosa).
  *
  * Feito com react-native-svg, no lugar do componente em Tailwind que veio de referência (o
  * app não usa Tailwind nem shadcn). É estático: desenhado uma vez, sem animação nem desfoque,
@@ -15,15 +16,15 @@ import { useColors } from '../theme';
 
 /** Elipses do CSS original: `radial-gradient(ellipse RX RY at X Y, cor, transparent FIM)`. */
 const GLOWS = [
-  { id: 'aurora-a', x: 0.08, y: 0.08, rx: 0.85, ry: 0.65, color: '#AF6DFF', alpha: 0.42, end: 0.6 },
-  { id: 'aurora-b', x: 0.75, y: 0.35, rx: 0.75, ry: 0.6, color: '#FFEBAA', alpha: 0.55, end: 0.62 },
-  { id: 'aurora-c', x: 0.15, y: 0.8, rx: 0.7, ry: 0.6, color: '#FF64B4', alpha: 0.4, end: 0.62 },
-  { id: 'aurora-d', x: 0.92, y: 0.92, rx: 0.7, ry: 0.6, color: '#78BEFF', alpha: 0.45, end: 0.62 },
+  { id: 'aurora-a', x: 0.08, y: 0.08, rx: 0.85, ry: 0.65, color: '#3B82F6', alpha: 0.4, end: 0.6 },
+  { id: 'aurora-b', x: 0.75, y: 0.35, rx: 0.75, ry: 0.6, color: '#7DD3FC', alpha: 0.5, end: 0.62 },
+  { id: 'aurora-c', x: 0.15, y: 0.8, rx: 0.7, ry: 0.6, color: '#6366F1', alpha: 0.32, end: 0.62 },
+  { id: 'aurora-d', x: 0.92, y: 0.92, rx: 0.7, ry: 0.6, color: '#38BDF8', alpha: 0.45, end: 0.62 },
 ] as const;
 
 export const AuroraBackground = memo(function AuroraBackground() {
   const dark = useColors().mode === 'dark';
-  const base = dark ? ['#120D1A', '#1A0E14'] : ['#F7EAFF', '#FDE2EA'];
+  const base = dark ? ['#0A1222', '#0B1A33'] : ['#EEF5FF', '#DCEBFF'];
   const fade = dark ? 0.45 : 1;
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>

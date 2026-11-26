@@ -47,6 +47,7 @@ import {
   Touchable,
 } from '../../ui/primitives';
 import { WhatsAppLogo } from '../../whatsapp/brand';
+import { recentMessages } from '../../whatsapp/sim/data';
 
 /**
  * Tela inicial (Mapa): o mapa ocupa todo o fundo e os painéis flutuam por cima com
@@ -364,7 +365,7 @@ export default function MapScreen() {
           ou rota (cartão alto) ele encolhe. Os dois mudam de forma juntos. */}
       <View style={styles.side}>
         <MorphColumn
-          top={(expand, artSize) => <WhatsAppCard expand={expand} artSize={artSize} />}
+          top={<WhatsAppCard />}
           compact={!client && welcomeCompact}
           compactHeight={homeH > 0 ? homeH + spacing[6] * 2 : 0}
         >
@@ -700,59 +701,55 @@ function StopButton({ onPress }: { onPress: () => void }) {
 
 /**
  * Cartão do WhatsApp (multimídia), no lugar do antigo mini player de música: quadrado
- * arredondado com o ícone, o nome e o botão de abrir as conversas. Quando o cartão cresce
- * (início do "Para onde vamos?"), o ícone grande aparece em cima; quando encolhe, fica só a
- * linha do título e o botão.
+ * arredondado com as últimas mensagens (logo à esquerda, nome do cliente, a mensagem e o
+ * horário à direita) e o botão de abrir as conversas. Baixo, mostra só a última; quando cresce
+ * (início do "Para onde vamos?"), aparecem as anteriores embaixo dela.
+ *
+ * No Preview as mensagens vêm do WhatsApp simulado (fictícias). No app instalado o WhatsApp
+ * Web não expõe as conversas, então o cartão mostra só o atalho.
  */
-function WhatsAppCard({
-  expand,
-  artSize,
-}: {
-  /** 0 = cartão baixo, 1 = cartão alto (ícone grande em cima). */
-  expand: Animated.AnimatedInterpolation<number>;
-  artSize: number;
-}) {
+const WA_RECENT = Platform.OS === 'web' ? recentMessages(4) : [];
+
+function WhatsAppCard() {
   const c = useColors();
   const router = useRouter();
   const open = () => router.push('/whatsapp');
-  const art = Math.min(artSize, 220);
-  const headIcon = expand.interpolate({ inputRange: [0, 1], outputRange: [80 + spacing[4], 0] });
-  const headIconO = expand.interpolate({ inputRange: [0, 0.5], outputRange: [1, 0] });
-  const artScale = expand.interpolate({ inputRange: [0, 1], outputRange: [0.7, 1] });
+  const rows = WA_RECENT.length
+    ? WA_RECENT
+    : [{ id: 'app', name: 'WhatsApp', text: 'Conversas da equipe', time: '' }];
   return (
     <View style={[styles.wa, { borderColor: c.material.border }]}>
       <Blur radius={44} tint={c.material.tint} />
       <View style={[StyleSheet.absoluteFill, { backgroundColor: c.material.fallback }]} />
-      <Touchable
-        accessibilityRole="button"
-        accessibilityLabel="Abrir o WhatsApp"
-        onPress={open}
-        style={styles.waArt}
-      >
-        {art > 0 && (
-          <Animated.View style={{ opacity: expand, transform: [{ scale: artScale }] }}>
-            <WhatsAppLogo size={art} />
-          </Animated.View>
-        )}
-      </Touchable>
-      <Touchable
-        accessibilityRole="button"
-        accessibilityLabel="Abrir o WhatsApp"
-        onPress={open}
-        style={styles.waHead}
-      >
-        <Animated.View style={{ width: headIcon, opacity: headIconO, overflow: 'hidden' }}>
-          <WhatsAppLogo size={80} />
-        </Animated.View>
-        <View style={{ flex: 1, gap: 2 }}>
-          <Text variant="headline" numberOfLines={1}>
-            WhatsApp
-          </Text>
-          <Text variant="callout" tone="secondary" numberOfLines={1}>
-            Conversas da equipe
-          </Text>
-        </View>
-      </Touchable>
+      <View style={styles.waList}>
+        {rows.map((m, i) => (
+          <Touchable
+            key={m.id}
+            accessibilityRole="button"
+            accessibilityLabel={`Abrir o WhatsApp: ${m.name}`}
+            onPress={open}
+            style={[
+              styles.waRow,
+              i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.separator },
+            ]}
+          >
+            <WhatsAppLogo size={72} />
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text variant="headline" numberOfLines={1}>
+                {m.name}
+              </Text>
+              <Text variant="callout" tone="secondary" numberOfLines={1}>
+                {m.text}
+              </Text>
+            </View>
+            {!!m.time && (
+              <Text variant="caption" tone="secondary" style={styles.waTime}>
+                {m.time}
+              </Text>
+            )}
+          </Touchable>
+        ))}
+      </View>
       <Touchable
         accessibilityRole="button"
         onPress={open}
@@ -785,7 +782,7 @@ function MorphColumn({
 }: {
   compact: boolean;
   compactHeight: number;
-  top: (expand: Animated.AnimatedInterpolation<number>, artSize: number) => ReactNode;
+  top: ReactNode;
   children: ReactNode;
 }) {
   const c = useColors();
@@ -795,12 +792,6 @@ function MorphColumn({
   const big = Math.max(total - WA_H - gap, 0);
   const small = compactHeight > 0 ? Math.min(compactHeight, big) : big;
   const target = compact ? small : big;
-  // Ícone grande: cabe no espaço que sobra em cima quando o WhatsApp cresce.
-  const grown = total - gap - small;
-  const artSize = Math.max(
-    Math.min(SIDE_W - spacing[6] * 2, grown - WA_H - spacing[3]) - spacing[2],
-    0,
-  );
   const h = useRef(new Animated.Value(0)).current;
   const m = useRef(new Animated.Value(0)).current;
   const first = useRef(true);
@@ -823,11 +814,6 @@ function MorphColumn({
     ]).start();
   }, [target, total, h, m]);
   const topH = Animated.add(total - gap, Animated.multiply(h, -1));
-  const expand = h.interpolate({
-    inputRange: [Math.min(small, big - 1), big],
-    outputRange: [1, 0],
-    extrapolate: 'clamp',
-  });
   const blurO = m.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 1, 0] });
   const webBlur =
     Platform.OS === 'web'
@@ -849,9 +835,7 @@ function MorphColumn({
         <>
           <Appear delay={160} distance={40} fade={false}>
             <Animated.View style={[styles.waShell, { height: topH }]}>
-              <Animated.View style={[{ flex: 1 }, webBlur as object]}>
-                {top(expand, artSize)}
-              </Animated.View>
+              <Animated.View style={[{ flex: 1 }, webBlur as object]}>{top}</Animated.View>
               {pulse}
             </Animated.View>
           </Appear>
@@ -1232,7 +1216,7 @@ const LEFT = layout.sidebarWidth + layout.gutter;
 /** Coluna de cartões à direita do mapa. */
 const SIDE_W = 480;
 /** Cartão do WhatsApp no tamanho de painel (quando o cartão de baixo cresce). */
-const WA_H = 232;
+const WA_H = 248;
 const WA_R = 48;
 const WA_INNER = concentric(WA_R, spacing[6]);
 const MAP_R = 48;
@@ -1318,9 +1302,15 @@ const styles = StyleSheet.create({
     paddingVertical: spacing[6],
     gap: spacing[4],
   },
-  // Ícone grande: ocupa o espaço que sobra em cima quando o cartão cresce.
-  waArt: { flex: 1, minHeight: 0, alignItems: 'center', justifyContent: 'center' },
-  waHead: { height: 80, flexDirection: 'row', alignItems: 'center' },
+  // As mensagens ficam de cima para baixo; o cartão recorta as que não cabem.
+  waList: { flex: 1, minHeight: 0, overflow: 'hidden' },
+  waRow: {
+    height: 96,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[4],
+  },
+  waTime: { alignSelf: 'flex-start', marginTop: 14 },
   waButton: {
     height: 88,
     borderRadius: WA_INNER,

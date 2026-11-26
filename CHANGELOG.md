@@ -5,17 +5,36 @@ Leia este arquivo antes de começar qualquer trabalho.
 
 ## Estado atual do app
 
-_Última atualização: 2026-11-26 10:45 — WhatsApp simulado fiel ao WhatsApp Web, modo claro padrão, cartão do WhatsApp no Mapa, permissões e login novos (PR aguardando revisão)._
+_Última atualização: 2026-11-26 11:00 — WhatsApp maior, login em uma página só com fundo azul, cartões visíveis no modo claro e últimas mensagens no cartão do WhatsApp (PR #12 aguardando revisão)._
 
 - **Automotive (`apps/automotive`)** é onde está quase todo o produto: Mapa (OSM + OpenRouteService,
   navegação com voz), Kyte (telas próprias sobre a janela do Kyte) e o assistente de voz Lucas.
   Não há mais Música/Spotify; no lugar entrou a aba **WhatsApp** (WhatsApp Web dentro do
   app, número da equipe). O Lucas avisa o próximo cliente da rota pelo WhatsApp. Roda no carro (paisagem) e no celular (em pé, com aba puxável estilo Apple Maps).
-- **Modo claro é o padrão** (o escuro continua em Ajustes → Tema). Login com fundo "aurora".
+- **Modo claro é o padrão** (o escuro continua em Ajustes → Tema). Login com fundo "aurora" em azuis.
 - **Mobile e Web** ainda são telas de diagnóstico; **API** (`apps/api`) com Hono + Drizzle.
 - Regras de negócio em `packages/core` (com testes); visual só com `@goclient/design-tokens`.
 
 ## Mudanças
+
+### 2026-11-26 11:00 — WhatsApp maior, login numa página só, cartões visíveis e fundo azul
+
+Segunda rodada de ajustes do usuário:
+
+- **WhatsApp com elementos grandes** como o resto da multimídia: escala do WhatsApp Web ×1,7
+  (antes ×1,35) e lista de 680 px; os filtros rolam para o lado se não couberem.
+- **O título continua "WhatsApp"** na página de Ligações (antes trocava para "Ligações").
+- **Login numa página só:** ao escolher e-mail ou celular (QR), o fundo e o logo ficam; só o
+  texto e os botões saem e os campos (ou o QR) aparecem no lugar, sem transição de página.
+- **Cartões visíveis no modo claro:** o material dos cartões passou de cinza (igual ao fundo)
+  para branco com borda fina (`theme.tsx`, `material.fallback` e `material.border`).
+- **Cartão do WhatsApp no Mapa** mostra a última mensagem: logo à esquerda, nome do cliente,
+  a mensagem e o horário à direita. Quando o cartão cresce, aparecem as anteriores. No app
+  instalado (WhatsApp Web real, sem acesso às conversas) ele mostra só o atalho.
+- **Fundo do login em azuis** (royal, céu, anil e ciano sobre azul-claro).
+- Arquivos: `whatsapp/sim/simulated.tsx`, `whatsapp/sim/data.ts` (`recentMessages`),
+  `app/(main)/mapa.tsx`, `app/onboarding/login.tsx`, `onboarding/layout.tsx`,
+  `onboarding/aurora.tsx`, `theme.tsx`.
 
 ### 2026-11-26 10:45 — WhatsApp simulado fiel ao WhatsApp Web, modo claro e Mapa com cartão do WhatsApp
 

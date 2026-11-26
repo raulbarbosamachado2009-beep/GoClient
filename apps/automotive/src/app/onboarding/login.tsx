@@ -6,7 +6,7 @@ import { usePhone } from '../../layout/form-factor';
 import { AuroraBackground } from '../../onboarding/aurora';
 import { OnboardingLayout, PillButton } from '../../onboarding/layout';
 import { concentric, spacing, type, useColors } from '../../theme';
-import { Appear, Swap, usePageTransition } from '../../ui/motion';
+import { Appear, usePageTransition } from '../../ui/motion';
 import { Icon, type IconName, Text, Touchable } from '../../ui/primitives';
 
 /**
@@ -23,16 +23,15 @@ export default function Login() {
   const [stage, setStage] = useState<Stage>('start');
   const router = useRouter();
   const page = usePageTransition();
-  // Trocar de etapa tem a mesma transição da aba "Rotas" do celular (sai e entra deslizando).
+  // Trocar de etapa não troca de página: o fundo e o logo ficam; só o texto e os botões saem
+  // e os campos (ou o QR) aparecem no mesmo lugar.
   return (
     <Animated.View style={[{ flex: 1 }, page.style]}>
-      <Swap id={stage} dir={stage === 'start' ? -1 : 1} style={{ flex: 1 }}>
-        <LoginStage
-          stage={stage}
-          setStage={setStage}
-          enter={() => page.leave(() => router.replace('/mapa'))}
-        />
-      </Swap>
+      <LoginStage
+        stage={stage}
+        setStage={setStage}
+        enter={() => page.leave(() => router.replace('/mapa'))}
+      />
     </Animated.View>
   );
 }
@@ -59,8 +58,8 @@ function LoginStage({
         title="Entre com seu e-mail"
         text="Use a mesma conta do GoClient no celular e no carro."
         actions={
-          <>
-            <Appear delay={140} distance={14} style={styles.fields}>
+          <Appear key="email" delay={140} distance={14} style={{ gap: spacing[3] }}>
+            <View style={styles.fields}>
               <Field
                 label="E-mail"
                 icon="mail-outline"
@@ -68,14 +67,14 @@ function LoginStage({
                 keyboard="email-address"
               />
               <Field label="Senha" icon="lock-closed-outline" placeholder="Sua senha" secure />
-            </Appear>
+            </View>
             <View style={{ height: spacing[3] }} />
             <PillButton label="Entrar" onPress={enter} />
             <View style={styles.links}>
               <LinkButton label="Voltar" onPress={() => setStage('start')} />
               <LinkButton label="Esqueci minha senha" onPress={() => {}} />
             </View>
-          </>
+          </Appear>
         }
       />
     );
@@ -86,22 +85,22 @@ function LoginStage({
       <OnboardingLayout
         sceneKey="qr"
         backdrop={<AuroraBackground />}
-        scene={
-          <View style={styles.qrScene}>
-            <View style={styles.qr}>
-              <MockQr size={300} />
-            </View>
-          </View>
-        }
+        scene={null}
+        centered
         title="Entre com o celular"
         text="Aponte a câmera do celular para o código, ou abra o GoClient no celular e digite o código abaixo."
         actions={
-          <>
+          <Appear key="qr" delay={140} distance={14} style={styles.qrBlock}>
+            <View style={styles.qr}>
+              <MockQr size={240} />
+            </View>
             <Text variant="largeTitle" style={{ letterSpacing: 8 }}>
               GK7 · 42Q
             </Text>
-            <PillButton label="Voltar" variant="secondary" onPress={() => setStage('start')} />
-          </>
+            <View style={{ alignSelf: 'stretch' }}>
+              <PillButton label="Voltar" variant="secondary" onPress={() => setStage('start')} />
+            </View>
+          </Appear>
         }
       />
     );
@@ -111,11 +110,12 @@ function LoginStage({
     <OnboardingLayout
       sceneKey="start"
       scene={null}
+      centered
       backdrop={<AuroraBackground />}
       title="Venda mais em cada visita"
       text="Entre para ver seus clientes, produtos e rotas no carro e no celular."
       actions={
-        <>
+        <Appear key="start" distance={14} style={{ gap: spacing[3] }}>
           <PillButton
             label="Continuar com e-mail"
             icon={<Icon name="mail" size={34} color={c.background} />}
@@ -130,7 +130,7 @@ function LoginStage({
               onPress={() => setStage('qr')}
             />
           )}
-        </>
+        </Appear>
       }
       footer={
         <View style={styles.legal}>
@@ -292,6 +292,6 @@ const styles = StyleSheet.create({
   link: { height: 72, justifyContent: 'center', paddingHorizontal: spacing[2] },
   legalText: { fontSize: 24, lineHeight: 30 },
   legal: { flexDirection: 'row', justifyContent: 'center', gap: spacing[8] },
-  qrScene: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  qrBlock: { alignItems: 'center', gap: spacing[5] },
   qr: { padding: 24, borderRadius: concentric(56, 24), backgroundColor: '#FFFFFF' },
 });
