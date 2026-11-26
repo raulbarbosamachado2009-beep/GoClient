@@ -5,7 +5,7 @@ Leia este arquivo antes de começar qualquer trabalho.
 
 ## Estado atual do app
 
-_Última atualização: 2026-11-26 14:15 — Sexta rodada: abertura só com a nuvem, login que muda de forma, nuvem animada no lugar do logo, Lucas com expressões (compreendendo, rindo, triste), conversa do WhatsApp em tela cheia no celular (PR #12 aguardando revisão)._
+_Última atualização: 2026-11-26 14:08 — Sexta rodada: abertura só com a nuvem, login que muda de forma, nuvem animada no lugar do logo, Lucas com expressões (compreendendo, rindo, triste), conversa do WhatsApp em tela cheia no celular (PR #12 aguardando revisão)._
 
 - **Automotive (`apps/automotive`)** é onde está quase todo o produto: Mapa (OSM + OpenRouteService,
   navegação com voz), Kyte (telas próprias sobre a janela do Kyte) e o assistente de voz Lucas.
@@ -17,7 +17,7 @@ _Última atualização: 2026-11-26 14:15 — Sexta rodada: abertura só com a nu
 
 ## Mudanças
 
-### 2026-11-26 14:15 — Nuvem no lugar do logo, login que muda de forma e Lucas com expressões
+### 2026-11-26 14:08 — Nuvem no lugar do logo, login que muda de forma e Lucas com expressões
 
 Sexta rodada (quase toda no celular; o login e o logo valem também para a multimídia):
 
