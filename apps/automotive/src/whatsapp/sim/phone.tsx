@@ -19,7 +19,8 @@ import {
   type TextStyle,
   View,
 } from 'react-native';
-import { PHONE_SCROLL_END, useSystemInsets, useTabBarSpace } from '../../layout/form-factor';
+import { PHONE_SCROLL_END, useSystemInsets } from '../../layout/form-factor';
+import { usePrototype } from '../../prototype/state';
 import { FONT, useColors } from '../../theme';
 import { Appear } from '../../ui/motion';
 import { Touchable } from '../../ui/primitives';
@@ -239,6 +240,14 @@ export function PhoneWhatsApp() {
   const [chats, setChats] = useState<SimChat[]>(CHATS);
   const [blocked, setBlocked] = useState<Set<string>>(new Set());
   const top = stack[stack.length - 1] as Screen;
+  // Dentro de uma conversa (e das telas que saem dela) a barra de abas do app some e a
+  // conversa ocupa a tela inteira (pedido de 26/11/2026). Volta ao sair do WhatsApp.
+  const { setImmersive } = usePrototype();
+  const deep = top.kind !== 'root';
+  useEffect(() => {
+    setImmersive(deep);
+  }, [deep, setImmersive]);
+  useEffect(() => () => setImmersive(false), [setImmersive]);
 
   const contactOf = (id: string) => contacts.find((c) => c.id === id);
   const push = (s: Screen) => {
@@ -455,14 +464,14 @@ function ChatsScreen({
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
     >
-      <View style={[styles.bar, { paddingHorizontal: u(16) }]}>
+      {/* Título no topo, com Ligações e "+" juntos à direita (pedido de 26/11/2026). */}
+      <View style={styles.head}>
+        <Text pt={34} weight="bold" color={P.ink} lines={1} style={{ flex: 1 }}>
+          Conversas
+        </Text>
         <Round P={P} icon="call-outline" label="Ir para Ligações" onPress={onToggle} />
-        <View style={{ flex: 1 }} />
         <Round P={P} icon="add" label="Nova conversa" filled onPress={onNew} />
       </View>
-      <Text pt={34} weight="bold" color={P.ink} style={styles.large}>
-        Conversas
-      </Text>
       <Search P={P} value={q} onChange={setQ} placeholder="Pesquisar" />
       <ScrollView
         horizontal
@@ -634,7 +643,8 @@ function ChatScreen({
   onSend: (text: string) => void;
 }) {
   const insets = useSystemInsets();
-  const tabSpace = useTabBarSpace();
+  // Sem a barra de abas, o campo encosta no rodapé e só se afasta da área de gestos.
+  const composerBottom = Math.max(insets.bottom, u(26)) + u(8);
   const [text, setText] = useState('');
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
   const count = chat.messages.length;
@@ -656,7 +666,7 @@ function ChatScreen({
         style={{ flex: 1 }}
         contentContainerStyle={{
           paddingTop: headH + u(8),
-          paddingBottom: tabSpace + u(76),
+          paddingBottom: composerBottom + u(76),
           paddingHorizontal: u(12),
           gap: u(4),
         }}
@@ -719,12 +729,13 @@ function ChatScreen({
         <Round P={P} icon="call-outline" label="Ligação de voz" onPress={onCall} wide />
       </View>
 
-      {/* Campo de mensagem, logo acima da barra de abas do app. */}
+      {/* Campo de mensagem no rodapé (a barra de abas do app some dentro da conversa). */}
       <View
         style={[
           styles.composer,
           {
-            bottom: tabSpace,
+            bottom: 0,
+            paddingBottom: composerBottom,
             backgroundColor: P.dark ? 'rgba(11,11,11,0.94)' : 'rgba(246,246,246,0.96)',
           },
         ]}
@@ -1232,7 +1243,10 @@ function CallsScreen({
       contentContainerStyle={{ paddingTop: insets.top + u(8), paddingBottom: PHONE_SCROLL_END }}
       showsVerticalScrollIndicator={false}
     >
-      <View style={[styles.bar, { paddingHorizontal: u(16) }]}>
+      <View style={styles.head}>
+        <Text pt={34} weight="bold" color={P.ink} lines={1} style={{ flex: 1 }}>
+          Ligações
+        </Text>
         <Round
           P={P}
           icon="chatbubble-ellipses-outline"
@@ -1240,12 +1254,8 @@ function CallsScreen({
           onPress={onToggle}
           badge={unread}
         />
-        <View style={{ flex: 1 }} />
         <Round P={P} icon="add" label="Nova ligação" filled onPress={onNew} />
       </View>
-      <Text pt={34} weight="bold" color={P.ink} style={styles.large}>
-        Ligações
-      </Text>
 
       {favorites.length > 0 && (
         <ScrollView
@@ -1349,7 +1359,14 @@ const styles = StyleSheet.create({
   } as object,
   center: { alignItems: 'center', justifyContent: 'center' },
   bar: { flexDirection: 'row', alignItems: 'center', gap: u(12), height: u(52) },
-  large: { paddingHorizontal: u(16), marginTop: u(14), marginBottom: u(10) },
+  head: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: u(12),
+    paddingHorizontal: u(16),
+    paddingTop: u(2),
+    paddingBottom: u(10),
+  },
   row: { flexDirection: 'row', alignItems: 'center' },
   between: { flexDirection: 'row', alignItems: 'center', gap: u(8) },
   count: {

@@ -46,22 +46,37 @@ export function TabBar() {
   const c = useColors();
   const pathname = usePathname();
   const router = useRouter();
-  const { setOverlay } = usePrototype();
+  const { setOverlay, immersive } = usePrototype();
+  // Dentro de uma conversa do WhatsApp a barra desce e some (a conversa fica em tela cheia).
+  const hide = useRef(new Animated.Value(immersive ? 1 : 0)).current;
+  useEffect(() => {
+    Animated.spring(hide, {
+      toValue: immersive ? 1 : 0,
+      damping: 24,
+      stiffness: 280,
+      useNativeDriver: false,
+    }).start();
+  }, [immersive, hide]);
   const lift = useTabBarLift();
   const dark = c.mode === 'dark';
   const ink = dark ? '#F2F2F7' : '#1C1C1E';
   const muted = dark ? '#9A9AA0' : '#6C6C70';
 
   const is = (p: string) => pathname.startsWith(p);
-  const active = MAP_ROUTES.some(is)
-    ? 0
+  // O índice vem da posição em TABS (o Lucas no meio não é uma tela e nunca fica ativo).
+  const activeKey = MAP_ROUTES.some(is)
+    ? 'mapa'
     : is('/kyte')
-      ? 1
+      ? 'kyte'
       : is('/whatsapp')
-        ? 2
+        ? 'whatsapp'
         : is('/configuracoes')
-          ? 4
-          : 0;
+          ? 'ajustes'
+          : 'mapa';
+  const active = Math.max(
+    0,
+    TABS.findIndex((t) => t.key === activeKey),
+  );
 
   // Largura de cada item (medida) e posição da bolha.
   const [width, setWidth] = useState(0);
@@ -183,7 +198,19 @@ export function TabBar() {
   };
 
   return (
-    <View pointerEvents="box-none" style={[styles.wrap, { bottom: BOTTOM + lift }]}>
+    <Animated.View
+      pointerEvents={immersive ? 'none' : 'box-none'}
+      style={[
+        styles.wrap,
+        {
+          bottom: BOTTOM + lift,
+          opacity: hide.interpolate({ inputRange: [0, 0.7, 1], outputRange: [1, 0.4, 0] }),
+          transform: [
+            { translateY: hide.interpolate({ inputRange: [0, 1], outputRange: [0, BAR_H + 60] }) },
+          ],
+        },
+      ]}
+    >
       <View
         ref={bar}
         collapsable={false}
@@ -239,7 +266,7 @@ export function TabBar() {
           </Touchable>
         ))}
       </View>
-    </View>
+    </Animated.View>
   );
 }
 

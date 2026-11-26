@@ -3,12 +3,19 @@ import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Platform, StyleSheet } from 'react-native';
 import { FONT, nativeDriver, useColors } from '../theme';
 
-/** Falas de exemplo (quando nenhuma fala real é passada, ex.: no Preview). */
-const PHRASES = [
-  'Só um segundo!',
-  'Posso falar para o Adão do Selma que chegamos em 6 minutos?',
-  'Enviado!',
+/**
+ * Falas de exemplo (quando nenhuma fala real é passada, ex.: no Preview), com o humor de
+ * cada uma: a demonstração mostra também o Lucas rindo de uma piada e pedindo desculpas.
+ */
+const DEMO: { text: string; mood?: DemoMood }[] = [
+  { text: 'Só um segundo!' },
+  { text: 'Posso falar para o Adão do Selma que chegamos em 6 minutos?' },
+  { text: 'Enviado!' },
+  { text: 'Kkkk, essa foi boa! Vou contar no próximo cliente.', mood: 'joke' },
+  { text: 'Desculpa, não consegui abrir a rota agora. Vou tentar de novo.', mood: 'sad' },
 ];
+const PHRASES = DEMO.map((d) => d.text);
+export type DemoMood = 'joke' | 'sad';
 
 const WORD_MS = 230; // intervalo entre palavras
 const PAUSE_MS = 260; // pausa extra depois de vírgula ou ponto
@@ -32,7 +39,7 @@ export function HavenaCaption({
   text?: string;
   /** Fala da pessoa: as palavras aparecem assim que o reconhecimento as ouve. */
   instant?: boolean;
-  onSpeaking?: (speaking: boolean) => void;
+  onSpeaking?: (speaking: boolean, mood?: DemoMood) => void;
 }) {
   if (text !== undefined)
     return <LiveCaption width={width} text={text} instant={instant} onSpeaking={onSpeaking} />;
@@ -113,7 +120,7 @@ function DemoCaption({
   onSpeaking,
 }: {
   width: number;
-  onSpeaking?: (speaking: boolean) => void;
+  onSpeaking?: (speaking: boolean, mood?: DemoMood) => void;
 }) {
   const c = useColors();
   const [phrase, setPhrase] = useState(0);
@@ -130,12 +137,13 @@ function DemoCaption({
     let t = GAP_MS;
     fade.setValue(1);
     setCount(0);
-    timers.push(setTimeout(() => speaking.current?.(true), t));
+    const mood = DEMO[phrase]?.mood;
+    timers.push(setTimeout(() => speaking.current?.(true, mood), t));
     list.forEach((w, i) => {
       timers.push(setTimeout(() => setCount(i + 1), t));
       t += WORD_MS + (/[,.?!]$/.test(w) ? PAUSE_MS : 0);
     });
-    timers.push(setTimeout(() => speaking.current?.(false), t));
+    timers.push(setTimeout(() => speaking.current?.(false, mood), t));
     t += HOLD_MS;
     timers.push(
       setTimeout(() => {
@@ -179,6 +187,9 @@ function Word({
   fast?: boolean;
 }) {
   const v = useRef(new Animated.Value(0)).current;
+  // Sombra bem leve atrás das letras, para ler sobre o mapa (o desfoque atrás é pequeno):
+  // no tema claro um halo claro, no escuro uma sombra escura.
+  const dark = useColors().mode === 'dark';
   const [blur, setBlur] = useState(Platform.OS === 'web' && !fast ? 6 : 0);
 
   useEffect(() => {
@@ -206,7 +217,12 @@ function Word({
     <Animated.Text
       style={[
         styles.word,
-        { color },
+        {
+          color,
+          textShadowColor: dark ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.75)',
+          textShadowOffset: { width: 0, height: 1 },
+          textShadowRadius: 10,
+        },
         Platform.OS === 'web' && blur > 0.05
           ? ({ filter: `blur(${blur.toFixed(2)}px)` } as object)
           : null,

@@ -2,22 +2,20 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Image, type ImageSourcePropType, Text as RNText, View } from 'react-native';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
+import { LucasCloud } from '../havena/cloud';
 import { FONT } from '../theme';
 
-/** Marca do GoClient: a nuvem azul sobre azul-claro (mesma arte do ícone do app, 26/11/2026). */
+/**
+ * Marca do GoClient: a nuvem do Lucas **animada** (pedido do usuário em 26/11/2026: em todo
+ * o app, onde aparecia o logo, aparece a nuvem viva, sem o quadrado do ícone). Em repouso
+ * ela flutua, pisca e olha para os lados, sem falar. O ícone do app (fora do app) continua
+ * sendo `assets/logo.png`.
+ */
 export function LogoMark({ size = 96 }: { size?: number }) {
   return (
-    <Image
-      source={require('../../assets/logo.png')}
-      accessibilityLabel="GoClient"
-      style={{
-        width: size,
-        height: size,
-        borderRadius: size * 0.23,
-        borderWidth: 1,
-        borderColor: 'rgba(0,0,0,0.06)',
-      }}
-    />
+    <View accessible accessibilityLabel="GoClient">
+      <LucasCloud size={size} ambient />
+    </View>
   );
 }
 

@@ -5,7 +5,7 @@ Leia este arquivo antes de começar qualquer trabalho.
 
 ## Estado atual do app
 
-_Última atualização: 2026-11-26 12:46 — WhatsApp do celular no desenho do iPhone (tela cheia) com ligação em tela cheia; Lucas no meio da barra de abas, nuvem fluida e desfoque mais embaixo (PR #12 aguardando revisão)._
+_Última atualização: 2026-11-26 14:15 — Sexta rodada: abertura só com a nuvem, login que muda de forma, nuvem animada no lugar do logo, Lucas com expressões (compreendendo, rindo, triste), conversa do WhatsApp em tela cheia no celular (PR #12 aguardando revisão)._
 
 - **Automotive (`apps/automotive`)** é onde está quase todo o produto: Mapa (OSM + OpenRouteService,
   navegação com voz), Kyte (telas próprias sobre a janela do Kyte) e o assistente de voz Lucas.
@@ -16,6 +16,40 @@ _Última atualização: 2026-11-26 12:46 — WhatsApp do celular no desenho do i
 - Regras de negócio em `packages/core` (com testes); visual só com `@goclient/design-tokens`.
 
 ## Mudanças
+
+### 2026-11-26 14:15 — Nuvem no lugar do logo, login que muda de forma e Lucas com expressões
+
+Sexta rodada (quase toda no celular; o login e o logo valem também para a multimídia):
+
+- **WhatsApp do celular:** o botão de Ligações foi para o lado do "+" verde, na mesma linha
+  do título, e "Conversas" (e "Ligações") ficou no topo da tela.
+- **Dentro de uma conversa a barra de abas some** (desce e esmaece) e a conversa ocupa a
+  tela inteira; o campo de mensagem vai até o rodapé. Ao voltar para a lista, a barra volta.
+- **Barra de abas destacava a aba errada** no WhatsApp (marcava o Lucas). O destaque agora
+  segue a posição real de cada aba.
+- **Mapa:** com a aba puxável minimizada, tocar na busca só abre a aba até a metade; com a
+  aba aberta, o toque abre a busca.
+- **Logo → nuvem animada em todo o app** (`LogoMark` agora é a nuvem do Lucas em repouso:
+  flutua, pisca e olha para os lados, sem o quadrado do ícone). A barra de abas não mudou.
+- **Abertura só com a nuvem**, sem o nome "GoClient": ela se forma bolha por bolha, dá um
+  pulinho, abre os olhos, olha para os lados, pisca e some (`havena/cloud-intro.tsx`).
+- **Login numa tela só que muda de forma:** ao tocar em "Continuar com e-mail", a nuvem
+  diminui e sobe, o título troca, o botão preto vira o campo de e-mail e o campo de senha,
+  o Entrar e os links entram abrindo espaço. "Voltar" faz o caminho inverso.
+- **Transições onboarding → permissões → login mais rápidas e limpas:** sem desfoque nem
+  zoom; a página sai deslizando de leve (0,19 s) e a nova entra (0,34 s). A animação da
+  pilha de telas foi desligada para não somar outra por cima.
+- **Página "Rotas" do onboarding redesenhada:** no lugar do mapa desenhado, um cartão "Rota
+  de hoje" no mesmo estilo dos cartões de clientes, com as paradas ligadas por uma linha que
+  um marcador percorre (cada parada alcançada vira ✓) e o resumo da viagem embaixo.
+- **Lucas com expressões:** ouvindo, ele "compreende" (acena em pares e aperta os olhos de
+  leve); falando, a boca abre e fecha mais suave e a cabeça muda de ângulo ao longo da
+  frase; com uma piada, ri (olhos fechados de alegria, boca aberta e pulinhos); quando uma
+  ação dá erro, fica triste e pede desculpas ("Desculpa, …"). A detecção de piada e o
+  pedido de desculpas estão em `havena/mood.ts` (com testes). No Preview a demonstração
+  passa também pela piada e pelo pedido de desculpas.
+- **Legenda do Lucas** com uma sombra bem leve atrás das letras (halo claro no tema claro,
+  sombra escura no escuro), para ler melhor sobre o mapa.
 
 ### 2026-11-26 12:46 — Celular: WhatsApp no desenho do iPhone, Lucas no meio da barra e mais fluido
 

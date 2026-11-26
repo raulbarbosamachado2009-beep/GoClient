@@ -52,7 +52,9 @@ function Routes() {
     <Stack
       screenOptions={{
         headerShown: false,
-        animation: 'fade',
+        // A transição entre páginas é a do próprio app (ui/motion.tsx: usePageTransition);
+        // a da pilha somaria outra por cima (ficava lenta).
+        animation: 'none',
         // Sem gesto de deslizar para voltar: evita toques acidentais no carro.
         gestureEnabled: false,
         contentStyle: { backgroundColor: c.background, paddingTop: top },

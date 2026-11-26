@@ -12,6 +12,7 @@ import { useStops } from '../map/stops';
 import { usePrototype } from '../prototype/state';
 import { ask, BRAIN_ENABLED, type Message } from './brain';
 import { useContinuousListener } from './listener';
+import { isJoke, laughLine, type Mood, sorry } from './mood';
 import { planNotify } from './notify';
 import { fixedCommand, yesNo } from './offline';
 import { type Done, type HavenaDeps, runTool, TOOL_SPECS } from './tools';
@@ -43,6 +44,8 @@ Destinos ("me leva até X", "vamos para X", "rota para X"):
 
 Avisos de chegada ("avisa o próximo cliente que estamos indo", "avisa o Adão do Jardim Selma que chego em 10 minutos"): use avisar_chegada (sem nome = próximo da rota). Não escreva a mensagem você mesmo: o app escreve e pergunta antes.
 
+Se a pessoa contar uma piada, ria ("kkkk") e responda com bom humor em uma frase. Se uma ferramenta der erro, comece pedindo desculpas ("Desculpa, …") e diga o que deu errado em poucas palavras.
+
 Para pôr um cliente na rota ou mandar WhatsApp, use o endereço/telefone que cliente_buscar devolver; nunca invente endereço nem telefone. Se vierem vários, pergunte qual. Se o cliente não tiver endereço, diga que é preciso cadastrar o endereço no Kyte.`;
 
 type Pending = { summary: string; run: () => Promise<Done> };
@@ -65,6 +68,8 @@ export function useHavenaSession(open: boolean, wakeStart?: WakeStart) {
   deps.current = { proto, stops, router };
 
   const [phase, setPhase] = useState<Phase>('idle');
+  // Humor da resposta atual (rindo de uma piada ou triste com um erro).
+  const [mood, setMood] = useState<Mood>(null);
   const [caption, setCaption] = useState('');
   const [heard, setHeard] = useState('');
   const pending = useRef<Pending | null>(null);
@@ -88,6 +93,7 @@ export function useHavenaSession(open: boolean, wakeStart?: WakeStart) {
     onProblem: (p) => {
       if (!alive.current) return;
       setPhase('idle');
+      setMood('sad');
       setCaption(
         p === 'permission'
           ? 'Preciso do microfone para ouvir você. Libere em Ajustes do aparelho.'
@@ -106,15 +112,17 @@ export function useHavenaSession(open: boolean, wakeStart?: WakeStart) {
       return;
     }
     setHeard('');
+    setMood(null);
     setPhase('listening');
     mic.start();
   }, [mic]);
 
   const speak = useCallback(
-    (text: string, then?: () => void) => {
+    (text: string, then?: () => void, feeling: Mood = null) => {
       // Enquanto fala, o microfone fica desligado para não ouvir a própria voz.
       busy.current = true;
       mic.pause();
+      setMood(feeling);
       setPhase('speaking');
       // O texto aparece quando a voz começa (ou em 500 ms, se o aparelho não avisar), para
       // as palavras e a fala andarem juntas.
@@ -200,7 +208,7 @@ export function useHavenaSession(open: boolean, wakeStart?: WakeStart) {
           const done = await p.run();
           return typeof done === 'string' ? speak(done) : speak(done.say, done.after);
         } catch (e) {
-          return speak(e instanceof Error ? e.message : 'Não consegui fazer isso agora.');
+          return speak(sorry(e instanceof Error ? e.message : ''), undefined, 'sad');
         }
       }
       // Hora e data: na hora, sem internet.
@@ -211,17 +219,24 @@ export function useHavenaSession(open: boolean, wakeStart?: WakeStart) {
       const notify = parseNotifyRequest(text);
       if (notify) {
         const wait = sayAndWait('Só um segundo!');
-        const plan = await planNotify(notify, deps.current).catch(
-          () => ({ result: 'Não consegui preparar o aviso agora.' }) as const,
-        );
+        let failed = false;
+        const plan = await planNotify(notify, deps.current).catch(() => {
+          failed = true;
+          return { result: 'Não consegui preparar o aviso agora.' } as const;
+        });
         await wait;
         if (!alive.current) return;
         if ('confirm' in plan) return confirmFlow(plan.confirm);
-        return speak(String(plan.result));
+        return failed
+          ? speak(sorry(String(plan.result)), undefined, 'sad')
+          : speak(String(plan.result));
       }
       // Comandos fixos (instantâneos e sem internet).
       const quick = fixedCommand(text, deps.current);
       if (quick) return speak(quick);
+      // Piada: ele ri junto (com a nuvem, responde à piada; sem ela, só ri).
+      const joke = isJoke(text);
+      if (joke && !BRAIN_ENABLED) return speak(laughLine(), undefined, 'joke');
       if (!BRAIN_ENABLED)
         return speak(
           'Sem a inteligência na nuvem, eu só entendo comandos simples, como abrir o mapa, mostrar a rota do dia ou dizer as horas.',
@@ -238,19 +253,23 @@ export function useHavenaSession(open: boolean, wakeStart?: WakeStart) {
             : text,
         },
       ];
+      let toolFailed = false;
       try {
         for (let round = 0; round < 4; round++) {
           const r = await ask(msgs, TOOL_SPECS);
           if (!r.calls.length) {
             history.current = [...msgs.slice(1), r.raw];
-            return speak(r.text || 'Pronto.');
+            const feeling: Mood = toolFailed ? 'sad' : joke ? 'joke' : null;
+            const said = r.text || 'Pronto.';
+            return speak(toolFailed ? sorry(said) : said, undefined, feeling);
           }
           msgs.push(r.raw);
           for (const call of r.calls) {
             setCaption('Trabalhando nisso…');
-            const out = await runTool(call.name, call.args, deps.current).catch(
-              (e: Error) => ({ result: `erro: ${e.message}` }) as const,
-            );
+            const out = await runTool(call.name, call.args, deps.current).catch((e: Error) => {
+              toolFailed = true;
+              return { result: `erro: ${e.message}` } as const;
+            });
             if ('confirm' in out) {
               history.current = [...msgs.slice(1)];
               return confirmFlow(out.confirm);
@@ -264,7 +283,11 @@ export function useHavenaSession(open: boolean, wakeStart?: WakeStart) {
         }
         return speak('Pronto.');
       } catch {
-        return speak('Estou sem conexão com a inteligência agora. Tente um comando simples.');
+        return speak(
+          'Desculpa, estou sem conexão com a inteligência agora. Tente um comando simples.',
+          undefined,
+          'sad',
+        );
       }
     },
     [speak, think, confirmFlow, sayAndWait],
@@ -296,6 +319,7 @@ export function useHavenaSession(open: boolean, wakeStart?: WakeStart) {
 
   return {
     phase,
+    mood,
     caption,
     heard,
     awaiting,

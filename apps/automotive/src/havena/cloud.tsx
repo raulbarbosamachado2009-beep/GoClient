@@ -10,7 +10,12 @@ import { nativeDriver } from '../theme';
  * - `idle` (ninguém fala): flutua devagar, pisca e às vezes olha para os lados.
  * - `listen` (o usuário fala): inclina a cabeça, arregala os olhos e acena ("uhum").
  * - `think`: olha para cima, balança de leve e aperta os olhos.
- * - `speak` (o Lucas fala): a boca abre e fecha por sílabas e o corpo quica junto.
+ * - `listen` agora "compreende": acena em pares ("uhum, uhum") e aperta os olhos de leve.
+ * - `speak` (o Lucas fala): a boca abre e fecha de leve, sem repetir sempre o mesmo
+ *   movimento; a cabeça muda de ângulo ao longo da frase.
+ * - `joke` (a pessoa contou uma piada): ri com os olhos fechados de alegria, boca aberta
+ *   e o corpo chacoalhando.
+ * - `sad` (algo deu errado): murcha, abaixa os olhos e pede desculpas.
  *
  * Fluidez (o celular travava com um relógio em JavaScript a cada quadro): tudo é feito só
  * com `transform` e `opacity`, que a GPU anima sozinha. Na web são animações CSS
@@ -20,19 +25,19 @@ import { nativeDriver } from '../theme';
  * A forma foi tirada do logo (imagem enviada pelo usuário, com o fundo removido em
  * `assets/lucas-cloud.png`) e redesenhada em vetor: cinco círculos e dois olhos em pílula.
  */
-export type LucasState = 'idle' | 'listen' | 'think' | 'speak';
+export type LucasState = 'idle' | 'listen' | 'think' | 'speak' | 'joke' | 'sad';
 
 /** Proporções do logo (caixa da nuvem 587 × 434). */
-const VW = 587;
-const VH = 434;
-const LOBES = [
+export const VW = 587;
+export const VH = 434;
+export const LOBES = [
   { cx: 234, cy: 141, r: 143 },
   { cx: 402, cy: 147, r: 120 },
   { cx: 134, cy: 261, r: 133 },
   { cx: 452, cy: 261, r: 133 },
   { cx: 294, cy: 292, r: 142 },
 ] as const;
-const EYE = { w: 64, h: 141, y: 165, left: 194, right: 329 };
+export const EYE = { w: 64, h: 141, y: 165, left: 194, right: 329 };
 const MOUTH = { w: 96, h: 58, y: 316 };
 export const LUCAS_BLUE = '#0070FE';
 
@@ -62,9 +67,19 @@ const BODY: Record<LucasState, Loop> = {
       { p: 100 },
     ],
   },
+  // Compreendendo: dois acenos curtos ("uhum, uhum"), uma pausa e uma inclinação de leve.
   listen: {
-    ms: 1300,
-    frames: [{ p: 0 }, { p: 35, ty: 0.035, rot: -2, sx: 1.025, sy: 0.965 }, { p: 70 }, { p: 100 }],
+    ms: 3400,
+    frames: [
+      { p: 0 },
+      { p: 8, ty: 0.03, rot: -1, sx: 1.02, sy: 0.97 },
+      { p: 16 },
+      { p: 24, ty: 0.026, rot: -1, sx: 1.018, sy: 0.975 },
+      { p: 33 },
+      { p: 55, rot: 2.5, ty: -0.008 },
+      { p: 78, rot: 2.5, ty: -0.008 },
+      { p: 100 },
+    ],
   },
   think: {
     ms: 2600,
@@ -76,12 +91,42 @@ const BODY: Record<LucasState, Loop> = {
       { p: 100 },
     ],
   },
+  // Falando: a cabeça passeia entre ângulos diferentes ao longo da frase (não é um quique
+  // repetido), com balanços pequenos.
   speak: {
-    ms: 620,
+    ms: 4200,
     frames: [
       { p: 0 },
-      { p: 30, ty: 0.018, sx: 1.04, sy: 0.95 },
-      { p: 65, ty: -0.022, sx: 0.98, sy: 1.035 },
+      { p: 11, ty: 0.01, rot: -2.5, sx: 1.015, sy: 0.985 },
+      { p: 24, ty: -0.012, rot: -1 },
+      { p: 37, ty: 0.008, rot: 3, sx: 1.01, sy: 0.99 },
+      { p: 52, ty: -0.01, rot: 1.5, sx: 0.992, sy: 1.012 },
+      { p: 66, ty: 0.012, rot: -3.5 },
+      { p: 81, ty: -0.008, rot: -1, sx: 1.01, sy: 0.99 },
+      { p: 92, rot: 1 },
+      { p: 100 },
+    ],
+  },
+  // Rindo: pulinhos rápidos e chacoalhando de um lado para o outro.
+  joke: {
+    ms: 1000,
+    frames: [
+      { p: 0 },
+      { p: 14, ty: -0.05, rot: -3, sx: 0.97, sy: 1.04 },
+      { p: 28, ty: 0.015, sx: 1.04, sy: 0.955 },
+      { p: 42, ty: -0.045, rot: 3, sx: 0.975, sy: 1.035 },
+      { p: 56, ty: 0.015, sx: 1.04, sy: 0.955 },
+      { p: 75, ty: -0.015, rot: -1 },
+      { p: 100 },
+    ],
+  },
+  // Triste: um suspiro lento (murcha e volta).
+  sad: {
+    ms: 4400,
+    frames: [
+      { p: 0 },
+      { p: 40, ty: 0.015, sx: 1.025, sy: 0.965 },
+      { p: 60, ty: 0.015, sx: 1.025, sy: 0.965 },
       { p: 100 },
     ],
   },
@@ -90,12 +135,32 @@ const BODY: Record<LucasState, Loop> = {
 /** Olhos: pose de cada estado (olhar e tamanho), com transição suave entre elas. */
 const EYES: Record<LucasState, { x: number; y: number; s: number; sy: number }> = {
   idle: { x: 0, y: 0, s: 1, sy: 1 },
-  listen: { x: -0.12, y: 0.05, s: 1.14, sy: 1.14 },
+  listen: { x: -0.08, y: 0.04, s: 1.08, sy: 1.06 },
   think: { x: 0.28, y: -0.16, s: 0.95, sy: 0.8 },
   speak: { x: 0, y: -0.04, s: 1.02, sy: 0.92 },
+  // Olhos fechados de tanto rir (pílulas achatadas e mais para cima).
+  joke: { x: 0, y: -0.1, s: 1.06, sy: 0.26 },
+  // Olhando para baixo, menores.
+  sad: { x: 0, y: 0.2, s: 0.9, sy: 0.7 },
 };
-/** Inclinação fixa do corpo em cada estado (graus). */
-const LEAN: Record<LucasState, number> = { idle: 0, listen: -8, think: 4, speak: 0 };
+/** Pose fixa do corpo em cada estado: inclinação (graus), descida (fração da altura) e escala. */
+const LEAN: Record<LucasState, { rot: number; y: number; s: number }> = {
+  idle: { rot: 0, y: 0, s: 1 },
+  listen: { rot: -5, y: 0, s: 1 },
+  think: { rot: 4, y: 0, s: 1 },
+  speak: { rot: 0, y: 0, s: 1 },
+  joke: { rot: 5, y: -0.02, s: 1.03 },
+  sad: { rot: -3, y: 0.06, s: 0.93 },
+};
+/** Boca em cada estado: visível ou não e o tamanho parado (fração da boca cheia). */
+const MOUTHS: Record<LucasState, { on: number; sx: number; sy: number }> = {
+  idle: { on: 0, sx: 0.6, sy: 0.15 },
+  listen: { on: 0, sx: 0.6, sy: 0.15 },
+  think: { on: 0, sx: 0.6, sy: 0.15 },
+  speak: { on: 1, sx: 0.8, sy: 0.4 },
+  joke: { on: 1, sx: 1.1, sy: 1 },
+  sad: { on: 1, sx: 0.42, sy: 0.14 },
+};
 
 /** Piscar: fechado por um instante, de vez em quando (às vezes duas vezes). */
 const BLINK: Loop = {
@@ -129,19 +194,44 @@ const GLANCE: Loop = {
     { p: 100 },
   ],
 };
-/** Boca falando: abre e fecha em sílabas irregulares. */
+/**
+ * Boca falando: abre e fecha de leve, em sílabas de tamanhos diferentes (nunca fecha nem
+ * abre por completo, para não ficar forte).
+ */
 const TALK: Loop = {
-  ms: 1100,
+  ms: 1700,
   frames: [
-    { p: 0, sx: 0.7, sy: 0.25 },
-    { p: 12, sx: 1, sy: 1 },
-    { p: 24, sx: 0.8, sy: 0.35 },
-    { p: 38, sx: 0.95, sy: 0.8 },
-    { p: 50, sx: 0.65, sy: 0.2 },
-    { p: 62, sx: 1, sy: 0.95 },
-    { p: 74, sx: 0.75, sy: 0.4 },
-    { p: 86, sx: 0.9, sy: 0.7 },
-    { p: 100, sx: 0.7, sy: 0.25 },
+    { p: 0, sx: 0.8, sy: 0.36 },
+    { p: 9, sx: 0.9, sy: 0.66 },
+    { p: 19, sx: 0.82, sy: 0.44 },
+    { p: 30, sx: 0.88, sy: 0.6 },
+    { p: 40, sx: 0.78, sy: 0.34 },
+    { p: 52, sx: 0.93, sy: 0.72 },
+    { p: 63, sx: 0.8, sy: 0.42 },
+    { p: 74, sx: 0.86, sy: 0.56 },
+    { p: 86, sx: 0.79, sy: 0.38 },
+    { p: 100, sx: 0.8, sy: 0.36 },
+  ],
+};
+/** Boca rindo: aberta, pulsando rápido junto com os pulinhos. */
+const LAUGH: Loop = {
+  ms: 500,
+  frames: [
+    { p: 0, sx: 1.1, sy: 1 },
+    { p: 50, sx: 1.04, sy: 0.72 },
+    { p: 100, sx: 1.1, sy: 1 },
+  ],
+};
+/** Olhos compreendendo: apertam de leve a cada aceno (em sincronia com o corpo). */
+const NOD_EYES: Loop = {
+  ms: 3400,
+  frames: [
+    { p: 0 },
+    { p: 8, sy: 0.78, ty: 0.04 },
+    { p: 16 },
+    { p: 24, sy: 0.8, ty: 0.04 },
+    { p: 33 },
+    { p: 100 },
   ],
 };
 
@@ -177,14 +267,19 @@ export function LucasCloud({
   const blink = useLoop('blink', BLINK, eyeW, eyeH, true);
   const glance = useLoop('glance', GLANCE, eyeW, eyeH, st === 'idle');
   const talk = useLoop('talk', TALK, 1, 1, st === 'speak');
+  const laugh = useLoop('laugh', LAUGH, 1, 1, st === 'joke');
+  const nod = useLoop('nod', NOD_EYES, eyeW, eyeH, st === 'listen');
 
   const pose = EYES[st];
-  const lean = usePose(LEAN[st]);
+  const lean = usePose(LEAN[st].rot);
+  const sink = usePose(LEAN[st].y * h);
+  const shrink = usePose(LEAN[st].s);
+  const mouth = MOUTHS[st];
   const eyeX = usePose(pose.x * eyeW);
   const eyeY = usePose(pose.y * eyeH);
   const eyeS = usePose(pose.s);
   const eyeSY = usePose(pose.sy);
-  const mouthOn = usePose(st === 'speak' ? 1 : 0);
+  const mouthOn = usePose(mouth.on);
 
   const eye = (x: number) => (
     <Animated.View
@@ -209,7 +304,11 @@ export function LucasCloud({
     >
       {/* Pose (inclinação) e, dentro, o laço do corpo, com origem embaixo (achatar/esticar). */}
       <Animated.View
-        style={[{ width: w, height: h }, POSE_TRANSITION, { transform: [{ rotate: deg(lean) }] }]}
+        style={[
+          { width: w, height: h },
+          POSE_TRANSITION,
+          { transform: [{ translateY: sink }, { rotate: deg(lean) }, { scale: shrink }] },
+        ]}
       >
         <Animated.View style={[styles.fill, { transformOrigin: 'center bottom' }, body]}>
           <Svg width={w} height={h} viewBox={`0 0 ${VW} ${VH}`} style={StyleSheet.absoluteFill}>
@@ -232,8 +331,10 @@ export function LucasCloud({
             ]}
           >
             <Animated.View style={[styles.fill, glance]}>
-              {eye(EYE.left)}
-              {eye(EYE.right)}
+              <Animated.View style={[styles.fill, nod]}>
+                {eye(EYE.left)}
+                {eye(EYE.right)}
+              </Animated.View>
             </Animated.View>
           </Animated.View>
           {!ambient && (
@@ -253,8 +354,21 @@ export function LucasCloud({
               <Animated.View
                 style={[
                   styles.mouth,
-                  { borderRadius: (MOUTH.h * k) / 2 },
-                  st === 'speak' ? talk : { transform: [{ scaleX: 0.6 }, { scaleY: 0.15 }] },
+                  POSE_TRANSITION,
+                  // Rindo, a boca vira um "D" (reta em cima, redonda embaixo).
+                  st === 'joke'
+                    ? {
+                        borderTopLeftRadius: (MOUTH.h * k) / 6,
+                        borderTopRightRadius: (MOUTH.h * k) / 6,
+                        borderBottomLeftRadius: (MOUTH.h * k) / 1.4,
+                        borderBottomRightRadius: (MOUTH.h * k) / 1.4,
+                      }
+                    : { borderRadius: (MOUTH.h * k) / 2 },
+                  st === 'speak'
+                    ? talk
+                    : st === 'joke'
+                      ? laugh
+                      : { transform: [{ scaleX: mouth.sx }, { scaleY: mouth.sy }] },
                 ]}
               />
             </Animated.View>

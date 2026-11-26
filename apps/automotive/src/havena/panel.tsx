@@ -6,7 +6,7 @@ import { usePhone, useTabBarLift } from '../layout/form-factor';
 import { layout, nativeDriver, useColors } from '../theme';
 import { useBlurTarget } from '../ui/blur-target';
 import { Button } from '../ui/primitives';
-import { HavenaCaption } from './caption';
+import { type DemoMood, HavenaCaption } from './caption';
 import { LucasCloud, type LucasState } from './cloud';
 import { useHavenaSession, type WakeStart } from './session';
 
@@ -49,10 +49,11 @@ export function HavenaPanel({
   // Preview: a nuvem passa pelos três momentos da conversa. Falando enquanto a frase surge;
   // depois fica parada um pouco e, antes da próxima frase, "ouve" a pessoa.
   const demoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const demoSpeaking = (on: boolean) => {
+  const demoSpeaking = (on: boolean, mood?: DemoMood) => {
     if (demoTimer.current) clearTimeout(demoTimer.current);
-    setDemoState(on ? 'speak' : 'idle');
-    if (!on) demoTimer.current = setTimeout(() => setDemoState('listen'), 1200);
+    // Piada: ri enquanto fala e mais um pouco depois. Erro: fica triste até a próxima fala.
+    setDemoState(on ? (mood ?? 'speak') : mood === 'sad' ? 'sad' : mood ? 'joke' : 'idle');
+    if (!on) demoTimer.current = setTimeout(() => setDemoState('listen'), mood ? 1500 : 1200);
   };
   useEffect(
     () => () => {
@@ -70,9 +71,13 @@ export function HavenaPanel({
       ? 'listen'
       : session.phase === 'thinking'
         ? 'think'
-        : session.phase === 'speaking'
-          ? 'speak'
-          : 'idle'
+        : session.mood === 'joke' && session.phase === 'speaking'
+          ? 'joke'
+          : session.mood === 'sad'
+            ? 'sad'
+            : session.phase === 'speaking'
+              ? 'speak'
+              : 'idle'
     : demoState;
   // Ouvindo: a fala da pessoa, palavra por palavra, assim que é ouvida. Pensando: a frase
   // dela continua na tela (a nuvem mostra que ele está pensando). Falando: a resposta.
@@ -147,7 +152,7 @@ export function HavenaPanel({
               width={CAPTION_PHONE}
               text={text}
               instant={userLine}
-              onSpeaking={(on) => !live && demoSpeaking(on)}
+              onSpeaking={(on, mood) => !live && demoSpeaking(on, mood)}
             />
           </View>
           {confirm}
@@ -195,7 +200,7 @@ export function HavenaPanel({
                 width={CAPTION}
                 text={text}
                 instant={userLine}
-                onSpeaking={(on) => !live && demoSpeaking(on)}
+                onSpeaking={(on, mood) => !live && demoSpeaking(on, mood)}
               />
               {confirm}
             </View>

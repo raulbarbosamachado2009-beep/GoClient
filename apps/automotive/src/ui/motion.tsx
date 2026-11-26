@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Platform, type StyleProp, type ViewStyle } from 'react-native';
+import { Animated, Easing, type StyleProp, type ViewStyle } from 'react-native';
 import { nativeDriver } from '../theme';
 
 /** Curva padrão da Apple para entradas (ease-out suave). */
@@ -284,10 +284,10 @@ export function Presence({
 }
 
 /**
- * Transição entre páginas (boas-vindas → permissões → login → mapa): a página nova chega de
- * perto, desfocada, e entra em foco; ao sair, a página recua, desfoca e some. `leave(go)` toca
- * a saída e então navega. Terminada a entrada, o filtro sai do estilo (um filtro ligado
- * desligaria o desfoque dos cartões de vidro da página na Web).
+ * Transição entre páginas (boas-vindas → permissões → login → mapa). Rápida e discreta
+ * (pedido de 26/11/2026: a anterior, com desfoque e zoom, era lenta): a página atual some
+ * deslizando um pouco para a esquerda (~0,2 s) e a nova entra da direita (~0,34 s), como
+ * um avanço. Só opacidade e deslocamento (driver nativo). `leave(go)` toca a saída e navega.
  */
 export function usePageTransition() {
   const v = useRef(new Animated.Value(0)).current;
@@ -296,9 +296,9 @@ export function usePageTransition() {
   useEffect(() => {
     Animated.timing(v, {
       toValue: 1,
-      duration: 760,
+      duration: 340,
       easing: appleEase,
-      useNativeDriver: false,
+      useNativeDriver: nativeDriver,
     }).start(({ finished }) => finished && setSettled(true));
     return () => v.stopAnimation();
   }, [v]);
@@ -308,9 +308,9 @@ export function usePageTransition() {
     setSettled(false);
     Animated.timing(v, {
       toValue: 2,
-      duration: 420,
-      easing: Easing.in(Easing.cubic),
-      useNativeDriver: false,
+      duration: 190,
+      easing: Easing.in(Easing.quad),
+      useNativeDriver: nativeDriver,
     }).start(() => go());
   };
   const style = settled
@@ -318,16 +318,8 @@ export function usePageTransition() {
     : {
         opacity: v.interpolate({ inputRange: [0, 1, 2], outputRange: [0, 1, 0] }),
         transform: [
-          { scale: v.interpolate({ inputRange: [0, 1, 2], outputRange: [1.08, 1, 0.94] }) },
+          { translateX: v.interpolate({ inputRange: [0, 1, 2], outputRange: [36, 0, -36] }) },
         ],
-        ...(Platform.OS === 'web'
-          ? {
-              filter: v.interpolate({
-                inputRange: [0, 1, 2],
-                outputRange: ['blur(18px)', 'blur(0px)', 'blur(14px)'],
-              }),
-            }
-          : null),
       };
   return { leave, style: style as StyleProp<ViewStyle> };
 }
