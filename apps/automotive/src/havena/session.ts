@@ -1,4 +1,10 @@
-import { answerClock, matchWakePhrase, nowContext, stripWakePhrase } from '@goclient/core';
+import {
+  answerClock,
+  matchWakePhrase,
+  nowContext,
+  parseNotifyRequest,
+  stripWakePhrase,
+} from '@goclient/core';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
@@ -6,8 +12,9 @@ import { useStops } from '../map/stops';
 import { usePrototype } from '../prototype/state';
 import { ask, BRAIN_ENABLED, type Message } from './brain';
 import { useContinuousListener } from './listener';
+import { planNotify } from './notify';
 import { fixedCommand, yesNo } from './offline';
-import { type HavenaDeps, runTool, TOOL_SPECS } from './tools';
+import { type Done, type HavenaDeps, runTool, TOOL_SPECS } from './tools';
 import { say, stopVoice, warmVoice } from './voice';
 
 /**
@@ -34,9 +41,11 @@ Destinos ("me leva até X", "vamos para X", "rota para X"):
 - Se lugar_buscar devolver opções em cidades diferentes, prefira a mais perto do carro (km_do_carro) e diga qual escolheu.
 - Se cliente_buscar devolver "parecidos", pergunte se é um deles (ex.: "Você quis dizer Barbearia do Adilson?").
 
+Avisos de chegada ("avisa o próximo cliente que estamos indo", "avisa o Adão do Jardim Selma que chego em 10 minutos"): use avisar_chegada (sem nome = próximo da rota). Não escreva a mensagem você mesmo: o app escreve e pergunta antes.
+
 Para pôr um cliente na rota ou mandar WhatsApp, use o endereço/telefone que cliente_buscar devolver; nunca invente endereço nem telefone. Se vierem vários, pergunte qual. Se o cliente não tiver endereço, diga que é preciso cadastrar o endereço no Kyte.`;
 
-type Pending = { summary: string; run: () => Promise<string> };
+type Pending = { summary: string; run: () => Promise<Done> };
 
 /** Primeiras palavras quando o Lucas é chamado pela voz (ex.: "olá Lucas, que horas são"). */
 export interface WakeStart {
@@ -102,7 +111,7 @@ export function useHavenaSession(open: boolean, wakeStart?: WakeStart) {
   }, [mic]);
 
   const speak = useCallback(
-    (text: string) => {
+    (text: string, then?: () => void) => {
       // Enquanto fala, o microfone fica desligado para não ouvir a própria voz.
       busy.current = true;
       mic.pause();
@@ -126,13 +135,30 @@ export function useHavenaSession(open: boolean, wakeStart?: WakeStart) {
         onDone: () => {
           clearTimeout(fallback);
           show();
-          if (alive.current) after();
+          if (!alive.current) return;
+          if (then) then();
+          else after();
         },
         // Interrompido (toque no círculo): quem interrompeu já reabre o microfone.
         onStopped: () => clearTimeout(fallback),
       });
     },
     [mic, listen],
+  );
+
+  /** Fala sem voltar a ouvir no fim (a conversa continua logo em seguida). */
+  const sayAndWait = useCallback(
+    (text: string) =>
+      new Promise<void>((resolve) => {
+        busy.current = true;
+        mic.pause();
+        setPhase('speaking');
+        setCaption(text);
+        say(text, { onStart: () => {}, onDone: resolve, onStopped: resolve });
+        // Sem aviso do motor de voz (ex.: Preview), segue mesmo assim.
+        setTimeout(resolve, 2500);
+      }),
+    [mic],
   );
 
   const think = useCallback(
@@ -171,7 +197,8 @@ export function useHavenaSession(open: boolean, wakeStart?: WakeStart) {
         if (!yn) return speak('Tudo bem, cancelei.');
         think('Fazendo…');
         try {
-          return speak(await p.run());
+          const done = await p.run();
+          return typeof done === 'string' ? speak(done) : speak(done.say, done.after);
         } catch (e) {
           return speak(e instanceof Error ? e.message : 'Não consegui fazer isso agora.');
         }
@@ -179,6 +206,19 @@ export function useHavenaSession(open: boolean, wakeStart?: WakeStart) {
       // Hora e data: na hora, sem internet.
       const clock = answerClock(text, new Date());
       if (clock) return speak(clock);
+      // "Avisa o próximo cliente que estamos indo": entende na hora, sem internet. Enquanto
+      // diz "Só um segundo!", já acha o cliente e o tempo; depois pergunta antes de mandar.
+      const notify = parseNotifyRequest(text);
+      if (notify) {
+        const wait = sayAndWait('Só um segundo!');
+        const plan = await planNotify(notify, deps.current).catch(
+          () => ({ result: 'Não consegui preparar o aviso agora.' }) as const,
+        );
+        await wait;
+        if (!alive.current) return;
+        if ('confirm' in plan) return confirmFlow(plan.confirm);
+        return speak(String(plan.result));
+      }
       // Comandos fixos (instantâneos e sem internet).
       const quick = fixedCommand(text, deps.current);
       if (quick) return speak(quick);
@@ -227,7 +267,7 @@ export function useHavenaSession(open: boolean, wakeStart?: WakeStart) {
         return speak('Estou sem conexão com a inteligência agora. Tente um comando simples.');
       }
     },
-    [speak, think, confirmFlow],
+    [speak, think, confirmFlow, sayAndWait],
   );
   answerRef.current = answer;
 

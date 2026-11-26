@@ -20,10 +20,19 @@ export function fixedCommand(text: string, d: HavenaDeps): string | null {
     d.stops.showDay();
     return 'Mostrando a rota do dia.';
   }
-  const open = /^(abre|abrir|vai para|ir para|mostra)( o| a)? (mapa|kyte|ajustes)$/.exec(t);
+  const open =
+    /^(abre|abrir|vai para|ir para|mostra)( o| a)? (mapa|kyte|whatsapp|zap|ajustes)$/.exec(t);
   if (open) {
     const where = open[3];
-    d.router.replace(where === 'mapa' ? '/mapa' : where === 'kyte' ? '/kyte' : '/configuracoes');
+    d.router.replace(
+      where === 'mapa'
+        ? '/mapa'
+        : where === 'kyte'
+          ? '/kyte'
+          : where === 'whatsapp' || where === 'zap'
+            ? '/whatsapp'
+            : '/configuracoes',
+    );
     return 'Abrindo.';
   }
   return null;

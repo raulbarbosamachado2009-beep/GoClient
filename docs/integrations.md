@@ -91,8 +91,8 @@ O assistente se chama **Lucas** (voz masculina). No código, a pasta `havena/` e
   (7/7 conversas certas, ~2 s); reserva `mistralai/mistral-large-4-1t-a52b` (certo, mas lento).
   Workflow "NVIDIA check" repete o teste.
 - **Ferramentas** (`havena/tools.ts`): buscar
-  cliente no Kyte, pôr na rota / ir agora, rota do dia, WhatsApp (abre com a mensagem pronta;
-  o envio é um toque da pessoa), cadastrar cliente/produto no Kyte, resumo de vendas, abrir
+  cliente no Kyte, pôr na rota / ir agora, rota do dia, WhatsApp e aviso de chegada (abre a
+  conversa com a mensagem pronta; o envio é um toque da pessoa), cadastrar cliente/produto no Kyte, resumo de vendas, abrir
   telas. **Rota, WhatsApp e cadastros sempre pedem confirmação** ("sim"/"não" ou botões).
 - **Voz:** reconhecimento do próprio Android (`expo-speech-recognition`, serviço do Google) e
   fala do aparelho (`expo-speech`). Sem custo. A voz escolhida é pt-BR **masculina** instalada
@@ -111,6 +111,33 @@ O assistente se chama **Lucas** (voz masculina). No código, a pasta `havena/` e
   (`havena/offline.ts`): rota do dia; abrir telas (Mapa, Kyte, Ajustes).
   Com o modelo, a data e a hora de agora também vão no contexto.
 - **Próxima fase:** modelo local (llama.cpp) em multimídias com 6 GB ou mais de RAM.
+
+## WhatsApp (WhatsApp Web dentro do app)
+
+Decisão do usuário (26/11/2026): WhatsApp **normal** (não Business), sem API paga, um número
+compartilhado pela equipe.
+
+- **Aba WhatsApp** (celular e multimídia, `app/(main)/whatsapp.tsx`): o WhatsApp Web oficial
+  (`web.whatsapp.com`) numa WebView, como o Kyte, com user agent de Chrome de desktop (o
+  WhatsApp só mostra a versão web a navegadores de computador). Uso completo pelas pessoas.
+- **Vínculo:** QR code lido no celular dono do número (WhatsApp › Aparelhos conectados). A
+  multimídia **não precisa de chip**, só de internet. Cada número aceita até 4 aparelhos
+  conectados. A sessão fica salva na WebView (cookies, localStorage e IndexedDB, sem modo
+  anônimo): o QR só aparece na primeira vez ou se o vínculo cair. O WhatsApp desliga os
+  aparelhos conectados se o celular principal ficar ~14 dias sem uso.
+- **Lucas avisa o cliente** ("avisa o próximo cliente que estamos indo", "avisa o Adão do
+  Jardim Selma que chego em 10 minutos"): regras em `packages/core/src/arrival.ts` (com
+  testes). O Mapa publica a próxima parada e o tempo até ela (`map/trip.ts`); o Lucas diz "Só
+  um segundo!", escreve uma mensagem que varia a cada envio, pergunta "Posso falar para o
+  Adão do Selma que chegamos em 6 minutos?" e, com o "pode", abre a conversa no WhatsApp Web
+  do app com o texto já escrito (`/send?phone=…&text=…`).
+- **Envio = toque da pessoa.** O app **não** clica em enviar nem digita no WhatsApp Web:
+  automatizar o WhatsApp vai contra as regras dele e pode banir o número. O script da página
+  (`whatsapp/bridge.ts`) só observa: se a conta está vinculada e quando sai uma mensagem nova
+  na conversa aberta, para o Lucas dizer "Enviado!". Não há caminho oficial e gratuito para
+  enviar sem o toque (Android Auto só responde notificações; a API oficial é paga).
+- **Preview (web):** o WhatsApp Web não abre dentro de outra página; a aba mostra um aviso com
+  link para abrir em outra aba.
 
 ## Fontes
 

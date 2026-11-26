@@ -1,5 +1,6 @@
-import { buildWhatsAppLink, normalizeBrazilianPhone } from '@goclient/core';
+import { buildWhatsAppLink, buildWhatsAppWebSend, normalizeBrazilianPhone } from '@goclient/core';
 import { Linking } from 'react-native';
+import { setDraft } from '../whatsapp/store';
 
 /**
  * Contato com o cliente. WhatsApp por link (wa.me): abre a conversa com a mensagem pronta; o
@@ -18,4 +19,23 @@ export function callPhone(phone: string): boolean {
   if (!n) return false;
   Linking.openURL(`tel:+${n}`).catch(() => {});
   return true;
+}
+
+/**
+ * Abre a conversa com a mensagem já escrita **no WhatsApp Web do próprio GoClient** (aba
+ * WhatsApp). A multimídia não tem o app do WhatsApp nem chip: ela é um aparelho conectado ao
+ * número da equipe. Se o WhatsApp ainda não estiver vinculado, a aba mostra o QR code e a
+ * conversa abre logo depois. O envio é sempre o toque da pessoa; `onSent` é chamado quando
+ * a mensagem aparece como enviada na conversa.
+ */
+export function composeWhatsApp(
+  msg: { to: string; phone: string; text: string },
+  router: { replace: (href: '/whatsapp') => void },
+  onSent?: () => void,
+): 'in-app' | 'invalid' {
+  const url = buildWhatsAppWebSend(msg.phone, msg.text);
+  if (!url) return 'invalid';
+  setDraft({ ...msg, url, onSent });
+  router.replace('/whatsapp');
+  return 'in-app';
 }
