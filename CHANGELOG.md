@@ -5,7 +5,7 @@ Leia este arquivo antes de começar qualquer trabalho.
 
 ## Estado atual do app
 
-_Última atualização: 2026-11-26 23:58 — Cancelar venda volta a tirar a venda dos totais, bolinha de novidade no menu, onboarding numa página só, Kyte maior no celular, cartão de navegação mais baixo e som nos botões importantes._
+_Última atualização: 2026-11-27 07:50 — WhatsApp do celular (conversa e dados do contato) refeito no visual e nas animações do WhatsApp do iPhone, no claro e no escuro._
 
 - **Automotive (`apps/automotive`)** é onde está quase todo o produto: Mapa (OSM + OpenRouteService,
   navegação com voz), Kyte (telas próprias sobre a janela do Kyte) e o assistente de voz Lucas.
@@ -22,6 +22,32 @@ _Última atualização: 2026-11-26 23:58 — Cancelar venda volta a tirar a vend
 - Regras de negócio em `packages/core` (com testes); visual só com `@goclient/design-tokens`.
 
 ## Mudanças
+
+### 2026-11-27 07:50 — WhatsApp do celular igual ao do iPhone (conversa, dados do contato e animações)
+
+Pedido do usuário (5 imagens e um vídeo do WhatsApp de verdade). As imagens e o vídeo têm conversas
+e dados pessoais reais: **nada deles foi copiado**, só o desenho; o app continua só com dados
+fictícios.
+
+- **Conversa** (`whatsapp/sim/phone-chat.tsx`): papel de parede com desenhos de linha bem
+  apagados (desenho nosso, em SVG `Pattern`), cabeçalho de vidro com o botão redondo de voltar,
+  foto, nome, "toque para mostrar os dados do contato" e a pílula do telefone; balões com
+  rabinho na última mensagem de cada sequência, hora e confirmações dentro do balão; separador
+  "Hoje" e a faixa "Mensagens não lidas: N" ao abrir uma conversa com não lidas.
+- **Rodapé:** "+", campo com o ícone de figurinha, câmera e microfone verde. Ao digitar, a
+  câmera recolhe e o microfone gira e vira o botão de enviar.
+- **Enviar:** o balão sobe do campo para o fim da conversa e a conversa rola junto; o relógio
+  vira ✓ e depois ✓✓ (como no vídeo).
+- **Abrir e sair de uma conversa / dos dados do contato** (`PushStack` em `phone.tsx`): a tela
+  nova entra inteira pela direita por cima e a de baixo recua e escurece; voltar faz o
+  contrário (antes era só um fade curto).
+- **Dados do contato** (`whatsapp/sim/phone-profile.tsx`): voltar e "Editar" de vidro, foto
+  grande, nome em negrito, telefone, botões Ligar/Mensagem/Favorito/Pesquisar, cartões de mídia,
+  notificações, tema, mensagens temporárias, criptografia, "Nenhum grupo em comum", ações em
+  verde e em vermelho (Bloquear/Denunciar). Ao rolar, o cabeçalho vira vidro e o título troca
+  para o nome.
+- Continua **sem chamada de vídeo** (decisão anterior do usuário). Peças comuns foram para
+  `whatsapp/sim/phone-kit.tsx`.
 
 ### 2026-11-26 23:58 — Cancelamento de venda, bolinhas do menu, onboarding numa página e som
 
