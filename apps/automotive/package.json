@@ -4,12 +4,12 @@
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
-    "dev": "expo start --port 8082",
-    "web": "expo start --web --port 8082",
-    "android": "expo start --android --port 8082",
-    "export:web": "expo export --platform web --output-dir dist",
-    "typecheck": "tsc -p tsconfig.json",
-    "preview:bundle": "expo export --platform web --output-dir dist && node scripts/single-file-preview.mjs",
+    "dev": "node scripts/vendor-maplibre.mjs && expo start --port 8082",
+    "web": "node scripts/vendor-maplibre.mjs && expo start --web --port 8082",
+    "android": "node scripts/vendor-maplibre.mjs && expo start --android --port 8082",
+    "export:web": "node scripts/vendor-maplibre.mjs && expo export --platform web --output-dir dist",
+    "typecheck": "node scripts/vendor-maplibre.mjs && tsc -p tsconfig.json",
+    "preview:bundle": "node scripts/vendor-maplibre.mjs && expo export --platform web --output-dir dist && node scripts/single-file-preview.mjs",
     "test": "vitest run",
     "postinstall": "node scripts/vendor-maplibre.mjs"
   },
