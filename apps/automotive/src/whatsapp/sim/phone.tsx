@@ -4,6 +4,7 @@ import { PHONE_SCROLL_END, useSystemInsets } from '../../layout/form-factor';
 import { usePrototype } from '../../prototype/state';
 import { FONT, nativeDriver } from '../../theme';
 import { Touchable } from '../../ui/primitives';
+import { previewOf } from './attach';
 import { startCall } from './call';
 import {
   CALLS,
@@ -14,6 +15,7 @@ import {
   type SimContact,
   type SimMessage,
 } from './data';
+import { attachMessage, useOutbox } from './outbox';
 import { ChatScreen, pushEase, type SendStatus, STATUS_STEPS } from './phone-chat';
 import {
   Avatar,
@@ -94,6 +96,22 @@ export function PhoneWhatsApp() {
       ];
     });
 
+  // Mensagem enviada agora: relógio → ✓ → ✓✓.
+  const sendOut = (contactId: string, msgs: SimMessage[]) => {
+    for (const m of msgs) {
+      setStatus((cur) => ({ ...cur, [m.id]: 'sending' }));
+      for (const step of STATUS_STEPS)
+        timers.current.push(
+          setTimeout(() => setStatus((cur) => ({ ...cur, [m.id]: step.status })), step.after),
+        );
+      append(contactId, m);
+    }
+  };
+  // Recibo compartilhado pelo Kyte ("Enviar para"): chega na conversa de cada destinatário.
+  useOutbox((d) => {
+    for (const m of d.messages) append(d.chatId, m);
+  });
+
   const openChat = (id: string) => {
     const n = chats.find((c) => c.id === id)?.unread ?? 0;
     setUnreadAt((cur) => ({ ...cur, [id]: n }));
@@ -162,6 +180,7 @@ export function PhoneWhatsApp() {
             );
           append(top.id, { id, out: true, text, time: now(), day: 'Hoje' });
         }}
+        onAttach={(kind) => sendOut(top.id, [attachMessage(kind)])}
       />
     );
   } else if (top.kind === 'profile') {
@@ -492,21 +511,14 @@ function ChatsScreen({
 
 function LastLine({ P, msg }: { P: Palette; msg?: SimMessage }) {
   if (!msg) return <View style={{ flex: 1 }} />;
-  const icon: IconName | null =
-    msg.kind === 'photo'
-      ? 'camera'
-      : msg.kind === 'doc'
-        ? 'document-text'
-        : msg.kind === 'call'
-          ? 'call'
-          : null;
+  const { icon, text } = previewOf(msg);
   return (
     <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: u(4) }}>
       {msg.out && <Icon name="checkmark-done" pt={17} color={P.tick} />}
       {icon && <Icon name={icon} pt={15} color={P.sub} />}
       <Text pt={15} color={P.sub} lines={1} style={{ flex: 1 }}>
         {msg.from ? `${msg.from}: ` : ''}
-        {msg.text}
+        {text}
       </Text>
     </View>
   );

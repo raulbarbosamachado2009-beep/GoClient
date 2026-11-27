@@ -10,6 +10,9 @@ interface PrototypeState {
   /** Tela em modo imersivo (ex.: conversa do WhatsApp no celular): a barra de abas some. */
   immersive: boolean;
   setImmersive: (v: boolean) => void;
+  /** Folha em tela cheia aberta em qualquer aba (ex.: "Enviar para"): a barra de abas some. */
+  covered: boolean;
+  setCovered: (v: boolean) => void;
 }
 
 const Ctx = createContext<PrototypeState | null>(null);
@@ -18,9 +21,19 @@ export function PrototypeProvider({ children }: { children: ReactNode }) {
   const [kyteOpen, setKyteOpen] = useState(false);
   const [overlay, setOverlay] = useState<ReactNode>(null);
   const [immersive, setImmersive] = useState(false);
+  const [covered, setCovered] = useState(false);
   const value = useMemo<PrototypeState>(
-    () => ({ kyteOpen, setKyteOpen, overlay, setOverlay, immersive, setImmersive }),
-    [kyteOpen, overlay, immersive],
+    () => ({
+      kyteOpen,
+      setKyteOpen,
+      overlay,
+      setOverlay,
+      immersive,
+      setImmersive,
+      covered,
+      setCovered,
+    }),
+    [kyteOpen, overlay, immersive, covered],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

@@ -22,8 +22,10 @@ export interface SimMessage {
   day: string;
   /** Quem mandou, nos grupos. */
   from?: string;
-  /** Anexo de exemplo (foto de produto ou documento). */
-  kind?: 'photo' | 'doc' | 'call';
+  /** Anexo de exemplo (foto, documento, ligação, áudio ou localização). */
+  kind?: 'photo' | 'doc' | 'call' | 'audio' | 'location';
+  /** Linha de baixo do anexo (ex.: "PDF · 1 página"). */
+  meta?: string;
 }
 
 export interface SimChat {

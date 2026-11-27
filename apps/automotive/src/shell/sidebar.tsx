@@ -1,9 +1,10 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { type Href, usePathname, useRouter } from 'expo-router';
-import { type ReactNode, useEffect, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { Animated, Image, StyleSheet, View } from 'react-native';
 import { LucasCloud } from '../havena/cloud';
 import { HavenaPanel } from '../havena/panel';
+import { mapHref } from '../map/map-nav';
 import { usePrototype } from '../prototype/state';
 import { concentric, layout, spacing, useColors } from '../theme';
 import { KyteLogo } from '../ui/brand';
@@ -103,7 +104,7 @@ export function Sidebar() {
               top={i * SLOT}
               label={item.label}
               selected={i === activeIndex}
-              onPress={() => router.replace(item.href)}
+              onPress={() => router.replace(item.match === '/mapa' ? mapHref() : item.href)}
               badge={
                 item.glyph === 'kyte' || item.glyph === 'whatsapp' ? (
                   <BadgeDot

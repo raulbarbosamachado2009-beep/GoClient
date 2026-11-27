@@ -4,6 +4,7 @@ import {
   Animated,
   Keyboard,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   TextInput,
@@ -104,188 +105,201 @@ export function CarSearch({ maxHeight }: { maxHeight: number }) {
       : null;
 
   return (
-    <Animated.View
-      style={[
-        styles.shell,
-        { width, height, borderRadius: radius, borderColor: c.material.border },
-      ]}
-    >
-      <Blur radius={44} tint={c.material.tint} />
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: c.material.fallback }]} />
+    <>
+      {/* Aberta, tocar em qualquer outro lugar do mapa fecha a busca (pedido de 27/11/2026). */}
+      {open && (
+        <Pressable
+          accessibilityLabel="Fechar busca"
+          onPress={hide}
+          style={StyleSheet.absoluteFill}
+        />
+      )}
+      <Animated.View
+        style={[
+          styles.shell,
+          { width, height, borderRadius: radius, borderColor: c.material.border },
+        ]}
+      >
+        <Blur radius={44} tint={c.material.tint} />
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: c.material.fallback }]} />
 
-      <Animated.View style={[{ flex: 1 }, webBlur as object]}>
-        {/* Campo de busca: o mesmo na pílula e no topo do cartão. */}
-        <Touchable
-          accessibilityRole="search"
-          accessibilityLabel="Buscar cliente ou endereço"
-          onPress={show}
-          disabled={open}
-          scaleTo={open ? 1 : 0.98}
-          style={styles.field}
-        >
-          <Icon name="search" size={34} color={c.textSecondary} />
-          {open ? (
-            <TextInput
-              ref={input}
-              value={query}
-              onChangeText={setQuery}
-              placeholder="Buscar cliente ou endereço"
-              placeholderTextColor={c.textSecondary}
-              autoCorrect={false}
-              style={[
-                type.body,
-                styles.input,
-                { color: c.text },
-                (Platform.OS === 'web' ? { outlineStyle: 'none' } : null) as object,
-              ]}
-            />
-          ) : (
-            <Text variant="body" tone="secondary" style={styles.placeholder} numberOfLines={1}>
-              Buscar cliente ou endereço
-            </Text>
-          )}
-          {open && (
-            <Animated.View style={{ opacity: cancelOpacity }}>
-              <Touchable accessibilityRole="button" onPress={hide} style={styles.cancel}>
-                <Text variant="headline" tone="accent" style={{ fontSize: 28, lineHeight: 34 }}>
-                  Cancelar
-                </Text>
-              </Touchable>
-            </Animated.View>
-          )}
-        </Touchable>
-
-        {open && (
-          <Animated.View
-            style={[styles.body, { opacity: bodyOpacity, transform: [{ translateY: bodyShift }] }]}
+        <Animated.View style={[{ flex: 1 }, webBlur as object]}>
+          {/* Campo de busca: o mesmo na pílula e no topo do cartão. */}
+          <Touchable
+            accessibilityRole="search"
+            accessibilityLabel="Buscar cliente ou endereço"
+            onPress={show}
+            disabled={open}
+            scaleTo={open ? 1 : 0.98}
+            style={styles.field}
           >
-            <ScrollView
-              showsVerticalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
-              contentContainerStyle={{ gap: spacing[5], paddingBottom: PAD }}
+            <Icon name="search" size={34} color={c.textSecondary} />
+            {open ? (
+              <TextInput
+                ref={input}
+                value={query}
+                onChangeText={setQuery}
+                placeholder="Buscar cliente ou endereço"
+                placeholderTextColor={c.textSecondary}
+                autoCorrect={false}
+                style={[
+                  type.body,
+                  styles.input,
+                  { color: c.text },
+                  (Platform.OS === 'web' ? { outlineStyle: 'none' } : null) as object,
+                ]}
+              />
+            ) : (
+              <Text variant="body" tone="secondary" style={styles.placeholder} numberOfLines={1}>
+                Buscar cliente ou endereço
+              </Text>
+            )}
+            {open && (
+              <Animated.View style={{ opacity: cancelOpacity }}>
+                <Touchable accessibilityRole="button" onPress={hide} style={styles.cancel}>
+                  <Text variant="headline" tone="accent" style={{ fontSize: 28, lineHeight: 34 }}>
+                    Cancelar
+                  </Text>
+                </Touchable>
+              </Animated.View>
+            )}
+          </Touchable>
+
+          {open && (
+            <Animated.View
+              style={[
+                styles.body,
+                { opacity: bodyOpacity, transform: [{ translateY: bodyShift }] },
+              ]}
             >
-              {/* Trocar de conteúdo (início, rotas, resultados) tem a transição da aba do celular. */}
-              <Swap
-                id={q ? 'results' : view}
-                dir={!q && view === 'home' ? -1 : 1}
-                style={{ gap: spacing[5] }}
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                contentContainerStyle={{ gap: spacing[5], paddingBottom: PAD }}
               >
-                {q ? (
-                  results.length === 0 ? (
-                    <Text variant="body" tone="secondary">
-                      Nenhum cliente encontrado para "{query.trim()}".
-                    </Text>
-                  ) : (
-                    <OptionGroup outerRadius={OPEN.r} outerPadding={PAD}>
-                      {results.map((x, i) => (
-                        <OptionRow
-                          key={x.id}
-                          first={i === 0}
-                          big
-                          icon="storefront"
-                          title={x.tradeName}
-                          sub={x.address}
-                          onPress={() => go(x.id)}
-                        />
-                      ))}
-                    </OptionGroup>
-                  )
-                ) : view === 'routes' ? (
-                  <>
-                    <Touchable
-                      accessibilityRole="button"
-                      onPress={() => setView('home')}
-                      style={styles.back}
-                    >
-                      <Icon name="chevron-back" size={32} color={c.accent} />
-                      <Text variant="headline" tone="accent" style={{ fontSize: 28 }}>
-                        Voltar
+                {/* Trocar de conteúdo (início, rotas, resultados) tem a transição da aba do celular. */}
+                <Swap
+                  id={q ? 'results' : view}
+                  dir={!q && view === 'home' ? -1 : 1}
+                  style={{ gap: spacing[5] }}
+                >
+                  {q ? (
+                    results.length === 0 ? (
+                      <Text variant="body" tone="secondary">
+                        Nenhum cliente encontrado para "{query.trim()}".
                       </Text>
-                    </Touchable>
-                    <SavedRoutes outerRadius={OPEN.r} outerPadding={PAD} />
-                  </>
-                ) : (
-                  <>
-                    <Text variant="title2" style={styles.section}>
-                      Atalhos
-                    </Text>
-                    <View style={styles.shortcuts}>
-                      <Shortcut
-                        icon="people"
-                        label="Clientes"
-                        tint={t}
-                        onPress={() => {
-                          hide();
-                          router.replace({ pathname: '/kyte', params: { secao: 'clientes' } });
-                        }}
-                      />
-                      <Shortcut
-                        icon="pricetag"
-                        label="Produtos"
-                        tint={t}
-                        onPress={() => {
-                          hide();
-                          router.replace({ pathname: '/kyte', params: { secao: 'produtos' } });
-                        }}
-                      />
-                      <Shortcut
-                        icon="trail-sign"
-                        label="Rotas"
-                        tint={t}
-                        onPress={() => setView('routes')}
-                      />
-                    </View>
-
-                    <Text variant="title2" style={styles.section}>
-                      Recentes
-                    </Text>
-                    <OptionGroup outerRadius={OPEN.r} outerPadding={PAD}>
-                      {recent.map((x, i) => (
-                        <OptionRow
-                          key={x.id}
-                          first={i === 0}
-                          big
-                          icon="location"
-                          title={x.tradeName}
-                          sub={x.address}
-                          onPress={() => go(x.id)}
-                        />
-                      ))}
-                    </OptionGroup>
-
-                    {stops.saved.length > 0 && (
+                    ) : (
                       <OptionGroup outerRadius={OPEN.r} outerPadding={PAD}>
-                        <OptionRow
-                          first
-                          big
-                          strong
-                          icon="play"
-                          title={`Começar: ${stops.saved[0]?.name ?? ''}`}
-                          sub="Última rota montada no celular"
+                        {results.map((x, i) => (
+                          <OptionRow
+                            key={x.id}
+                            first={i === 0}
+                            big
+                            icon="storefront"
+                            title={x.tradeName}
+                            sub={x.address}
+                            onPress={() => go(x.id)}
+                          />
+                        ))}
+                      </OptionGroup>
+                    )
+                  ) : view === 'routes' ? (
+                    <>
+                      <Touchable
+                        accessibilityRole="button"
+                        onPress={() => setView('home')}
+                        style={styles.back}
+                      >
+                        <Icon name="chevron-back" size={32} color={c.accent} />
+                        <Text variant="headline" tone="accent" style={{ fontSize: 28 }}>
+                          Voltar
+                        </Text>
+                      </Touchable>
+                      <SavedRoutes outerRadius={OPEN.r} outerPadding={PAD} />
+                    </>
+                  ) : (
+                    <>
+                      <Text variant="title2" style={styles.section}>
+                        Atalhos
+                      </Text>
+                      <View style={styles.shortcuts}>
+                        <Shortcut
+                          icon="people"
+                          label="Clientes"
+                          tint={t}
                           onPress={() => {
-                            const id = stops.saved[0]?.id;
                             hide();
-                            if (id) stops.startSaved(id);
+                            router.replace({ pathname: '/kyte', params: { secao: 'clientes' } });
                           }}
                         />
-                      </OptionGroup>
-                    )}
-                  </>
-                )}
-              </Swap>
-            </ScrollView>
-          </Animated.View>
-        )}
-      </Animated.View>
+                        <Shortcut
+                          icon="pricetag"
+                          label="Produtos"
+                          tint={t}
+                          onPress={() => {
+                            hide();
+                            router.replace({ pathname: '/kyte', params: { secao: 'produtos' } });
+                          }}
+                        />
+                        <Shortcut
+                          icon="trail-sign"
+                          label="Rotas"
+                          tint={t}
+                          onPress={() => setView('routes')}
+                        />
+                      </View>
 
-      {/* Desfoque de movimento por cima de tudo durante a mudança de forma. */}
-      <Animated.View
-        pointerEvents="none"
-        style={[StyleSheet.absoluteFill, { opacity: blurOpacity }]}
-      >
-        <Blur radius={18} tint={c.material.tint} />
+                      <Text variant="title2" style={styles.section}>
+                        Recentes
+                      </Text>
+                      <OptionGroup outerRadius={OPEN.r} outerPadding={PAD}>
+                        {recent.map((x, i) => (
+                          <OptionRow
+                            key={x.id}
+                            first={i === 0}
+                            big
+                            icon="location"
+                            title={x.tradeName}
+                            sub={x.address}
+                            onPress={() => go(x.id)}
+                          />
+                        ))}
+                      </OptionGroup>
+
+                      {stops.saved.length > 0 && (
+                        <OptionGroup outerRadius={OPEN.r} outerPadding={PAD}>
+                          <OptionRow
+                            first
+                            big
+                            strong
+                            icon="play"
+                            title={`Começar: ${stops.saved[0]?.name ?? ''}`}
+                            sub="Última rota montada no celular"
+                            onPress={() => {
+                              const id = stops.saved[0]?.id;
+                              hide();
+                              if (id) stops.startSaved(id);
+                            }}
+                          />
+                        </OptionGroup>
+                      )}
+                    </>
+                  )}
+                </Swap>
+              </ScrollView>
+            </Animated.View>
+          )}
+        </Animated.View>
+
+        {/* Desfoque de movimento por cima de tudo durante a mudança de forma. */}
+        <Animated.View
+          pointerEvents="none"
+          style={[StyleSheet.absoluteFill, { opacity: blurOpacity }]}
+        >
+          <Blur radius={18} tint={c.material.tint} />
+        </Animated.View>
       </Animated.View>
-    </Animated.View>
+    </>
   );
 }
 

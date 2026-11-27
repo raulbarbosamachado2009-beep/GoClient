@@ -4,6 +4,7 @@ import { Animated, PanResponder, StyleSheet, View } from 'react-native';
 import { LucasCloud } from '../havena/cloud';
 import { HavenaPanel } from '../havena/panel';
 import { TAB_BAR_BOTTOM, useTabBarLift } from '../layout/form-factor';
+import { mapHref } from '../map/map-nav';
 import { useFrameScale } from '../preview/automotive-frame';
 import { usePrototype } from '../prototype/state';
 import { useColors } from '../theme';
@@ -47,10 +48,10 @@ export function TabBar() {
   const c = useColors();
   const pathname = usePathname();
   const router = useRouter();
-  const { setOverlay, immersive: inChat } = usePrototype();
+  const { setOverlay, immersive: inChat, covered } = usePrototype();
   // Dentro de uma conversa do WhatsApp a barra desce e some (a conversa fica em tela cheia).
   // O WhatsApp fica aberto por trás nas outras abas: lá a barra volta.
-  const immersive = inChat && pathname.split('/')[1] === 'whatsapp';
+  const immersive = covered || (inChat && pathname.split('/')[1] === 'whatsapp');
   const hide = useRef(new Animated.Value(immersive ? 1 : 0)).current;
   useEffect(() => {
     Animated.spring(hide, {
@@ -119,7 +120,7 @@ export function TabBar() {
       }).start();
       return;
     }
-    if (t.href) router.replace(t.href);
+    if (t.href) router.replace(t.key === 'mapa' ? mapHref() : t.href);
   };
 
   // Arrastar pela barra: a bolha segue o dedo e a aba troca ao soltar.

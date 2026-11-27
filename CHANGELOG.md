@@ -5,7 +5,7 @@ Leia este arquivo antes de começar qualquer trabalho.
 
 ## Estado atual do app
 
-_Última atualização: 2026-11-27 07:50 — WhatsApp do celular (conversa e dados do contato) refeito no visual e nas animações do WhatsApp do iPhone, no claro e no escuro._
+_Última atualização: 2026-11-27 12:39 — Papel de parede do WhatsApp, "+" com anexos, recibo compartilhado pelo "Enviar para" do WhatsApp e Mapa que guarda a rota ao trocar de página._
 
 - **Automotive (`apps/automotive`)** é onde está quase todo o produto: Mapa (OSM + OpenRouteService,
   navegação com voz), Kyte (telas próprias sobre a janela do Kyte) e o assistente de voz Lucas.
@@ -14,6 +14,10 @@ _Última atualização: 2026-11-27 07:50 — WhatsApp do celular (conversa e dad
 - **Kyte → Vender** tem o fluxo de vendas inteiro do Kyte em telas próprias (Vender, cliente,
   carrinho, pagamento, dinheiro, venda concluída, recibo); ao concluir, a venda é registrada no
   Kyte por trás. **Imprimir** manda a comanda para a impressora térmica Bluetooth pareada.
+  **Compartilhar** abre o "Enviar para" do WhatsApp (no app: clientes do Kyte com telefone,
+  a conversa abre com o recibo escrito e a pessoa toca em enviar).
+- **Mapa:** a rota ou o cliente escolhido continua no Mapa ao ir para outra aba e voltar.
+  Chegada/min/km vêm da rota real no app; no Preview são números de exemplo.
 - **Bolinha de novidade** nos ícones do Kyte e do WhatsApp no menu (celular e multimídia), só
   quando há venda nova ou mensagem não lida; abrir o app limpa. Botões importantes tocam um
   som curto (`assets/sounds/tap.wav`).
@@ -22,6 +26,34 @@ _Última atualização: 2026-11-27 07:50 — WhatsApp do celular (conversa e dad
 - Regras de negócio em `packages/core` (com testes); visual só com `@goclient/design-tokens`.
 
 ## Mudanças
+
+### 2026-11-27 12:39 — WhatsApp com papel de parede e anexos, recibo pelo WhatsApp e ajustes no Mapa
+
+Pedido do usuário (9 itens, com imagens).
+
+- **Papel de parede do WhatsApp** (`whatsapp/sim/wallpaper.tsx`): as duas imagens enviadas (escura
+  e clara, em `assets/whatsapp/`), no celular cobrindo a conversa e na multimídia repetidas em
+  ladrilhos. O desenho em SVG anterior saiu.
+- **Multimídia:** a barra de mensagem não tem mais o botão de emoji (o celular continua igual).
+- **"+" da barra de mensagem** (celular e multimídia, `whatsapp/sim/attach.tsx`): abre um mini
+  menu com Documento, Fotos, Áudio e Localização atual; cada um manda um anexo de exemplo
+  (novos balões de áudio e de localização). A prévia da lista mostra o ícone certo.
+- **Recibo → Compartilhar** (`whatsapp/share-sheet.tsx`, `kyte/sell/receipt-share.tsx`): a folha
+  "Enviar para" sobe de baixo, com ×, "Novo grupo", Pesquisar, "Contatos frequentes" e
+  "Conversas recentes" com o círculo de seleção (✓ verde). Com alguém escolhido, sobe a barra
+  com a miniatura do recibo, "Adicione uma mensagem…", os nomes e "Enviar". No Preview o recibo
+  chega como documento nas conversas escolhidas (`whatsapp/sim/outbox.ts`); no app são os
+  clientes do Kyte com telefone, um por vez, e a conversa abre no WhatsApp com o recibo escrito
+  (nada sai sem o toque em enviar). No celular a barra de abas some enquanto a folha está aberta.
+- **Busca do Mapa (multimídia):** tocar fora do cartão de busca fecha.
+- **Destino de um cliente só (multimídia):** cartão baixo e horizontal, do tamanho do conteúdo
+  (foto, nome, endereço, chegada/min/km, Ligar e WhatsApp); o resto da coluna mostra o mapa.
+- **Botão "Ir":** sem a moldura branca em volta; fica sozinho sobre o mapa, com sombra leve.
+- **Chegada/min/km:** no app, enquanto a rota real não chega, mostra "—" (antes mostrava os
+  números de exemplo do Preview).
+- **Rota e cliente não somem mais** ao ir para outra aba e voltar: o Mapa guarda o último modo
+  (`rememberMap`/`mapHref` em `map/map-nav.ts`) e o menu (barra lateral e barra de abas) volta
+  para ele.
 
 ### 2026-11-27 07:50 — WhatsApp do celular igual ao do iPhone (conversa, dados do contato e animações)
 

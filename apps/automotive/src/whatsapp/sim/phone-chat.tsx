@@ -1,19 +1,21 @@
-import { type ComponentRef, memo, useEffect, useRef, useState } from 'react';
+import { type ComponentRef, useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
-import Svg, { Circle, Defs, G, Path, Pattern, Rect } from 'react-native-svg';
+import Svg, { Path } from 'react-native-svg';
 import { useSystemInsets } from '../../layout/form-factor';
 import { FONT, nativeDriver } from '../../theme';
 import { appleEase } from '../../ui/motion';
 import { Blur, Touchable } from '../../ui/primitives';
+import { AttachBody, AttachMenu, showsText } from './attach';
 import type { SimChat, SimContact, SimMessage } from './data';
+import type { AttachKind } from './outbox';
 import { Avatar, Icon, type IconName, type Palette, Text, u } from './phone-kit';
+import { Wallpaper } from './wallpaper';
 
 /**
  * Conversa aberta do WhatsApp simulado (celular), copiada do WhatsApp do iPhone (prints e
  * vídeo do usuário, 27/11/2026):
  *
- * - Papel de parede com desenhos de linha bem apagados (desenho nosso, no espírito do
- *   WhatsApp), no escuro e no claro.
+ * - Papel de parede: as imagens enviadas pelo usuário (escura e clara), em `wallpaper.tsx`.
  * - Cabeçalho de vidro: botão redondo de voltar, foto, nome e "toque para mostrar os dados do
  *   contato"; à direita, a pílula com o telefone. As mensagens passam por baixo dele.
  * - Balões com "rabinho" na última mensagem de cada sequência, hora e confirmações dentro do
@@ -32,7 +34,6 @@ function chatColors(P: Palette) {
   return P.dark
     ? {
         wall: '#0B0B0B',
-        doodle: 'rgba(255,255,255,0.075)',
         glass: 'rgba(30,31,31,0.72)',
         glassLine: 'rgba(255,255,255,0.08)',
         head: 'rgba(11,11,11,0.55)',
@@ -47,7 +48,6 @@ function chatColors(P: Palette) {
       }
     : {
         wall: '#EFEAE2',
-        doodle: 'rgba(84,101,111,0.11)',
         glass: 'rgba(255,255,255,0.78)',
         glassLine: 'rgba(0,0,0,0.06)',
         head: 'rgba(246,246,246,0.6)',
@@ -61,97 +61,6 @@ function chatColors(P: Palette) {
         timeOut: 'rgba(0,0,0,0.45)',
       };
 }
-
-/* ---------------- Papel de parede ---------------- */
-
-/** Desenhos de linha (24×24) espalhados num ladrilho que se repete. */
-const DOODLES: { d: string; x: number; y: number; r: number; extra?: 'smile' | 'sun' | 'pin' }[] = [
-  {
-    d: 'M12 20s-7-4.4-9.3-8.7C1.3 8.2 3 5 6.4 5c2 0 3.4 1.1 5.6 3.1C14.2 6.1 15.6 5 17.6 5 21 5 22.7 8.2 21.3 11.3 19 15.6 12 20 12 20z',
-    x: 10,
-    y: 14,
-    r: -12,
-  },
-  {
-    d: 'M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.6 6.6 19.5l1.2-6L3.3 9.3l6.1-.7z',
-    x: 78,
-    y: 6,
-    r: 14,
-  },
-  {
-    d: 'M9 18a3 3 0 1 1-3-3 3 3 0 0 1 3 3zm0 0V5l11-2v12m0 0a3 3 0 1 1-3-3 3 3 0 0 1 3 3z',
-    x: 150,
-    y: 22,
-    r: -8,
-  },
-  { d: 'M7 18h10a4 4 0 0 0 .5-8 6 6 0 0 0-11.4 1.5A3.3 3.3 0 0 0 7 18z', x: 46, y: 62, r: 6 },
-  { d: 'M4 5h16v11H9l-5 4z', x: 118, y: 66, r: -14 },
-  { d: '', x: 186, y: 84, r: 0, extra: 'smile' },
-  { d: 'M3 11l18-8-8 18-2-8z', x: 14, y: 112, r: 10 },
-  { d: 'M5 8h11v6a5 5 0 0 1-5 5h-1a5 5 0 0 1-5-5zM16 10h2a2 2 0 0 1 0 4h-2', x: 84, y: 120, r: 0 },
-  { d: '', x: 154, y: 136, r: 0, extra: 'sun' },
-  { d: 'M5 19C5 10 11 5 20 4c-1 9-6 15-15 15zM5 19l8-8', x: 40, y: 168, r: -6 },
-  {
-    d: 'M4 10h16v10H4zM3 7h18v3H3zM12 7v13M12 7c-2-4-6-3-5 0M12 7c2-4 6-3 5 0',
-    x: 116,
-    y: 178,
-    r: 8,
-  },
-  { d: '', x: 190, y: 186, r: -10, extra: 'pin' },
-  { d: 'M4 8h4l2-2h4l2 2h4v11H4zM12 16.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6z', x: 186, y: 40, r: 12 },
-  { d: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2', x: 6, y: 64, r: 0 },
-];
-const TILE = 224;
-
-/** Ladrilho em `Pattern` (um desenho só, repetido pelo SVG: leve no aparelho e no navegador). */
-export const Wallpaper = memo(function Wallpaper({ color, bg }: { color: string; bg: string }) {
-  const t = u(TILE);
-  return (
-    <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: bg }]}>
-      <Svg width="100%" height="100%">
-        <Defs>
-          <Pattern id="wa-doodles" patternUnits="userSpaceOnUse" width={t} height={t}>
-            <G scale={t / TILE}>
-              {DOODLES.map((o, i) => (
-                <G
-                  // biome-ignore lint/suspicious/noArrayIndexKey: desenho fixo
-                  key={i}
-                  transform={`translate(${o.x} ${o.y}) rotate(${o.r} 12 12)`}
-                  stroke={color}
-                  strokeWidth={1.4}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  fill="none"
-                >
-                  {o.d ? <Path d={o.d} /> : null}
-                  {o.extra === 'smile' && (
-                    <>
-                      <Circle cx={12} cy={12} r={9} />
-                      <Path d="M8 14c1.2 1.5 2.5 2 4 2s2.8-.5 4-2M9 9.5h.01M15 9.5h.01" />
-                    </>
-                  )}
-                  {o.extra === 'sun' && (
-                    <>
-                      <Circle cx={12} cy={12} r={4} />
-                      <Path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2" />
-                    </>
-                  )}
-                  {o.extra === 'pin' && (
-                    <>
-                      <Path d="M12 21s-6-6-6-11a6 6 0 0 1 12 0c0 5-6 11-6 11z" />
-                      <Circle cx={12} cy={10} r={2} />
-                    </>
-                  )}
-                </G>
-              ))}
-            </G>
-          </Pattern>
-        </Defs>
-        <Rect x="0" y="0" width="100%" height="100%" fill="url(#wa-doodles)" />
-      </Svg>
-    </View>
-  );
-});
 
 /* ---------------- Vidro ---------------- */
 
@@ -210,6 +119,7 @@ export function ChatScreen({
   onProfile,
   onCall,
   onSend,
+  onAttach,
 }: {
   P: Palette;
   contact: SimContact;
@@ -223,8 +133,11 @@ export function ChatScreen({
   onProfile: () => void;
   onCall: () => void;
   onSend: (text: string) => void;
+  /** Opção do mini menu do "+" (manda um anexo de exemplo). */
+  onAttach: (kind: AttachKind) => void;
 }) {
   const C = chatColors(P);
+  const [attach, setAttach] = useState(false);
   const insets = useSystemInsets();
   const composerBottom = Math.max(insets.bottom, u(20)) + u(6);
   const [text, setText] = useState('');
@@ -252,7 +165,7 @@ export function ChatScreen({
 
   return (
     <View style={{ flex: 1, backgroundColor: C.wall }}>
-      <Wallpaper color={C.doodle} bg={C.wall} />
+      <Wallpaper dark={P.dark} />
       <ScrollView
         ref={scroll}
         style={{ flex: 1 }}
@@ -348,7 +261,18 @@ export function ChatScreen({
         bottom={composerBottom}
         onChange={setText}
         onSend={send}
+        onAttach={() => !blocked && setAttach(true)}
       />
+      {attach && (
+        <AttachMenu
+          C={P}
+          px={u}
+          left={u(10)}
+          bottom={composerBottom + u(52)}
+          onPick={onAttach}
+          onClose={() => setAttach(false)}
+        />
+      )}
     </View>
   );
 }
@@ -363,6 +287,7 @@ function Composer({
   bottom,
   onChange,
   onSend,
+  onAttach,
 }: {
   P: Palette;
   text: string;
@@ -371,6 +296,7 @@ function Composer({
   bottom: number;
   onChange: (t: string) => void;
   onSend: () => void;
+  onAttach: () => void;
 }) {
   const C = chatColors(P);
   // 0 = parado (câmera + microfone); 1 = digitando (sem câmera, botão de enviar).
@@ -386,7 +312,12 @@ function Composer({
   const cam = u(40);
   return (
     <View style={[styles.composer, { paddingBottom: bottom, backgroundColor: C.bar }]}>
-      <Pressable accessibilityRole="button" accessibilityLabel="Anexar" style={styles.side}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Anexar"
+        onPress={onAttach}
+        style={styles.side}
+      >
         <Icon name="add" pt={30} color={P.ink} />
       </Pressable>
       <View style={[styles.field, { backgroundColor: C.field }]}>
@@ -581,35 +512,7 @@ function Bubble({
             <Icon name="image-outline" pt={40} color={P.sub} />
           </View>
         )}
-        {(msg.kind === 'doc' || msg.kind === 'call') && (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: u(10) }}>
-            <View
-              style={[
-                styles.center,
-                {
-                  width: u(36),
-                  height: u(36),
-                  borderRadius: u(18),
-                  backgroundColor: P.dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
-                },
-              ]}
-            >
-              <Icon
-                name={msg.kind === 'call' ? 'call' : 'document-text'}
-                pt={18}
-                color={msg.kind === 'call' ? P.green : P.red}
-              />
-            </View>
-            <View>
-              <Text pt={16} color={P.ink}>
-                {msg.kind === 'doc' ? `${msg.text}.pdf` : msg.text}
-              </Text>
-              <Text pt={13} color={P.sub}>
-                {msg.kind === 'doc' ? 'PDF · 2 páginas' : 'Efetuada'}
-              </Text>
-            </View>
-          </View>
-        )}
+        {!!msg.kind && msg.kind !== 'photo' && <AttachBody msg={msg} C={P} px={u} />}
         <View
           style={{
             flexDirection: 'row',
@@ -618,7 +521,7 @@ function Bubble({
             columnGap: u(8),
           }}
         >
-          {msg.kind !== 'doc' && msg.kind !== 'call' && (
+          {showsText(msg) && (
             <Text pt={17} color={P.ink} style={{ flexShrink: 1 }}>
               {msg.text}
             </Text>
