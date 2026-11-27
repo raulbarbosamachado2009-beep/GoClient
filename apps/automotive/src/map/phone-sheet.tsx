@@ -569,7 +569,16 @@ export function ExploreSheet() {
       })
       .catch((e: Error) => setNotice(e.message));
   };
+  // Altura atual da aba (0 = minimizada). Com a aba minimizada, tocar na busca só abre a
+  // aba até a metade (pedido de 26/11/2026: o toque era para abrir a aba, não o teclado);
+  // com a aba aberta, o toque abre a busca.
+  const detentNow = useRef<Detent>(0);
   const startSearch = () => {
+    if (!searching && detentNow.current === 0) {
+      detentNow.current = 1;
+      sheet.current?.snap(1);
+      return;
+    }
     if (!searching) swap.run(1, () => setSearching(true));
     sheet.current?.snap(2);
     requestAnimationFrame(() => input.current?.focus());
@@ -597,6 +606,7 @@ export function ExploreSheet() {
       collapsed={146}
       controller={sheet}
       onDetent={(d) => {
+        detentNow.current = d;
         // Arrastou a aba para baixo durante a busca: encerra a busca.
         if (d === 0 && searching) {
           setSearching(false);

@@ -56,7 +56,12 @@ export function OnboardingLayout({
   const mid = phone || scene === null;
   const copy = (
     <View style={[styles.copy, mid ? styles.copyPhone : styles.copyCar]}>
-      <Appear key={`b-${sceneKey}`} distance={12} style={mid ? styles.centerSelf : undefined}>
+      {/* O logo (sem selo nem ícone) fica parado ao trocar de etapa no login. */}
+      <Appear
+        key={hero || badge ? `b-${sceneKey}` : 'logo'}
+        distance={12}
+        style={mid ? styles.centerSelf : undefined}
+      >
         {hero ? (
           hero
         ) : badge ? (
@@ -103,7 +108,7 @@ export function OnboardingLayout({
   const bottom = (
     <View style={{ gap: spacing[5], alignSelf: 'stretch' }}>
       {dots && dots.count > 1 && (
-        <View style={[styles.dots, !phone && { justifyContent: 'flex-start' }]}>
+        <View style={[styles.dots, !mid && { justifyContent: 'flex-start' }]}>
           {Array.from({ length: dots.count }, (_, i) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: páginas fixas
             <Dot key={i} active={i === dots.index} />

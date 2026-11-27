@@ -104,8 +104,10 @@ const light: Palette = {
   scrim: 'rgba(0,0,0,0.28)',
   material: {
     tint: 'light',
-    fallback: LIVE_BLUR ? 'rgba(244,244,247,0.84)' : 'rgba(244,244,247,0.96)',
-    border: 'rgba(255,255,255,0.6)',
+    // Branco (e não o cinza do fundo #F2F2F7), com borda escura fina, para os cartões se
+    // destacarem do fundo do app no modo claro.
+    fallback: LIVE_BLUR ? 'rgba(255,255,255,0.86)' : 'rgba(255,255,255,0.97)',
+    border: 'rgba(0,0,0,0.07)',
   },
   sidebar: '#E6E6EB',
   map: {
@@ -203,16 +205,17 @@ interface ThemeState {
   setPreference: (p: ThemePreference) => void;
 }
 
+// Modo claro é o padrão do sistema (pedido do usuário em 26/11/2026); o escuro fica em Ajustes.
 const ThemeContext = createContext<ThemeState>({
-  c: dark,
-  preference: 'dark',
+  c: light,
+  preference: 'light',
   setPreference: () => {},
 });
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const system = useColorScheme();
-  const [preference, setPreference] = useState<ThemePreference>('dark');
-  const mode: Mode = preference === 'auto' ? (system === 'light' ? 'light' : 'dark') : preference;
+  const [preference, setPreference] = useState<ThemePreference>('light');
+  const mode: Mode = preference === 'auto' ? (system === 'dark' ? 'dark' : 'light') : preference;
   const value = useMemo(
     () => ({ c: palettes[mode], preference, setPreference }),
     [mode, preference],

@@ -55,7 +55,7 @@ export function ClientPicker({ onClose }: { onClose: () => void }) {
   return (
     <Appear distance={16} style={{ flex: 1, gap: spacing[4] }}>
       <View style={styles.head}>
-        <Text variant="title2" style={{ flex: 1 }}>
+        <Text variant="largeTitle" style={{ flex: 1, fontSize: 40, lineHeight: 48 }}>
           Clientes
         </Text>
         <Touchable
@@ -63,10 +63,10 @@ export function ClientPicker({ onClose }: { onClose: () => void }) {
           onPress={() => router.replace({ pathname: '/kyte', params: { secao: 'clientes' } })}
           style={styles.more}
         >
-          <Text variant="headline" tone="accent">
+          <Text variant="headline" tone="accent" style={{ fontSize: 28, lineHeight: 34 }}>
             Ver mais
           </Text>
-          <Icon name="chevron-forward" size={26} color={c.accent} />
+          <Icon name="chevron-forward" size={32} color={c.accent} />
         </Touchable>
         <Touchable
           accessibilityRole="button"
@@ -74,11 +74,11 @@ export function ClientPicker({ onClose }: { onClose: () => void }) {
           onPress={onClose}
           style={[styles.close, { backgroundColor: c.fill }]}
         >
-          <Icon name="close" size={30} color={c.textSecondary} />
+          <Icon name="close" size={36} color={c.textSecondary} />
         </Touchable>
       </View>
       <View style={[styles.search, { backgroundColor: c.fill }]}>
-        <Icon name="search" size={30} color={c.textSecondary} />
+        <Icon name="search" size={36} color={c.textSecondary} />
         <TextInput
           value={query}
           onChangeText={setQuery}
@@ -102,7 +102,11 @@ export function ClientPicker({ onClose }: { onClose: () => void }) {
               onPress={() => setRegion(region === r ? null : r)}
               style={[styles.chip, { backgroundColor: region === r ? c.accent : c.fill }]}
             >
-              <Text variant="headline" color={region === r ? '#FFFFFF' : c.text}>
+              <Text
+                variant="headline"
+                color={region === r ? '#FFFFFF' : c.text}
+                style={{ fontSize: 28, lineHeight: 34 }}
+              >
                 {r}
               </Text>
             </Touchable>
@@ -110,13 +114,13 @@ export function ClientPicker({ onClose }: { onClose: () => void }) {
         </ScrollView>
       )}
       {notice && (
-        <Text variant="callout" tone="secondary">
+        <Text variant="callout" tone="secondary" style={{ fontSize: 24, lineHeight: 30 }}>
           {notice}
         </Text>
       )}
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ gap: spacing[2] }}
+        contentContainerStyle={{ gap: spacing[3], paddingBottom: spacing[2] }}
         keyboardShouldPersistTaps="handled"
       >
         {kyte.names
@@ -132,7 +136,7 @@ export function ClientPicker({ onClose }: { onClose: () => void }) {
               />
             ))}
         {kyte.names?.length === 0 && (
-          <Text variant="callout" tone="secondary">
+          <Text variant="callout" tone="secondary" style={{ fontSize: 24, lineHeight: 30 }}>
             {kyte.loading ? 'Carregando os clientes do Kyte…' : 'Nenhum cliente encontrado.'}
           </Text>
         )}
@@ -151,17 +155,22 @@ function Row({ title, sub, onPress }: { title: string; sub: string; onPress: () 
       style={[styles.row, { backgroundColor: c.fill }]}
     >
       <View style={styles.pin}>
-        <Icon name="storefront" size={30} color="#FFFFFF" />
+        <Icon name="storefront" size={40} color="#FFFFFF" />
       </View>
-      <View style={{ flex: 1 }}>
-        <Text variant="headline" numberOfLines={1}>
+      <View style={{ flex: 1, gap: 4 }}>
+        <Text variant="headline" numberOfLines={1} style={{ fontSize: 30, lineHeight: 36 }}>
           {title}
         </Text>
-        <Text variant="callout" tone="secondary" numberOfLines={1}>
+        <Text
+          variant="callout"
+          tone="secondary"
+          numberOfLines={1}
+          style={{ fontSize: 24, lineHeight: 30 }}
+        >
           {sub}
         </Text>
       </View>
-      <Icon name="navigate" size={30} color={c.accent} />
+      <Icon name="navigate" size={44} color={c.accent} />
     </Touchable>
   );
 }
@@ -170,15 +179,15 @@ const styles = StyleSheet.create({
   head: { flexDirection: 'row', alignItems: 'center', gap: spacing[3] },
   more: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: spacing[2] },
   close: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     alignItems: 'center',
     justifyContent: 'center',
   },
   search: {
-    height: 76,
-    borderRadius: 38,
+    height: 96,
+    borderRadius: 48,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[3],
@@ -186,22 +195,25 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    fontSize: 26,
+    fontSize: 30,
     padding: 0,
     ...(Platform.OS === 'web' ? ({ outlineStyle: 'none' } as object) : null),
   },
-  chip: { height: 60, borderRadius: 30, justifyContent: 'center', paddingHorizontal: spacing[5] },
+  chip: { height: 80, borderRadius: 40, justifyContent: 'center', paddingHorizontal: spacing[6] },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[4],
-    padding: spacing[4],
+    minHeight: 128,
+    paddingHorizontal: spacing[5],
+    paddingVertical: spacing[4],
+    // Concêntrico com o cartão (48 de raio, 24 de margem).
     borderRadius: 24,
   },
   pin: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 84,
+    height: 84,
+    borderRadius: 42,
     backgroundColor: '#0A84FF',
     alignItems: 'center',
     justifyContent: 'center',

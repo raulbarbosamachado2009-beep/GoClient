@@ -60,8 +60,29 @@ Código: `apps/automotive/src/kyte/bridge.ts` (rotas e script injetado) e `src/a
   ficha com rota), Histórico (por dia, busca, vendedores, últimos 30 dias), venda aberta
   (Itens/Detalhes/Cliente, cancelar) e recibo (PDF, e-mail, imprimir, compartilhar). Código em
   `apps/automotive/src/kyte/screens/`.
-- **Página real do Kyte** só para entrar na conta e para **Vender** (registrar venda), em modo
-  mínimo (menu do Kyte escondido; `kyteScript({ minimal: true })`).
+- **Página real do Kyte** só para entrar na conta, em modo mínimo (menu do Kyte escondido;
+  `kyteScript({ minimal: true })`), e como plano B da venda (abaixo).
+- **Vender (27/11/2026):** o fluxo de vendas inteiro do Kyte tem telas próprias, copiadas do
+  vídeo do usuário (`kyte/sell/`): Vender (busca, categorias, "1X", "+👤") → Adicionar cliente
+  → Carrinho (quantidade, valor unitário só para esta venda, desconto do item, "Dar desconto",
+  "…" com entrega, observação, desconto e esvaziar) → Pagamento (Dinheiro, Débito, Crédito,
+  Saldo Cliente, Link, Outros, Pix, Venda Fiado, Salvar pedido) → Pagamento: Dinheiro (valor
+  recebido e troco) → Venda Concluída → Recibo. Regras do carrinho em `kyte/sell/cart.ts`
+  (centavos inteiros, com testes). Ao concluir, a janela invisível registra a venda no Kyte
+  Web como uma pessoa faria (`JOBS.registerSale`: carrinho, valores editados, desconto,
+  observação, forma de pagamento, valor recebido, Concluir), achando tudo por texto. O que
+  não der para aplicar aparece na tela "Venda Concluída" ("Confira no Kyte: …"). Se uma etapa
+  falhar, o app oferece "Abrir no Kyte" com os itens e o cliente já no carrinho. Limitação:
+  os textos das telas de pagamento do Kyte Web foram presumidos a partir do app do celular
+  (vídeo); precisa ser conferido com a conta real na multimídia.
+- **Impressora da comanda (27/11/2026):** como o Kyte no celular, por Bluetooth. A impressora
+  térmica é pareada no Bluetooth do Android da multimídia e escolhida uma vez em Recibo →
+  "Configurar recibos" (lista os aparelhos pareados; papel 58/80 mm; acentos; imprimir teste).
+  Depois, "Imprimir" manda a comanda direto para ela. O módulo nativo
+  `apps/automotive/modules/bt-printer` (Kotlin, canal serial SPP) envia os bytes ESC/POS
+  montados em `kyte/print/escpos.ts` (página de código 860, com opção sem acentos). Permissão
+  pedida: "Dispositivos por perto" (BLUETOOTH_CONNECT, Android 12+). No Preview, "Imprimir"
+  abre a impressão do navegador.
 - **Dados:** a janela invisível (`kyte/agent.tsx`) guarda as respostas JSON que a própria
   página do Kyte recebe do servidor e lê o banco local do navegador (IndexedDB); depois
   reconhece produtos, clientes e vendas pelos nomes dos campos (`kyte/data-page.ts`, aceita

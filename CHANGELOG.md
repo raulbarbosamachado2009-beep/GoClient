@@ -5,16 +5,272 @@ Leia este arquivo antes de começar qualquer trabalho.
 
 ## Estado atual do app
 
-_Última atualização: 2026-11-26 09:15 — WhatsApp no menu (WhatsApp Web dentro do app) e o Lucas avisando o próximo cliente (PR aguardando revisão; vem depois do PR que remove o Spotify)._
+_Última atualização: 2026-11-26 21:50 — Vendas do Kyte com telas próprias (fluxo do vídeo do usuário), impressão da comanda por impressora Bluetooth, cartão do cliente na navegação do celular que se recolhe e cartões do Mapa da multimídia ajustados. Os PRs #12, #13 e #14 e esta rodada estão na main._
 
 - **Automotive (`apps/automotive`)** é onde está quase todo o produto: Mapa (OSM + OpenRouteService,
   navegação com voz), Kyte (telas próprias sobre a janela do Kyte) e o assistente de voz Lucas.
   Não há mais Música/Spotify; no lugar entrou a aba **WhatsApp** (WhatsApp Web dentro do
-  app, número da equipe). O Lucas avisa o próximo cliente da rota pelo WhatsApp. Roda no carro (paisagem) e no celular (em pé, com aba puxável estilo Apple Maps).
+  app, número da equipe). O Lucas (a nuvenzinha do logo) avisa o próximo cliente da rota pelo WhatsApp. Roda no carro (paisagem) e no celular (em pé, com aba puxável estilo Apple Maps).
+- **Kyte → Vender** tem o fluxo de vendas inteiro do Kyte em telas próprias (Vender, cliente,
+  carrinho, pagamento, dinheiro, venda concluída, recibo); ao concluir, a venda é registrada no
+  Kyte por trás. **Imprimir** manda a comanda para a impressora térmica Bluetooth pareada.
+- **Modo claro é o padrão** (o escuro continua em Ajustes → Tema). Login com fundo "aurora" em azuis.
 - **Mobile e Web** ainda são telas de diagnóstico; **API** (`apps/api`) com Hono + Drizzle.
 - Regras de negócio em `packages/core` (com testes); visual só com `@goclient/design-tokens`.
 
 ## Mudanças
+
+### 2026-11-26 21:50 — Vendas do Kyte refeitas, impressora Bluetooth e cartões do Mapa
+
+Pedido do usuário (thread "Refazer vendas do Kyte e cards do mapa", com 4 imagens e um vídeo
+do fluxo de vendas do Kyte). O usuário pediu tudo pronto, sem precisar aprovar PR: esta rodada e
+a pilha #12 → #13 → #14 foram juntadas direto na main.
+
+- **Celular, navegação (imagem 1):** um botão só para encerrar (antes havia "Encerrar navegação"
+  e um "×" com a mesma função; o "Parar" do topo também saiu). Novo cartão `map/nav-card.tsx`:
+  começa com o botão vermelho largo e, 2 s depois, se recolhe — o botão vira um quadrado
+  arredondado com "×" à direita e ficam a foto, o nome e o endereço (subtítulo). Tocar ou
+  arrastar para cima em qualquer canto (menos no "×") abre o tamanho médio (região e ícone do
+  WhatsApp) e, de novo, o grande (pedido e endereço completo); mais um toque ou arrastar para
+  baixo recolhe. O WhatsApp abre a conversa do cliente no WhatsApp do app com a mensagem de
+  "estamos chegando" já escrita (o envio continua sendo o toque da pessoa).
+- **Multimídia, Clientes do Mapa (imagem 2):** tudo maior — título, "Ver mais", "×" de 80,
+  busca de 96, regiões de 80 e linhas de 128 com ícones maiores (`map/client-picker.tsx`).
+- **Multimídia, Mapa (imagem 3):** o cartão do WhatsApp ficou baixo (136, logo de 80, uma linha)
+  e o "Para onde vamos?" ocupa o resto da coluna, com título maior e opções maiores perto da
+  mão. Coluna da direita de 480 para 520.
+- **Kyte → Vender (imagem 4 e vídeo):** o fluxo de vendas do Kyte inteiro em telas próprias
+  (`kyte/sell/`), no desenho do Kyte e com entrada/saída de cada página como no vídeo: Vender
+  (busca "Item ou código", categorias, "1X", contador no produto, "+👤") → Adicionar cliente
+  (busca, última compra, WhatsApp, "Desvincular cliente") → Carrinho (toque no item abre
+  quantidade, valor unitário só para esta venda e desconto; "Dar desconto"; "…" com Opções de
+  entrega, Adicionar observação, Adicionar desconto e Esvaziar carrinho) → Pagamento (Dinheiro,
+  Cartão de Débito/Crédito, Saldo Cliente, Link de Pagamento, Outros, Pix, Venda Fiado, Salvar
+  pedido) → Pagamento: Dinheiro (valor recebido e troco) → Venda Concluída (Falar com cliente,
+  Recibo, Iniciar outra venda) → Recibo (Configurar recibos, PDF, Email, Imprimir, Compartilhar).
+  No Preview a venda é simulada e entra no Histórico; no app, a janela invisível registra a
+  venda no Kyte (`JOBS.registerSale`) e, se não conseguir, oferece abrir o Kyte com o carrinho
+  montado. Regras do carrinho em centavos em `kyte/sell/cart.ts` (com testes).
+- **Impressora Bluetooth:** "Imprimir" manda a comanda direto para a impressora térmica pareada
+  no Bluetooth da multimídia, como o Kyte faz no celular. Escolha da impressora, papel 58/80 mm,
+  acentos e teste em Recibo → "Configurar recibos". Módulo nativo novo
+  `apps/automotive/modules/bt-printer` (Kotlin, SPP) e comanda ESC/POS em `kyte/print/escpos.ts`
+  (página 860, com testes). O recibo do Histórico usa a mesma tela.
+- Precisa de teste num aparelho de verdade: registrar a venda no Kyte Web (os textos das telas
+  de pagamento do Kyte Web foram presumidos a partir do vídeo do app) e imprimir na impressora.
+
+### 2026-11-26 21:03 — Tempo de resposta: Mapa, Kyte e WhatsApp mais rápidos
+
+Pedido do usuário: o app tem que ser extremamente rápido em **tempo de resposta** (abrir telas,
+carregar dados, rede), não em animações. Diagnóstico: trocar de aba fechava a tela e o Mapa, o
+Kyte e o WhatsApp recarregavam do zero a cada vez.
+
+- **Telas sempre abertas:** Mapa, Kyte e WhatsApp são montados uma vez e ficam por trás
+  (`shell/kept-screens.tsx`); trocar de aba só mostra ou esconde. Depois que o app abre, o Kyte
+  (1,5 s) e o WhatsApp (4 s) são abertos escondidos, para já estarem prontos. O código das
+  telas foi para `src/screens/`; as rotas de `app/(main)/` só marcam a seção. Parâmetros como
+  `?rota=dia` e `?secao=clientes` chegam por `useKeptParams`. A navegação continua falando
+  mesmo com outra aba aberta. Se o Android fechar uma janela por falta de memória, ela reabre
+  sozinha (`onRenderProcessGone`).
+- **Mapa:** a biblioteca MapLibre vem dentro do app (sem baixar ~1 MB do unpkg; gerada por
+  `scripts/vendor-maplibre.mjs` no `pnpm install`, fora do git); o estilo é pedido antes da
+  biblioteca ser lida e o mapa começa na hora com o estilo salvo. Trocar claro/escuro só troca
+  o estilo, sem recarregar a página.
+- **Endereços:** os já encontrados ficam salvos no aparelho (`map/geo-cache.ts`) e entram na
+  hora; os novos são buscados 4 de cada vez e entram juntos (a rota é calculada uma vez só, e
+  não a cada pino).
+- **Kyte:** a janela de dados abre 2,5 s depois do app (se já entrou no Kyte) e fica aberta 10
+  min sem uso (antes: só no primeiro pedido, fechando em 90 s); a espera dela é por aviso, sem
+  checar a cada 300 ms; os dados salvos são lidos ao abrir o app. As pausas fixas (1,3 s depois
+  da busca, 0,9 s por item na venda, 1,3 s por volta ao ler listas) viraram esperas pelo
+  resultado (`A.afterChange`, `A.netQuiet`, `waitFor`).
+- **Ajustes → Tempo de resposta:** cronômetro de cada etapa medido no aparelho (mapa pronto,
+  ruas desenhadas, endereços, rota, janela do Kyte, leituras do Kyte, WhatsApp pronto), em
+  `src/perf.ts`. Aparece só no app Android (no Preview não há medidas).
+- Ainda não medido num aparelho de verdade. Abrir a conversa pelo Lucas ainda recarrega o
+  WhatsApp Web (o link `/send` só funciona abrindo a página).
+
+### 2026-11-26 14:40 — Nuvem do Lucas sem cortes secos
+
+O usuário mandou um vídeo com a nuvem "travando". Analisando os quadros, os saltos aconteciam
+toda vez que o Lucas trocava de expressão (ouvindo → falando → parado): cada troca
+substituía a animação em laço por outra, que recomeçava do zero no meio do movimento.
+
+- Cada laço (corpo de cada expressão, olhar para os lados, acenar, falar, rir) agora fica
+  numa camada própria. Ao trocar de expressão, a camada que sai volta ao repouso suave a
+  partir de onde estava, e a nova começa do repouso. Na web isso usa a Web Animations API e no
+  app usa o driver nativo. Continua sem JavaScript a cada quadro.
+- A boca falando e rindo varia em torno do tamanho parado, que também muda suave. O formato
+  de "D" da risada agora entra com transição.
+- Medição no Preview (celular, 22 s de conversa de demonstração): o maior salto da nuvem
+  numa troca de expressão caiu de 6 px para 2,7 px por quadro, e esse resto é movimento
+  contínuo, sem corte.
+
+### 2026-11-26 14:08 — Nuvem no lugar do logo, login que muda de forma e Lucas com expressões
+
+Sexta rodada (quase toda no celular; o login e o logo valem também para a multimídia):
+
+- **WhatsApp do celular:** o botão de Ligações foi para o lado do "+" verde, na mesma linha
+  do título, e "Conversas" (e "Ligações") ficou no topo da tela.
+- **Dentro de uma conversa a barra de abas some** (desce e esmaece) e a conversa ocupa a
+  tela inteira; o campo de mensagem vai até o rodapé. Ao voltar para a lista, a barra volta.
+- **Barra de abas destacava a aba errada** no WhatsApp (marcava o Lucas). O destaque agora
+  segue a posição real de cada aba.
+- **Mapa:** com a aba puxável minimizada, tocar na busca só abre a aba até a metade; com a
+  aba aberta, o toque abre a busca.
+- **Logo → nuvem animada em todo o app** (`LogoMark` agora é a nuvem do Lucas em repouso:
+  flutua, pisca e olha para os lados, sem o quadrado do ícone). A barra de abas não mudou.
+- **Abertura só com a nuvem**, sem o nome "GoClient": ela se forma bolha por bolha, dá um
+  pulinho, abre os olhos, olha para os lados, pisca e some (`havena/cloud-intro.tsx`).
+- **Login numa tela só que muda de forma:** ao tocar em "Continuar com e-mail", a nuvem
+  diminui e sobe, o título troca, o botão preto vira o campo de e-mail e o campo de senha,
+  o Entrar e os links entram abrindo espaço. "Voltar" faz o caminho inverso.
+- **Transições onboarding → permissões → login mais rápidas e limpas:** sem desfoque nem
+  zoom; a página sai deslizando de leve (0,19 s) e a nova entra (0,34 s). A animação da
+  pilha de telas foi desligada para não somar outra por cima.
+- **Página "Rotas" do onboarding redesenhada:** no lugar do mapa desenhado, um cartão "Rota
+  de hoje" no mesmo estilo dos cartões de clientes, com as paradas ligadas por uma linha que
+  um marcador percorre (cada parada alcançada vira ✓) e o resumo da viagem embaixo.
+- **Lucas com expressões:** ouvindo, ele "compreende" (acena em pares e aperta os olhos de
+  leve); falando, a boca abre e fecha mais suave e a cabeça muda de ângulo ao longo da
+  frase; com uma piada, ri (olhos fechados de alegria, boca aberta e pulinhos); quando uma
+  ação dá erro, fica triste e pede desculpas ("Desculpa, …"). A detecção de piada e o
+  pedido de desculpas estão em `havena/mood.ts` (com testes). No Preview a demonstração
+  passa também pela piada e pelo pedido de desculpas.
+- **Legenda do Lucas** com uma sombra bem leve atrás das letras (halo claro no tema claro,
+  sombra escura no escuro), para ler melhor sobre o mapa.
+
+### 2026-11-26 12:46 — Celular: WhatsApp no desenho do iPhone, Lucas no meio da barra e mais fluido
+
+Quinta rodada, só para o celular em pé (a multimídia não muda):
+
+- **WhatsApp do celular** com telas próprias no desenho do WhatsApp do iPhone
+  (`whatsapp/sim/phone.tsx`): Conversas (título grande, pesquisa, filtros Todas, Não lidas,
+  Favoritos e Grupos), conversa aberta (cabeçalho com voltar, foto, nome e botão de ligar;
+  balões; campo de mensagem com microfone), dados do contato com rolagem (o nome aparece no
+  cabeçalho ao rolar; Ligar, Mensagem, Favorito; favoritos, limpar e bloquear), Ligações
+  (favoritos e ligações recentes com ⓘ) e nova conversa/ligação. **Tela cheia**: o fundo vai
+  até as bordas e passa por trás da barra de abas. O botão redondo do canto esquerdo alterna
+  Conversas ↔ Ligações. Sem vídeo e só dados fictícios.
+- **Ligação em tela cheia** no celular (`CallScreen`): minimizar, nome e "Chamando…"/duração,
+  foto no meio e painel com Alto-falante, Encerrar e Silenciar. Minimizada, vira o cartão
+  mínimo no canto (toque para abrir de novo).
+- **Lucas no meio da barra de abas** do celular.
+- **Nuvem do Lucas sem travar:** as animações agora são só `transform`/`opacity` na GPU
+  (CSS @keyframes na web, driver nativo no app), sem JavaScript a cada quadro. Mesmos
+  movimentos de antes.
+- **Desfoque atrás do Lucas mais embaixo** no celular (mesma intensidade, começando mais
+  perto do rodapé).
+
+### 2026-11-26 11:38 — Lucas nuvem animado e ligação de voz no WhatsApp
+
+Quarta rodada de ajustes do usuário:
+
+- **Lucas é a nuvenzinha do logo** no lugar da bola azul (`src/havena/cloud.tsx`; o orbe
+  `orb.tsx` foi removido). Fundo da imagem removido (`assets/lucas-cloud.png`) e a forma
+  redesenhada em vetor para animar olhos, boca e corpo separados. Animação de desenho animado
+  (sem só aumentar e diminuir): parado ele flutua, pisca e olha para os lados; ouvindo inclina
+  a cabeça, arregala os olhos e acena; pensando olha para cima; falando abre a boca por
+  sílabas e quica junto. No Preview a demonstração passa pelos três momentos. Na barra lateral
+  e na barra de abas só flutua e pisca (laços do driver nativo).
+- **Ligação de voz no WhatsApp simulado** (`whatsapp/sim/call.ts` e `call-layer.tsx`): ligar
+  (cabeçalho da conversa, dados do contato, favoritos ou dados da ligação) abre o painel escuro
+  do WhatsApp Web embaixo da lista, com foto, nome, "Chamando…" e depois a duração, microfone e
+  desligar. Sem câmera (vídeo removido). A conversa ganha o balão "Ligação de voz".
+- **Cartão mínimo da chamada:** em qualquer outra página a ligação continua num cartão com
+  foto, nome, duração e desligar, no canto superior direito; arrastar para baixo leva ao canto
+  inferior (e para cima volta). Tocar no cartão volta ao WhatsApp.
+
+### 2026-11-26 11:25 — Novo logo, cartões do Mapa no estilo CarPlay e WhatsApp com fontes da Apple
+
+Terceira rodada de ajustes do usuário:
+
+- **Mapa:** divisão de cartões no estilo do CarPlay: o cartão do WhatsApp em cima (menor)
+  mostra só a mensagem mais recente: logo do WhatsApp à esquerda, nome do cliente, a mensagem
+  e o horário à direita; tocar abre o WhatsApp. Ele encolhe quando o cartão de baixo cresce.
+- **WhatsApp:** elementos um pouco maiores (×1,85) e lista mais estreita (600 px), para a
+  conversa ganhar espaço; **fontes SF Pro** (as da Apple, como no resto do app) no lugar da
+  fonte do sistema; conversa aberta com fundo cinza bem claro (#ECECEC) atrás da linha.
+- **Sem ligação de vídeo** (cabeçalho da conversa, dados do contato, favoritos, ligações).
+- **Interruptor menor** em "Silenciar notificações" e "Sincronizar contato", proporcional à linha.
+- **Letreiro "WhatsApp"** em SF Pro Bold verde-claro, mais justo (texto, não a imagem do
+  logotipo).
+- **Novo logo do GoClient** (nuvem azul enviada pelo usuário): `assets/logo.png`, ícone do app,
+  favicon, splash e ícones adaptativos do Android, na multimídia e no celular.
+
+### 2026-11-26 11:00 — WhatsApp maior, login numa página só, cartões visíveis e fundo azul
+
+Segunda rodada de ajustes do usuário:
+
+- **WhatsApp com elementos grandes** como o resto da multimídia: escala do WhatsApp Web ×1,7
+  (antes ×1,35) e lista de 680 px; os filtros rolam para o lado se não couberem.
+- **O título continua "WhatsApp"** na página de Ligações (antes trocava para "Ligações").
+- **Login numa página só:** ao escolher e-mail ou celular (QR), o fundo e o logo ficam; só o
+  texto e os botões saem e os campos (ou o QR) aparecem no lugar, sem transição de página.
+- **Cartões visíveis no modo claro:** o material dos cartões passou de cinza (igual ao fundo)
+  para branco com borda fina (`theme.tsx`, `material.fallback` e `material.border`).
+- **Cartão do WhatsApp no Mapa** mostra a última mensagem: logo à esquerda, nome do cliente,
+  a mensagem e o horário à direita. Quando o cartão cresce, aparecem as anteriores. No app
+  instalado (WhatsApp Web real, sem acesso às conversas) ele mostra só o atalho.
+- **Fundo do login em azuis** (royal, céu, anil e ciano sobre azul-claro).
+- Arquivos: `whatsapp/sim/simulated.tsx`, `whatsapp/sim/data.ts` (`recentMessages`),
+  `app/(main)/mapa.tsx`, `app/onboarding/login.tsx`, `onboarding/layout.tsx`,
+  `onboarding/aurora.tsx`, `theme.tsx`.
+
+### 2026-11-26 10:45 — WhatsApp simulado fiel ao WhatsApp Web, modo claro e Mapa com cartão do WhatsApp
+
+Pedidos do usuário (8 itens) e uma correção achada ao verificar o fluxo:
+
+1. **Sem o trilho lateral no WhatsApp simulado.** O botão ao lado do "+" (onde ficavam os ⋮)
+   alterna Conversas ↔ Ligações. Também vale no celular (saíram as abas "Conversas/Ligações").
+2. **O ícone mostra o destino:** nas Conversas, ícone de ligação; nas Ligações, ícone de
+   conversa (com o número de conversas não lidas).
+3. **Visual igual ao WhatsApp Web:** fonte do sistema (Segoe UI/Roboto), cores do WhatsApp
+   atual (#1DAA61, fundo #F7F5F3, papel de parede bege), proporções do original ×1,35,
+   avatares padrão (silhueta azul e de grupo), filtros, balões com "rabinho" e sombra fina,
+   aviso de criptografia em amarelo, campo de mensagem flutuante, menu e confirmações no
+   formato do WhatsApp, dados do contato com botões redondos e painel vazio com cartão branco.
+   Continua tudo com dados fictícios.
+4. **Modo claro é o padrão do sistema** (`theme.tsx`, `app.json`). "Automático" agora cai no
+   claro quando o aparelho não informa o tema.
+5. **Permissões mais simples:** cada tela tem só um ícone pequeno, título ("Permitir
+   localização", "Permitir microfone") e um subtítulo curto, com Permitir / Agora não.
+6. **Barra lateral visível no modo claro:** o painel é cinza sólido (#DEDEE4) com borda e
+   sombra leve em todas as páginas (no Mapa ele sumia no fundo).
+7. **Mapa (multimídia): cartão do WhatsApp** quadrado e arredondado no lugar do antigo mini
+   player, com "Abrir conversas". Ao tocar em "Escolher cliente" ou "Rotas montadas" (ou com um
+   destino), o cartão de baixo cresce e o do WhatsApp encolhe, com animação de forma (altura,
+   cantos e desfoque juntos). Ícones novos: pessoa (cliente) e mapa (rotas).
+8. **Login com fundo "aurora"** (brilhos roxo, amarelo, rosa e azul sobre lilás → rosa), em
+   todas as etapas do login. Feito com react-native-svg, estático (sem animação nem desfoque)
+   para não travar; o app não usa Tailwind/shadcn. Saíram os logos flutuando do fundo.
+   Exceção à regra "sem gradientes" registrada no CLAUDE.md a pedido do usuário.
+
+- **Correção (verificação do fluxo):** em Ligações, os Favoritos vinham da lista fixa de
+  contatos, então quem era adicionado aos favoritos nos dados do contato (ou um contato novo)
+  não aparecia lá. Agora vêm da agenda atual.
+- Arquivos: `whatsapp/sim/simulated.tsx`, `theme.tsx`, `app.json`, `shell/sidebar.tsx`,
+  `app/(main)/mapa.tsx`, `app/onboarding/permissoes.tsx`, `app/onboarding/login.tsx`,
+  `onboarding/aurora.tsx` (novo), `onboarding/layout.tsx`; removido
+  `onboarding/floating-logos.tsx`.
+
+### 2026-11-26 09:55 — WhatsApp simulado no Preview (multimídia)
+
+Pedido do usuário: como foi feito com o Kyte, a aba WhatsApp do Preview abre um WhatsApp
+simulado, sem login, para refinar a interface da multimídia antes das funções reais (a versão
+do celular vem depois).
+
+- Telas (com base nos prints do WhatsApp Web enviados): carregamento; conversas com busca e
+  filtros (Tudo, Não lidas, Favoritas, Grupos) e painel vazio; conversa aberta com envio de
+  mensagens só na tela; menu da conversa só com Pesquisar, Selecionar mensagens, Bloquear,
+  Limpar conversa e Apagar conversa (os três últimos pedem confirmação); dados do contato com
+  rolagem; botão "+" com Nova conversa e Novo contato; Ligações (favoritos e recentes) e
+  Dados da ligação.
+- Cores do WhatsApp nos temas claro e escuro, bordas concêntricas, alvos de toque grandes.
+- Dados 100% fictícios (`whatsapp/sim/data.ts`); nada dos prints foi copiado.
+- No app instalado nada muda: a aba continua abrindo o WhatsApp Web de verdade.
+- Arquivos: `apps/automotive/src/whatsapp/sim/simulated.tsx`, `whatsapp/sim/data.ts`,
+  `app/(main)/whatsapp.tsx`.
 
 ### 2026-11-26 09:15 — WhatsApp no menu e o Lucas avisando o próximo cliente
 

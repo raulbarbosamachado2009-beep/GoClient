@@ -1,4 +1,5 @@
 import { ORS_API_KEY } from '../integrations/env';
+import { loadGeoCache, savedPlace, savePlace } from './geo-cache';
 
 /**
  * Rotas e endereços pelo OpenRouteService (plano gratuito, dados do OpenStreetMap):
@@ -47,12 +48,26 @@ async function request<T>(url: string, body?: object): Promise<T> {
   return json;
 }
 
-// Endereços já encontrados nesta sessão (os clientes mudam pouco).
+// Endereços já procurados nesta sessão (os achados também ficam no aparelho: geo-cache.ts).
 const geocodeCache = new Map<string, LatLng | null>();
+
+/**
+ * Coordenadas já conhecidas de um endereço, sem pedir à internet: `undefined` se ainda não
+ * foi procurado. Chame depois de {@link geocodeReady}.
+ */
+export function knownPlace(address: string): LatLng | null | undefined {
+  if (geocodeCache.has(address)) return geocodeCache.get(address) ?? null;
+  return savedPlace(address);
+}
+
+/** Espera os endereços guardados no aparelho serem lidos (rápido; uma vez por abertura). */
+export const geocodeReady = loadGeoCache;
 
 /** Coordenadas de um endereço no Brasil. */
 export async function geocode(address: string): Promise<LatLng | null> {
-  if (geocodeCache.has(address)) return geocodeCache.get(address) ?? null;
+  await loadGeoCache();
+  const known = knownPlace(address);
+  if (known !== undefined) return known;
   const q = new URLSearchParams({
     text: address,
     'boundary.country': 'BR',
@@ -65,6 +80,7 @@ export async function geocode(address: string): Promise<LatLng | null> {
   const c = json.features?.[0]?.geometry?.coordinates;
   const value = c ? { latitude: c[1], longitude: c[0] } : null;
   geocodeCache.set(address, value);
+  if (value) savePlace(address, value);
   return value;
 }
 

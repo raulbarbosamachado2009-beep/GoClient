@@ -1,16 +1,16 @@
-import * as Print from 'expo-print';
-import * as Sharing from 'expo-sharing';
 import { useState } from 'react';
-import { Image, Linking, Platform, ScrollView, Share, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { callPhone, openWhatsApp } from '../../integrations/contact';
 import { useTabBarSpace } from '../../layout/form-factor';
 import { Swap } from '../../ui/motion';
 import { Touchable } from '../../ui/primitives';
 import { Spinner } from '../../ui/spinner';
 import { kyteAgent } from '../agent';
-import { brl, fmtQty, type KyteSale } from '../model';
-import { type KyteStoreInfo, PREVIEW, patchSale, useKyteList, useKyteStore } from '../store';
-import { Header, type IconName, KIcon, KY, SmallButton, State, Tabs, Text, useKySize } from '../ui';
+import { brl, fmtQty } from '../model';
+import { ReceiptScreen } from '../sell/receipt';
+import { saleToReceipt } from '../sell/receipt-data';
+import { PREVIEW, patchSale, useKyteList, useKyteStore } from '../store';
+import { Header, KIcon, KY, SmallButton, State, Tabs, Text, useKySize } from '../ui';
 import { payIcon } from './history';
 import { useKyteNav } from './nav';
 
@@ -311,67 +311,11 @@ function Pair({ label, value }: { label: string; value: string }) {
 
 /* ------------------------------- Recibo ------------------------------- */
 
-const esc = (t: string) =>
-  t.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c] ?? c);
-
-function receiptText(v: KyteSale, store: KyteStoreInfo | null) {
-  const lines = [
-    store?.name?.toUpperCase(),
-    store?.header,
-    '',
-    `RECIBO #${v.number}`,
-    dateTime(v.date),
-    v.customer?.name ? `Cliente: ${v.customer.name}` : '',
-    '',
-    ...v.items.map((i) => `${fmtQty(i.qty)}x ${i.name} — ${brl(i.total)}`),
-    '',
-    `Total: ${brl(v.total)}`,
-    v.payment ? `${v.payment}: ${brl(v.total)}` : '',
-    '',
-    store?.footer,
-  ];
-  return lines
-    .filter((l) => l !== undefined)
-    .join('\n')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
-}
-
-function receiptHtml(v: KyteSale, store: KyteStoreInfo | null) {
-  const items = v.items
-    .map(
-      (i) =>
-        `<tr><td>${fmtQty(i.qty)}x</td><td><b>${esc(i.name)}</b>${i.unitPrice != null && i.qty !== 1 ? `<br><small>${brl(i.unitPrice)}</small>` : ''}</td><td class="r">${brl(i.total)}</td></tr>`,
-    )
-    .join('');
-  return `<html><head><meta charset="utf-8"><style>
-body{font-family:-apple-system,Roboto,Arial,sans-serif;color:#363F4D;padding:28px;max-width:640px;margin:auto}
-h1{font-size:26px;text-align:right;margin:0}h2{font-size:18px;margin:18px 0 4px}
-table{width:100%;border-collapse:collapse;margin-top:12px;border-top:3px solid #363F4D}
-td{padding:10px 4px;border-bottom:1px solid #ddd;vertical-align:top}.r{text-align:right;white-space:nowrap}
-small{color:#888}.tot{text-align:right;font-size:22px;font-weight:700;margin-top:16px}.foot{text-align:center;margin-top:26px;white-space:pre-line;font-weight:600}
-</style></head><body>
-${store?.logo ? `<img src="${store.logo}" style="height:70px">` : ''}
-<h1>RECIBO #${esc(v.number)}</h1>
-<h2>${esc(store?.name?.toUpperCase() ?? '')}</h2><div>${esc(store?.header ?? '')}</div>
-<h2>${esc(v.customer?.name ?? '')}</h2><div>${esc([v.customer?.phone, v.customer?.district].filter(Boolean).join(' • '))}</div>
-<p><b>${v.items.length} ${v.items.length === 1 ? 'item' : 'itens'} (Qtd.: ${fmtQty(v.items.reduce((a, i) => a + i.qty, 0))})</b></p>
-<table>${items}</table>
-<div class="tot">Total: ${brl(v.total)}</div>
-<div style="text-align:right">${esc(v.payment || '')}${v.payment ? `: ${brl(v.total)}` : ''}</div>
-<div class="foot">${esc(store?.footer ?? '')}</div>
-<div class="foot" style="font-weight:400;color:#888">${esc(dateTime(v.date))}</div>
-</body></html>`;
-}
-
-/** Recibo (prints 10 e 11), com PDF, e-mail, imprimir e compartilhar. */
+/** Recibo de uma venda do Histórico: o mesmo recibo da venda nova (imprime pela impressora). */
 export function Receipt({ id }: { id: string }) {
-  const s = useKySize();
   const nav = useKyteNav();
   const { sale: v } = useSale(id);
   const store = useKyteStore();
-  const tabSpace = useTabBarSpace();
-  const [msg, setMsg] = useState<string | null>(null);
   if (!v)
     return (
       <View style={{ flex: 1, backgroundColor: KY.bg }}>
@@ -379,233 +323,5 @@ export function Receipt({ id }: { id: string }) {
         <State empty="Venda não encontrada." />
       </View>
     );
-  const qty = v.items.reduce((a, i) => a + i.qty, 0);
-  const html = () => receiptHtml(v, store);
-  const fail = (e: unknown) => setMsg(e instanceof Error ? e.message : 'Não foi possível agora.');
-
-  const actions: { icon: IconName; label: string; run: () => void }[] = [
-    {
-      icon: 'document-text-outline',
-      label: 'PDF',
-      run: () => {
-        if (Platform.OS === 'web') return void Print.printAsync({ html: html() }).catch(fail);
-        Print.printToFileAsync({ html: html() })
-          .then(({ uri }) =>
-            Sharing.shareAsync(uri, {
-              mimeType: 'application/pdf',
-              dialogTitle: `Recibo #${v.number}`,
-            }),
-          )
-          .catch(fail);
-      },
-    },
-    {
-      icon: 'send-outline',
-      label: 'Email',
-      run: () =>
-        Linking.openURL(
-          `mailto:?subject=${encodeURIComponent(`Recibo #${v.number}`)}&body=${encodeURIComponent(receiptText(v, store))}`,
-        ).catch(fail),
-    },
-    {
-      icon: 'print-outline',
-      label: 'Imprimir',
-      run: () => Print.printAsync({ html: html() }).catch(fail),
-    },
-    {
-      icon: 'share-social-outline',
-      label: 'Compartilhar',
-      run: () => Share.share({ message: receiptText(v, store) }).catch(fail),
-    },
-  ];
-
-  const storeCard = (
-    <View
-      style={{
-        backgroundColor: KY.card,
-        borderRadius: 18,
-        padding: 26,
-        gap: 10,
-        alignItems: s.phone ? 'flex-start' : 'center',
-      }}
-    >
-      {store?.logo ? (
-        <Image
-          source={{ uri: store.logo }}
-          style={{ width: 200, height: 120, resizeMode: 'contain' }}
-        />
-      ) : null}
-      {store?.name ? (
-        <Text size={s.big} weight="bold" style={{ textAlign: s.phone ? 'left' : 'center' }}>
-          {store.name.toUpperCase()}
-        </Text>
-      ) : null}
-      {store?.header ? (
-        <Text size={s.small} color={KY.sub} style={{ textAlign: s.phone ? 'left' : 'center' }}>
-          {store.header}
-        </Text>
-      ) : null}
-      {v.customer?.name ? (
-        <View
-          style={{
-            flexDirection: 'row',
-            gap: 12,
-            alignItems: 'center',
-            marginTop: 12,
-            alignSelf: 'stretch',
-          }}
-        >
-          <KIcon name="person" size={s.icon} />
-          <View style={{ flex: 1 }}>
-            <Text size={s.row} weight="bold">
-              {v.customer.name}
-            </Text>
-            {v.customer.phone || v.customer.district ? (
-              <Text size={s.small} color={KY.sub}>
-                {[v.customer.phone, v.customer.district].filter(Boolean).join(' • ')}
-              </Text>
-            ) : null}
-          </View>
-        </View>
-      ) : null}
-    </View>
-  );
-
-  const itemsCard = (
-    <View
-      style={{
-        backgroundColor: KY.card,
-        borderRadius: 18,
-        padding: 26,
-        gap: 8,
-        flex: s.phone ? undefined : 1.6,
-      }}
-    >
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 12,
-        }}
-      >
-        <Text size={s.title} weight="bold">
-          RECIBO #{v.number}
-        </Text>
-        <View
-          style={{
-            backgroundColor: '#D6E8FF',
-            borderRadius: 999,
-            paddingHorizontal: 20,
-            paddingVertical: 8,
-          }}
-        >
-          <Text size={s.small} weight="semibold">
-            {v.items.length} {v.items.length === 1 ? 'item' : 'itens'} (Qtd.: {fmtQty(qty)})
-          </Text>
-        </View>
-      </View>
-      <View style={{ height: 2, backgroundColor: KY.line, marginVertical: 8 }} />
-      {v.items.map((i, n) => (
-        <View
-          // biome-ignore lint/suspicious/noArrayIndexKey: itens da venda não têm id
-          key={n}
-          style={{
-            flexDirection: 'row',
-            gap: 16,
-            paddingVertical: 10,
-            borderBottomWidth: 1,
-            borderBottomColor: KY.line,
-          }}
-        >
-          <Text size={s.row} color={KY.sub} style={{ width: s.phone ? 64 : 80 }}>
-            {fmtQty(i.qty)}x
-          </Text>
-          <View style={{ flex: 1 }}>
-            <Text size={s.row} weight="bold">
-              {i.name}
-            </Text>
-            {i.unitPrice != null && i.qty !== 1 ? (
-              <Text size={s.sub} color={KY.sub}>
-                {brl(i.unitPrice)}
-              </Text>
-            ) : null}
-          </View>
-          <Text size={s.row}>{brl(i.total)}</Text>
-        </View>
-      ))}
-      <Text size={s.big} weight="bold" style={{ textAlign: 'right', marginTop: 10 }}>
-        Total: {brl(v.total)}
-      </Text>
-      {v.payment ? (
-        <Text size={s.sub} color={KY.sub} style={{ textAlign: 'right' }}>
-          {v.payment}: {brl(v.total)}
-        </Text>
-      ) : null}
-    </View>
-  );
-
-  return (
-    <View style={{ flex: 1, backgroundColor: KY.bg }}>
-      <View style={{ backgroundColor: KY.night }}>
-        <Header title="Recibo" dark onBack={nav.back} />
-      </View>
-      <ScrollView contentContainerStyle={{ padding: s.pad, gap: 16 }}>
-        {s.phone ? (
-          <>
-            {storeCard}
-            {itemsCard}
-          </>
-        ) : (
-          <View style={{ flexDirection: 'row', gap: 16, alignItems: 'flex-start' }}>
-            <View style={{ flex: 1 }}>{storeCard}</View>
-            {itemsCard}
-          </View>
-        )}
-        {store?.footer ? (
-          <View style={{ backgroundColor: KY.card, borderRadius: 18, padding: 22 }}>
-            <Text size={s.sub} weight="semibold" style={{ textAlign: 'center' }}>
-              {store.footer}
-            </Text>
-          </View>
-        ) : null}
-        {msg && (
-          <Text size={s.sub} color={KY.red}>
-            {msg}
-          </Text>
-        )}
-      </ScrollView>
-      <View
-        style={{
-          flexDirection: 'row',
-          gap: 10,
-          padding: 12,
-          paddingBottom: (s.phone ? tabSpace : 0) + 12,
-          backgroundColor: KY.navy,
-        }}
-      >
-        {actions.map((a) => (
-          <Touchable
-            key={a.label}
-            onPress={a.run}
-            style={{
-              flex: 1,
-              height: s.phone ? 108 : 128,
-              borderRadius: 16,
-              backgroundColor: 'rgba(255,255,255,.08)',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexDirection: s.phone ? 'column' : 'row',
-              gap: s.phone ? 6 : 16,
-            }}
-          >
-            <KIcon name={a.icon} size={s.icon + 6} color="#FFFFFF" />
-            <Text size={s.sub} weight="semibold" color="#FFFFFF">
-              {a.label}
-            </Text>
-          </Touchable>
-        ))}
-      </View>
-    </View>
-  );
+  return <ReceiptScreen data={saleToReceipt(v, store)} onClose={nav.back} />;
 }

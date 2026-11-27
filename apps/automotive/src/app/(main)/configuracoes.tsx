@@ -6,6 +6,7 @@ import { MAPS_ENABLED } from '../../integrations/env';
 import { kyteAgent, noteKyteLogged, reloadKyteAgent } from '../../kyte/agent';
 import { clearKyteData } from '../../kyte/store';
 import { usePhone } from '../../layout/form-factor';
+import { perfEntries } from '../../perf';
 import { usePrototype } from '../../prototype/state';
 import { spacing, type ThemePreference, useColors, useTheme } from '../../theme';
 import { KyteLogo } from '../../ui/brand';
@@ -144,6 +145,8 @@ export default function SettingsScreen() {
       </Group>
     </View>,
 
+    ...speedSection(inset),
+
     <View key="dados">
       <SectionHeader title="Dados e privacidade" />
       <Group inset={inset}>
@@ -197,6 +200,27 @@ export default function SettingsScreen() {
       </View>
     </View>
   );
+}
+
+/**
+ * Tempo de resposta medido neste aparelho desde que o app abriu (ver perf.ts): a última
+ * medida de cada etapa, para conferir se Mapa, Kyte e WhatsApp estão abrindo rápido.
+ */
+function speedSection(inset: number) {
+  const last = new Map<string, number>();
+  for (const e of perfEntries()) last.set(e.name, e.ms);
+  if (!last.size) return [];
+  const fmt = (ms: number) => (ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)} s`);
+  return [
+    <View key="tempo">
+      <SectionHeader title="Tempo de resposta" />
+      <Group inset={inset}>
+        {[...last].map(([name, ms]) => (
+          <Row key={name} title={name} value={fmt(ms)} />
+        ))}
+      </Group>
+    </View>,
+  ];
 }
 
 const styles = StyleSheet.create({

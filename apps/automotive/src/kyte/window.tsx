@@ -1,4 +1,11 @@
-import { type ComponentRef, forwardRef, useImperativeHandle, useMemo, useRef } from 'react';
+import {
+  type ComponentRef,
+  forwardRef,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { StyleSheet, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { Spinner } from '../ui/spinner';
@@ -34,6 +41,8 @@ export const KyteWindow = forwardRef<
 >(function KyteWindow({ dark, phone, minimal = false, onMessage }, ref) {
   const web = useRef<ComponentRef<typeof WebView>>(null);
   const script = useMemo(() => kyteScript({ dark, phone, minimal }), [dark, phone, minimal]);
+  // Se o Android fechar a janela (falta de memória), ela é montada de novo.
+  const [gen, setGen] = useState(0);
 
   useImperativeHandle(
     ref,
@@ -63,8 +72,10 @@ export const KyteWindow = forwardRef<
       thirdPartyCookiesEnabled
       setSupportMultipleWindows={false}
       injectedJavaScript={script}
-      // Repete o script quando o tema muda (sem recarregar a página).
-      key={script.length}
+      // Repete o script quando o tema muda.
+      key={`${script.length}:${gen}`}
+      cacheEnabled
+      onRenderProcessGone={() => setGen((g) => g + 1)}
       onMessage={(e) => {
         try {
           onMessage?.(JSON.parse(e.nativeEvent.data) as KyteMessage);

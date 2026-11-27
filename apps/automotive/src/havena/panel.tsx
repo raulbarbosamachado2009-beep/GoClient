@@ -6,21 +6,21 @@ import { usePhone, useTabBarLift } from '../layout/form-factor';
 import { layout, nativeDriver, useColors } from '../theme';
 import { useBlurTarget } from '../ui/blur-target';
 import { Button } from '../ui/primitives';
-import { HavenaCaption } from './caption';
-import { HavenaOrb, type OrbState } from './orb';
+import { type DemoMood, HavenaCaption } from './caption';
+import { LucasCloud, type LucasState } from './cloud';
 import { useHavenaSession, type WakeStart } from './session';
 
 const DURATION = 420;
 const ORB = 300;
 const RIGHT = 110;
-/** Largura da legenda (centrada no círculo, passa um pouco das bordas dele). */
+/** Largura da legenda (centrada na nuvem, passa um pouco das bordas dela). */
 const CAPTION = 480;
 /** Largura da faixa de desfoque (72% da tela). */
 const HAZE_W = Math.round(layout.width * 0.72);
-/** Deslocamento que leva o círculo (com folga para a sombra) totalmente para fora da tela. */
+/** Deslocamento que leva a nuvem (com folga para a sombra) totalmente para fora da tela. */
 const OFFSCREEN = RIGHT + ORB / 2 + CAPTION / 2 + 60;
 
-// Celular em pé: o círculo fica embaixo, centrado, um pouco menor, e entra de baixo para cima.
+// Celular em pé: a nuvem fica embaixo, centrado, um pouco menor, e entra de baixo para cima.
 const ORB_PHONE = 236;
 const BOTTOM_PHONE = 150;
 const CAPTION_PHONE = 620;
@@ -29,7 +29,7 @@ const HAZE_H = 1600;
 const OFFSCREEN_PHONE = BOTTOM_PHONE + ORB_PHONE + 60;
 
 /**
- * Lucas: só o círculo, no canto direito da tela (embaixo, no celular). Atrás dele, um
+ * Lucas: só a nuvem, no canto direito da tela (embaixo, no celular). Atrás dele, um
  * desfoque. A legenda mostra o que a pessoa fala e a resposta dele. Tocar fora fecha; até lá
  * ele continua ouvindo. No Preview (web) fica a demonstração com falas de exemplo.
  */
@@ -44,24 +44,43 @@ export function HavenaPanel({
   const enter = useRef(new Animated.Value(0)).current;
   const closing = useRef(false);
   const [leaving, setLeaving] = useState(false);
-  const [demoState, setDemoState] = useState<OrbState>('listen');
+  const [demoState, setDemoState] = useState<LucasState>('listen');
   const phone = usePhone();
+  // Preview: a nuvem passa pelos três momentos da conversa. Falando enquanto a frase surge;
+  // depois fica parada um pouco e, antes da próxima frase, "ouve" a pessoa.
+  const demoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const demoSpeaking = (on: boolean, mood?: DemoMood) => {
+    if (demoTimer.current) clearTimeout(demoTimer.current);
+    // Piada: ri enquanto fala e mais um pouco depois. Erro: fica triste até a próxima fala.
+    setDemoState(on ? (mood ?? 'speak') : mood === 'sad' ? 'sad' : mood ? 'joke' : 'idle');
+    if (!on) demoTimer.current = setTimeout(() => setDemoState('listen'), mood ? 1500 : 1200);
+  };
+  useEffect(
+    () => () => {
+      if (demoTimer.current) clearTimeout(demoTimer.current);
+    },
+    [],
+  );
   const lift = useTabBarLift();
   // Havena de verdade (app instalado): ouve, entende, age e responde. No Preview (web) fica
   // a demonstração com falas de exemplo.
   const live = Platform.OS !== 'web';
   const session = useHavenaSession(live && !leaving, wakeStart);
-  const state: OrbState = live
+  const state: LucasState = live
     ? session.phase === 'listening'
       ? 'listen'
       : session.phase === 'thinking'
         ? 'think'
-        : session.phase === 'speaking'
-          ? 'speak'
-          : 'idle'
+        : session.mood === 'joke' && session.phase === 'speaking'
+          ? 'joke'
+          : session.mood === 'sad'
+            ? 'sad'
+            : session.phase === 'speaking'
+              ? 'speak'
+              : 'idle'
     : demoState;
   // Ouvindo: a fala da pessoa, palavra por palavra, assim que é ouvida. Pensando: a frase
-  // dela continua na tela (o círculo mostra que ele está pensando). Falando: a resposta.
+  // dela continua na tela (a nuvem mostra que ele está pensando). Falando: a resposta.
   const userLine =
     live && (session.phase === 'listening' || session.phase === 'thinking') && !!session.heard;
   const text = live
@@ -127,13 +146,13 @@ export function HavenaPanel({
             },
           ]}
         >
-          {/* Legenda em cima do círculo, centrada nele. */}
+          {/* Legenda em cima da nuvem, centrada nela. */}
           <View style={{ width: CAPTION_PHONE, minHeight: 130, justifyContent: 'flex-end' }}>
             <HavenaCaption
               width={CAPTION_PHONE}
               text={text}
               instant={userLine}
-              onSpeaking={(on) => !live && setDemoState(on ? 'speak' : 'listen')}
+              onSpeaking={(on, mood) => !live && demoSpeaking(on, mood)}
             />
           </View>
           {confirm}
@@ -142,7 +161,7 @@ export function HavenaPanel({
             accessibilityLabel="Lucas (toque para falar)"
             onPress={session.talk}
           >
-            <HavenaOrb size={ORB_PHONE} state={state} />
+            <LucasCloud size={ORB_PHONE} state={state} />
           </Pressable>
         </Animated.View>
       )}
@@ -154,7 +173,7 @@ export function HavenaPanel({
             styles.orbWrap,
             {
               transform: [
-                // Sem esmaecer: o círculo entra e sai deslizando, e só é removido depois de
+                // Sem esmaecer: a nuvem entra e sai deslizando, e só é removido depois de
                 // passar inteiro da borda direita da tela.
                 {
                   translateX: enter.interpolate({
@@ -173,15 +192,15 @@ export function HavenaPanel({
               accessibilityLabel="Lucas (toque para falar)"
               onPress={session.talk}
             >
-              <HavenaOrb size={ORB} state={state} />
+              <LucasCloud size={ORB} state={state} />
             </Pressable>
-            {/* Legenda logo abaixo do círculo, centrada nele. */}
+            {/* Legenda logo abaixo da nuvem, centrada nela. */}
             <View style={styles.caption}>
               <HavenaCaption
                 width={CAPTION}
                 text={text}
                 instant={userLine}
-                onSpeaking={(on) => !live && setDemoState(on ? 'speak' : 'listen')}
+                onSpeaking={(on, mood) => !live && demoSpeaking(on, mood)}
               />
               {confirm}
             </View>
@@ -198,7 +217,7 @@ export function HavenaPanel({
  * Android/iOS: faixas de desfoque sobrepostas, cada vez mais estreitas, que somam mais
  * desfoque perto da borda direita (o BlurView não aceita máscara em degradê).
  *
- * A intensidade é fixa: o desfoque entra e sai deslizando pela direita junto com o círculo.
+ * A intensidade é fixa: o desfoque entra e sai deslizando pela direita junto com a nuvem.
  * Mudar o raio a cada quadro fazia o navegador recompor também o desfoque do cartão do Mapa
  * que fica atrás, e o cartão sumia e voltava (e o mapa piscava).
  */
@@ -278,21 +297,21 @@ function FadingBlur({ enter }: { enter: Animated.Value }) {
  */
 /** Web: faixas do desfoque do celular (altura relativa à tela e raio de cada uma). */
 const WEB_BANDS = [
-  { h: 1, blur: 1, sat: 102 },
-  { h: 0.86, blur: 2, sat: 104 },
-  { h: 0.72, blur: 3, sat: 106 },
-  { h: 0.6, blur: 4, sat: 108 },
-  { h: 0.48, blur: 5.5, sat: 110 },
-  { h: 0.38, blur: 7, sat: 112 },
-  { h: 0.28, blur: 8, sat: 114 },
-  { h: 0.18, blur: 9, sat: 116 },
+  { h: 0.6, blur: 1, sat: 102 },
+  { h: 0.516, blur: 2, sat: 104 },
+  { h: 0.432, blur: 3, sat: 106 },
+  { h: 0.36, blur: 4, sat: 108 },
+  { h: 0.288, blur: 5.5, sat: 110 },
+  { h: 0.228, blur: 7, sat: 112 },
+  { h: 0.168, blur: 8, sat: 114 },
+  { h: 0.108, blur: 9, sat: 116 },
 ];
 
 const PHONE_BANDS = [
-  { h: 1, intensity: 12 },
-  { h: 0.75, intensity: 22 },
-  { h: 0.52, intensity: 34 },
-  { h: 0.32, intensity: 48 },
+  { h: 0.6, intensity: 12 },
+  { h: 0.45, intensity: 22 },
+  { h: 0.312, intensity: 34 },
+  { h: 0.192, intensity: 48 },
 ];
 
 function RisingBlur({ enter, leaving }: { enter: Animated.Value; leaving: boolean }) {
@@ -345,7 +364,7 @@ function RisingBlur({ enter, leaving }: { enter: Animated.Value; leaving: boolea
         <Animated.View style={[StyleSheet.absoluteFill, { opacity: fade }]}>
           <LinearGradient
             colors={['rgba(0,0,0,0)', shade]}
-            locations={[0.25, 0.95]}
+            locations={[0.5, 0.97]}
             start={{ x: 0, y: 0 }}
             end={{ x: 0, y: 1 }}
             style={StyleSheet.absoluteFill}
@@ -382,10 +401,10 @@ function RisingBlur({ enter, leaving }: { enter: Animated.Value; leaving: boolea
           style={[styles.hband, { height: `${b.h * 100}%` }]}
         />
       ))}
-      {/* Escurece mais embaixo, onde ficam o círculo e a legenda. */}
+      {/* Escurece mais embaixo, onde ficam a nuvem e a legenda. */}
       <LinearGradient
         colors={['rgba(0,0,0,0)', shade]}
-        locations={[0.25, 0.95]}
+        locations={[0.5, 0.97]}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
         style={StyleSheet.absoluteFill}

@@ -30,3 +30,6 @@ apps/api/.data/
 
 .DS_Store
 *.log
+
+# Biblioteca do mapa embutida (gerada no postinstall do Automotive)
+apps/automotive/src/map/vendor/

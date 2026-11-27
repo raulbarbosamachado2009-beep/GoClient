@@ -3,6 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { MAPS_ENABLED } from '../integrations/env';
 import { usePhone, useSystemInsets, useTabBarSpace } from '../layout/form-factor';
+import { perfFirst } from '../perf';
 import { useFrameScale } from '../preview/automotive-frame';
 import { layout } from '../theme';
 import { type MapState, mapHtml, warmupHtml } from './map-html';
@@ -44,7 +45,12 @@ export function LiveMap({
   const system = useSystemInsets();
   const tabSpace = useTabBarSpace();
   const scale = useFrameScale();
-  const html = useMemo(() => mapHtml(dark), [dark]);
+  // A página é montada uma vez (com o tema de quando abriu); trocar o tema depois só troca o
+  // estilo dentro dela, sem recarregar (ver `restyle` em map-html.ts).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: o tema vai pelo estado, não pela página
+  const html = useMemo(() => mapHtml(dark), []);
+  // Se o Android fechar a janela do mapa (falta de memória), ela é montada de novo.
+  const [gen, setGen] = useState(0);
 
   // Área livre do mapa (sem os cartões), em pixels da WebView.
   const pad = phone
@@ -91,15 +97,24 @@ export function LiveMap({
         ]}
       >
         <WebView
+          key={gen}
           ref={ref}
           source={{ html, baseUrl: 'https://goclient.local/' }}
+          onRenderProcessGone={() => {
+            ready.current = false;
+            setGen((g) => g + 1);
+          }}
+          onContentProcessDidTerminate={() => {
+            ready.current = false;
+            setGen((g) => g + 1);
+          }}
           originWhitelist={['*']}
           javaScriptEnabled
           domStorageEnabled
           setSupportMultipleWindows={false}
           overScrollMode="never"
-          // Biblioteca, estilo, fontes e blocos já baixados saem do cache do aparelho sem
-          // esperar a rede (o mapa abre em ~1 s nas próximas vezes).
+          // A biblioteca vem dentro do app; estilo, fontes e blocos já baixados saem do cache
+          // do aparelho sem esperar a rede.
           cacheEnabled
           cacheMode="LOAD_CACHE_ELSE_NETWORK"
           style={{ flex: 1, backgroundColor: dark ? '#1b1b1d' : '#e9e9ec' }}
@@ -108,8 +123,10 @@ export function LiveMap({
               const m = JSON.parse(e.nativeEvent.data) as { type: string };
               if (m.type === 'ready') {
                 ready.current = true;
+                perfFirst('Mapa: pronto para usar');
                 send();
               }
+              if (m.type === 'loaded') perfFirst('Mapa: ruas todas desenhadas');
             } catch {}
           }}
         />

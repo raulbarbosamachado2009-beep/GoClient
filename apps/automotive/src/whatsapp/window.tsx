@@ -1,8 +1,9 @@
 import { WHATSAPP_WEB_URL } from '@goclient/core';
-import { type ComponentRef, useEffect, useRef } from 'react';
+import { type ComponentRef, useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { DESKTOP_USER_AGENT } from '../kyte/config';
+import { perfRecord } from '../perf';
 import { Spinner } from '../ui/spinner';
 import { WHATSAPP_SCRIPT, type WhatsAppMessage } from './bridge';
 
@@ -26,14 +27,26 @@ export function WhatsAppWindow({
   onMessage: (m: WhatsAppMessage) => void;
 }) {
   const web = useRef<ComponentRef<typeof WebView>>(null);
+  // Se o Android fechar a janela (falta de memória), ela é montada de novo.
+  const [gen, setGen] = useState(0);
+  // Tempo até o WhatsApp Web abrir (para o Tempo de resposta, em Ajustes).
+  const started = useRef(Date.now());
+  const timed = useRef(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: recomeça o cronômetro a cada página
+  useEffect(() => {
+    started.current = Date.now();
+    timed.current = false;
+  }, [url, gen]);
   useEffect(() => {
     if (watchSend)
       web.current?.injectJavaScript('window.__gcWatchSend && window.__gcWatchSend(); true;');
   }, [watchSend]);
   return (
     <WebView
+      key={gen}
       ref={web}
       source={{ uri: url ?? WHATSAPP_WEB_URL }}
+      onRenderProcessGone={() => setGen((g) => g + 1)}
       userAgent={DESKTOP_USER_AGENT}
       domStorageEnabled
       javaScriptEnabled
@@ -53,7 +66,15 @@ export function WhatsAppWindow({
       }}
       onMessage={(e) => {
         try {
-          onMessage(JSON.parse(e.nativeEvent.data) as WhatsAppMessage);
+          const m = JSON.parse(e.nativeEvent.data) as WhatsAppMessage;
+          if (m.type === 'wa' && m.logged && !timed.current) {
+            timed.current = true;
+            perfRecord(
+              url ? 'WhatsApp: abrir conversa do Lucas' : 'WhatsApp: conversas prontas',
+              Date.now() - started.current,
+            );
+          }
+          onMessage(m);
         } catch {
           // Mensagem que não é do GoClient: ignora.
         }

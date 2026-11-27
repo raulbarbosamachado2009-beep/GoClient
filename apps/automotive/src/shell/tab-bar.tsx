@@ -1,7 +1,7 @@
 import { type Href, usePathname, useRouter } from 'expo-router';
 import { type ComponentRef, type ReactNode, useEffect, useRef, useState } from 'react';
 import { Animated, PanResponder, StyleSheet, View } from 'react-native';
-import { HavenaOrb } from '../havena/orb';
+import { LucasCloud } from '../havena/cloud';
 import { HavenaPanel } from '../havena/panel';
 import { TAB_BAR_BOTTOM, useTabBarLift } from '../layout/form-factor';
 import { useFrameScale } from '../preview/automotive-frame';
@@ -30,8 +30,9 @@ interface TabDef {
 const TABS: TabDef[] = [
   { key: 'mapa', label: 'Mapa', href: '/mapa' },
   { key: 'kyte', label: 'Kyte', href: '/kyte' },
-  { key: 'whatsapp', label: 'WhatsApp', href: '/whatsapp' },
+  // O Lucas fica no meio da barra (pedido do usuário em 26/11/2026).
   { key: 'havena', label: 'Falar com o Lucas' },
+  { key: 'whatsapp', label: 'WhatsApp', href: '/whatsapp' },
   { key: 'ajustes', label: 'Ajustes', href: '/configuracoes' },
 ];
 
@@ -45,22 +46,39 @@ export function TabBar() {
   const c = useColors();
   const pathname = usePathname();
   const router = useRouter();
-  const { setOverlay } = usePrototype();
+  const { setOverlay, immersive: inChat } = usePrototype();
+  // Dentro de uma conversa do WhatsApp a barra desce e some (a conversa fica em tela cheia).
+  // O WhatsApp fica aberto por trás nas outras abas: lá a barra volta.
+  const immersive = inChat && pathname.split('/')[1] === 'whatsapp';
+  const hide = useRef(new Animated.Value(immersive ? 1 : 0)).current;
+  useEffect(() => {
+    Animated.spring(hide, {
+      toValue: immersive ? 1 : 0,
+      damping: 24,
+      stiffness: 280,
+      useNativeDriver: false,
+    }).start();
+  }, [immersive, hide]);
   const lift = useTabBarLift();
   const dark = c.mode === 'dark';
   const ink = dark ? '#F2F2F7' : '#1C1C1E';
   const muted = dark ? '#9A9AA0' : '#6C6C70';
 
   const is = (p: string) => pathname.startsWith(p);
-  const active = MAP_ROUTES.some(is)
-    ? 0
+  // O índice vem da posição em TABS (o Lucas no meio não é uma tela e nunca fica ativo).
+  const activeKey = MAP_ROUTES.some(is)
+    ? 'mapa'
     : is('/kyte')
-      ? 1
+      ? 'kyte'
       : is('/whatsapp')
-        ? 2
+        ? 'whatsapp'
         : is('/configuracoes')
-          ? 4
-          : 0;
+          ? 'ajustes'
+          : 'mapa';
+  const active = Math.max(
+    0,
+    TABS.findIndex((t) => t.key === activeKey),
+  );
 
   // Largura de cada item (medida) e posição da bolha.
   const [width, setWidth] = useState(0);
@@ -171,7 +189,7 @@ export function TabBar() {
       case 'mapa':
         return <OutlineGlyph glyph="mapa" size={46} color={col} />;
       case 'havena':
-        return <HavenaOrb size={72} ambient />;
+        return <LucasCloud size={72} ambient />;
       case 'kyte':
         return <KyteLogo size={50} />;
       case 'whatsapp':
@@ -182,7 +200,19 @@ export function TabBar() {
   };
 
   return (
-    <View pointerEvents="box-none" style={[styles.wrap, { bottom: BOTTOM + lift }]}>
+    <Animated.View
+      pointerEvents={immersive ? 'none' : 'box-none'}
+      style={[
+        styles.wrap,
+        {
+          bottom: BOTTOM + lift,
+          opacity: hide.interpolate({ inputRange: [0, 0.7, 1], outputRange: [1, 0.4, 0] }),
+          transform: [
+            { translateY: hide.interpolate({ inputRange: [0, 1], outputRange: [0, BAR_H + 60] }) },
+          ],
+        },
+      ]}
+    >
       <View
         ref={bar}
         collapsable={false}
@@ -238,7 +268,7 @@ export function TabBar() {
           </Touchable>
         ))}
       </View>
-    </View>
+    </Animated.View>
   );
 }
 

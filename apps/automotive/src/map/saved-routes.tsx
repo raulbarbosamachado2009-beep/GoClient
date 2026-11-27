@@ -30,7 +30,7 @@ export function useTint() {
 
 /**
  * Linha de opção no estilo dos cartões do Apple Maps: ícone em círculo, título, legenda e
- * seta. `big` = multimídia (linha de 140, ícone de 84).
+ * seta. `big` = multimídia (linha de 168, ícone de 96).
  */
 export function OptionRow({
   icon,
@@ -52,7 +52,7 @@ export function OptionRow({
 }) {
   const c = useColors();
   const t = useTint();
-  const dot = big ? 80 : 72;
+  const dot = big ? 88 : 72;
   return (
     <Touchable
       accessibilityRole="button"
@@ -61,7 +61,7 @@ export function OptionRow({
       scaleTo={0.98}
       style={[
         styles.row,
-        { minHeight: big ? 140 : 116 },
+        { minHeight: big ? 168 : 116 },
         !first && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.separator },
       ]}
     >
@@ -76,13 +76,13 @@ export function OptionRow({
           },
         ]}
       >
-        <Icon name={icon} size={big ? 42 : 36} color={strong ? '#FFFFFF' : t.ink} />
+        <Icon name={icon} size={big ? 46 : 36} color={strong ? '#FFFFFF' : t.ink} />
       </View>
       <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
         <Text
           variant="headline"
           numberOfLines={1}
-          style={big ? { fontSize: 30, lineHeight: 36 } : { fontSize: 29, lineHeight: 35 }}
+          style={big ? { fontSize: 32, lineHeight: 38 } : { fontSize: 29, lineHeight: 35 }}
         >
           {title}
         </Text>
@@ -91,7 +91,7 @@ export function OptionRow({
             variant="callout"
             tone="secondary"
             numberOfLines={1}
-            style={big ? { fontSize: 24, lineHeight: 30 } : { fontSize: 25, lineHeight: 31 }}
+            style={big ? { fontSize: 26, lineHeight: 32 } : { fontSize: 25, lineHeight: 31 }}
           >
             {sub}
           </Text>

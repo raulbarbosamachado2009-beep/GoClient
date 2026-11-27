@@ -7,6 +7,9 @@ interface PrototypeState {
   setKyteOpen: (v: boolean) => void;
   overlay: ReactNode;
   setOverlay: (node: ReactNode) => void;
+  /** Tela em modo imersivo (ex.: conversa do WhatsApp no celular): a barra de abas some. */
+  immersive: boolean;
+  setImmersive: (v: boolean) => void;
 }
 
 const Ctx = createContext<PrototypeState | null>(null);
@@ -14,9 +17,10 @@ const Ctx = createContext<PrototypeState | null>(null);
 export function PrototypeProvider({ children }: { children: ReactNode }) {
   const [kyteOpen, setKyteOpen] = useState(false);
   const [overlay, setOverlay] = useState<ReactNode>(null);
+  const [immersive, setImmersive] = useState(false);
   const value = useMemo<PrototypeState>(
-    () => ({ kyteOpen, setKyteOpen, overlay, setOverlay }),
-    [kyteOpen, overlay],
+    () => ({ kyteOpen, setKyteOpen, overlay, setOverlay, immersive, setImmersive }),
+    [kyteOpen, overlay, immersive],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

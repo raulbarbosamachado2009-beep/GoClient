@@ -1,7 +1,6 @@
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { Animated, Easing, StyleSheet, View } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
-import { HavenaOrb } from '../havena/orb';
+import { LucasCloud } from '../havena/cloud';
 import { concentric, nativeDriver, useColors } from '../theme';
 import { appleEase } from '../ui/motion';
 import { Icon, type IconName, Text } from '../ui/primitives';
@@ -155,105 +154,165 @@ export function ClientsScene() {
 
 // ─── 2. Rotas ──────────────────────────────────────────────────────────────────────────
 
-/** Paradas da rota (coordenadas na caixa da cena). */
-const STOPS = [
-  { x: 92, y: 310 },
-  { x: 210, y: 180 },
-  { x: 380, y: 240 },
-  { x: 470, y: 70 },
+/**
+ * Rota do dia como um cartão (pedido de 26/11/2026: o "mapa" desenhado ficou ruim). Mesmo
+ * estilo dos cartões da cena de clientes: a lista de paradas com horário, ligadas por uma
+ * linha; um marcador percorre a linha e cada parada alcançada fica azul com ✓. Embaixo, o
+ * resumo da rota. Nomes fictícios.
+ */
+const ROUTE_STOPS = [
+  { name: 'Barbearia do Zé', time: '09:30' },
+  { name: 'Studio Navalha', time: '10:15' },
+  { name: 'Corte Fino', time: '11:00' },
+  { name: 'Barbearia Central', time: '11:58' },
 ];
-const ROUTE_D = `M${STOPS.map((p) => `${p.x} ${p.y}`).join(' L')}`;
-/** Ruas do fundo (traços retos, sem imagem). */
-const STREETS = [
-  'M-400 153 L960 30',
-  'M-400 340 L960 200',
-  'M-400 445 L960 360',
-  'M175 -400 L95 860',
-  'M290 -400 L340 860',
-  'M410 -400 L530 860',
-  'M-400 -40 L960 -120',
-  'M-400 600 L960 540',
-  'M40 -400 L-60 860',
-];
-/** Margem que o mapa da cena avança para fora da caixa (o quadro recorta). */
-const BLEED = 400;
+const ROUTE_CARD = { top: 18, h: 336 };
+const ROUTE_HEAD = 76;
+const ROUTE_ROW = 62;
+const NODE = 40;
+/** Centro horizontal dos números (dentro do cartão). */
+const NODE_X = CARD_PAD + 8 + NODE / 2;
+const rowY = (i: number) => ROUTE_HEAD + i * ROUTE_ROW + ROUTE_ROW / 2;
 
 export function RouteScene() {
   const c = useColors();
-  // O carro percorre a rota de parada em parada, em loop.
+  const card = useEnter(100);
+  const float = useFloat(0, 5, 3600);
+  const eta = useEnter(700);
+  // O marcador anda de parada em parada, para um pouco em cada uma, e recomeça.
   const t = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    const loop = Animated.loop(
+    const legs = ROUTE_STOPS.slice(1).map((_, i) =>
       Animated.sequence([
+        Animated.delay(420),
         Animated.timing(t, {
-          toValue: STOPS.length - 1,
-          duration: 4200,
+          toValue: i + 1,
+          duration: 900,
           easing: Easing.inOut(Easing.cubic),
           useNativeDriver: nativeDriver,
         }),
-        Animated.delay(700),
+      ]),
+    );
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.delay(900),
+        ...legs,
+        Animated.delay(1400),
         Animated.timing(t, { toValue: 0, duration: 0, useNativeDriver: nativeDriver }),
       ]),
     );
     loop.start();
     return () => loop.stop();
   }, [t]);
-  const range = STOPS.map((_, i) => i);
-  const carX = t.interpolate({ inputRange: range, outputRange: STOPS.map((p) => p.x - 16) });
-  const carY = t.interpolate({ inputRange: range, outputRange: STOPS.map((p) => p.y - 16) });
-  const eta = useEnter(900);
+  const range = ROUTE_STOPS.map((_, i) => i);
+  const first = rowY(0);
+  const span = rowY(ROUTE_STOPS.length - 1) - first;
   return (
-    <View style={[styles.box, { overflow: 'visible' }]}>
-      {/* O mapa preenche o quadro inteiro, além da caixa da cena. */}
-      <View
-        style={{
-          position: 'absolute',
-          left: -BLEED,
-          top: -BLEED,
-          right: -BLEED,
-          bottom: -BLEED,
-          backgroundColor: c.map.ground,
-        }}
-      />
-      <Svg
-        width={SCENE_W + BLEED * 2}
-        height={SCENE_H + BLEED * 2}
-        viewBox={`${-BLEED} ${-BLEED} ${SCENE_W + BLEED * 2} ${SCENE_H + BLEED * 2}`}
-        style={{ position: 'absolute', left: -BLEED, top: -BLEED }}
-      >
-        {STREETS.map((d) => (
-          <Path key={d} d={d} stroke={c.map.street} strokeWidth={14} strokeLinecap="round" />
-        ))}
-        <Path
-          d={ROUTE_D}
-          stroke={c.map.routeCasing}
-          strokeWidth={16}
-          strokeLinejoin="round"
-          strokeLinecap="round"
-          fill="none"
-        />
-        <Path
-          d={ROUTE_D}
-          stroke={c.map.route}
-          strokeWidth={10}
-          strokeLinejoin="round"
-          strokeLinecap="round"
-          fill="none"
-        />
-      </Svg>
-      {STOPS.map((p, i) => (
-        <Pin key={`${p.x}-${p.y}`} x={p.x} y={p.y} label={String(i + 1)} delay={200 + i * 160} />
-      ))}
+    <View style={styles.box}>
       <Animated.View
-        style={[styles.car, { transform: [{ translateX: carX }, { translateY: carY }] }]}
+        style={[
+          styles.routeCard,
+          {
+            backgroundColor: c.elevated,
+            borderColor: c.material.border,
+            opacity: card,
+            transform: [
+              { translateY: float },
+              { translateY: card.interpolate({ inputRange: [0, 1], outputRange: [50, 0] }) },
+              { scale: card.interpolate({ inputRange: [0, 1], outputRange: [0.94, 1] }) },
+            ],
+          },
+        ]}
       >
-        <Icon name="navigate" size={18} color="#FFFFFF" />
+        <View style={styles.routeHead}>
+          <Text variant="headline" style={{ fontSize: 28, lineHeight: 34 }}>
+            Rota de hoje
+          </Text>
+          <View style={[styles.tag, { backgroundColor: c.fill }]}>
+            <Text variant="subhead" tone="accent">
+              {ROUTE_STOPS.length} paradas
+            </Text>
+          </View>
+        </View>
+        {/* Linha entre as paradas: cinza por baixo, azul crescendo com o marcador. */}
+        <View
+          style={[
+            styles.routeLine,
+            { top: first, height: span, left: NODE_X - 2, backgroundColor: c.fill },
+          ]}
+        />
+        <Animated.View
+          style={[
+            styles.routeLine,
+            {
+              top: first,
+              height: span,
+              left: NODE_X - 2,
+              backgroundColor: c.accent,
+              transformOrigin: 'top',
+              transform: [
+                {
+                  scaleY: t.interpolate({
+                    inputRange: [0, ROUTE_STOPS.length - 1],
+                    outputRange: [0.0001, 1],
+                  }),
+                },
+              ],
+            },
+          ]}
+        />
+        {ROUTE_STOPS.map((stop, i) => {
+          // Alcançada: o número vira ✓ em azul.
+          const on = t.interpolate({
+            inputRange: [i - 0.15, i],
+            outputRange: [0, 1],
+            extrapolate: 'clamp',
+          });
+          return (
+            <View key={stop.name} style={[styles.routeRow, { top: rowY(i) - ROUTE_ROW / 2 }]}>
+              <View style={[styles.node, { backgroundColor: c.grouped, borderColor: c.fill }]}>
+                <Text variant="subhead" tone="secondary">
+                  {i + 1}
+                </Text>
+                <Animated.View style={[styles.nodeOn, { backgroundColor: c.accent, opacity: on }]}>
+                  <Icon name="checkmark" size={24} color="#FFFFFF" />
+                </Animated.View>
+              </View>
+              <Text variant="headline" numberOfLines={1} style={styles.routeName}>
+                {stop.name}
+              </Text>
+              <Text variant="callout" tone="secondary">
+                {stop.time}
+              </Text>
+            </View>
+          );
+        })}
+        {/* Marcador (o carro) andando pela linha. */}
+        <Animated.View
+          style={[
+            styles.marker,
+            {
+              left: NODE_X - 14,
+              top: first - 14,
+              transform: [
+                {
+                  translateY: t.interpolate({
+                    inputRange: range,
+                    outputRange: range.map((i) => rowY(i) - first),
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+          <Icon name="navigate" size={14} color="#FFFFFF" />
+        </Animated.View>
       </Animated.View>
       <Animated.View
         style={[
           styles.eta,
           {
-            backgroundColor: c.material.fallback,
+            backgroundColor: c.elevated,
             borderColor: c.material.border,
             opacity: eta,
             transform: [
@@ -263,32 +322,9 @@ export function RouteScene() {
         ]}
       >
         <Icon name="time" size={28} color={c.accent} />
-        <Text variant="headline">4 paradas · 1h12 · 24,6 km</Text>
+        <Text variant="headline">1h12 de viagem · 24,6 km</Text>
       </Animated.View>
     </View>
-  );
-}
-
-function Pin({ x, y, label, delay }: { x: number; y: number; label: string; delay: number }) {
-  const c = useColors();
-  const v = useEnter(delay);
-  return (
-    <Animated.View
-      style={[
-        styles.pin,
-        {
-          left: x - 22,
-          top: y - 22,
-          backgroundColor: c.accent,
-          opacity: v,
-          transform: [{ scale: v.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1] }) }],
-        },
-      ]}
-    >
-      <Text variant="subhead" color="#FFFFFF">
-        {label}
-      </Text>
-    </Animated.View>
   );
 }
 
@@ -310,7 +346,7 @@ export function VoiceScene() {
   return (
     <View style={[styles.box, { alignItems: 'center', justifyContent: 'center' }]}>
       <View>
-        <HavenaOrb size={168} state="speak" />
+        <LucasCloud size={168} state="speak" />
       </View>
       <View key={round} style={styles.bubbles}>
         {LINES.map((l, i) => (
@@ -497,23 +533,60 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   tag: { paddingHorizontal: 14, height: 40, borderRadius: 20, justifyContent: 'center' },
-  pin: {
+  routeCard: {
     position: 'absolute',
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 3,
-    borderColor: '#FFFFFF',
+    left: 23,
+    width: 514,
+    top: ROUTE_CARD.top,
+    height: ROUTE_CARD.h,
+    borderRadius: CARD_R,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 10 },
+  },
+  routeHead: {
+    height: ROUTE_HEAD,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: CARD_PAD + 8,
+  },
+  routeLine: { position: 'absolute', width: 4, borderRadius: 2 },
+  routeRow: {
+    position: 'absolute',
+    left: CARD_PAD + 8,
+    right: CARD_PAD + 8,
+    height: ROUTE_ROW,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 18,
+  },
+  routeName: { flex: 1, fontSize: 26, lineHeight: 32 },
+  node: {
+    width: NODE,
+    height: NODE,
+    borderRadius: NODE / 2,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  nodeOn: {
+    position: 'absolute',
+    left: -2,
+    top: -2,
+    right: -2,
+    bottom: -2,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  car: {
+  marker: {
     position: 'absolute',
-    left: 0,
-    top: 0,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: '#0A84FF',
     borderWidth: 3,
     borderColor: '#FFFFFF',
