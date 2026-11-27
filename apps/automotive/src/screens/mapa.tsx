@@ -9,6 +9,7 @@ import { CarSearch } from '../map/car-search';
 import { ClientPicker } from '../map/client-picker';
 import { LiveMap, type MapPin } from '../map/live-map';
 import { useMapNav } from '../map/map-nav';
+import { NavCard } from '../map/nav-card';
 import {
   secondsToFirstStop,
   type Guidance as TurnGuidance,
@@ -84,7 +85,7 @@ export default function MapScreen() {
   const [arrivedAt, setArrivedAt] = useState<string | null>(null);
   // Coluna da direita (multimídia): o início do "Para onde vamos?" é baixo e o WhatsApp
   // cresce; escolher cliente ou rota (ou ter um destino) aumenta o cartão de baixo.
-  const [welcomeCompact, setWelcomeCompact] = useState(true);
+  const [, setWelcomeCompact] = useState(true);
   const [homeH, setHomeH] = useState(0);
   // biome-ignore lint/correctness/useExhaustiveDependencies: troca de destino encerra a navegação
   useEffect(() => {
@@ -256,7 +257,6 @@ export default function MapScreen() {
                 to={client?.tradeName ?? ''}
                 status={liveStatus}
                 guidance={guidance}
-                onStop={navigating ? () => setNavigating(false) : undefined}
                 trip={client ? trip : undefined}
               />
             ) : (
@@ -266,8 +266,20 @@ export default function MapScreen() {
           <Presence show={!client} distance={60} style={StyleSheet.absoluteFill}>
             <ExploreSheet />
           </Presence>
-          <Presence show={!!client} distance={60} style={StyleSheet.absoluteFill}>
-            {client ? (
+          {/* Navegando: o cartão do cliente vira o cartão compacto da navegação (um botão só
+              para encerrar, recolhe sozinho e cresce ao toque). */}
+          <Presence show={!!client && navigating} distance={60} style={StyleSheet.absoluteFill}>
+            {client && navigating ? (
+              <NavCard
+                client={client}
+                stopLabel={stopLabel}
+                secondsToArrive={nextSeconds}
+                onStop={() => setNavigating(false)}
+              />
+            ) : null}
+          </Presence>
+          <Presence show={!!client && !navigating} distance={60} style={StyleSheet.absoluteFill}>
+            {client && !navigating ? (
               <RouteSheet
                 client={client}
                 stopLabel={stopLabel}
@@ -367,7 +379,9 @@ export default function MapScreen() {
       <View style={styles.side}>
         <MorphColumn
           top={<WhatsAppCard />}
-          compact={!client && welcomeCompact}
+          // O WhatsApp fica sempre no tamanho de painel (pedido do usuário, 27/11): o cartão
+          // de escolher cliente ou rota leva o resto da coluna.
+          compact={false}
           compactHeight={homeH > 0 ? homeH + spacing[6] * 2 : 0}
         >
           {/* Trocar de cartão (entrar ou sair de uma rota, ir para outra parada) desliza: o
@@ -725,12 +739,17 @@ function WhatsAppCard() {
       <Blur radius={44} tint={c.material.tint} />
       <View style={[StyleSheet.absoluteFill, { backgroundColor: c.material.fallback }]} />
       <View style={styles.waRow}>
-        <WhatsAppLogo size={112} />
-        <View style={{ flex: 1, gap: spacing[1] }}>
-          <Text variant="title2" numberOfLines={1}>
+        <WhatsAppLogo size={80} />
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text variant="headline" numberOfLines={1} style={{ fontSize: 30, lineHeight: 36 }}>
             {m.name}
           </Text>
-          <Text variant="body" tone="secondary" numberOfLines={2}>
+          <Text
+            variant="body"
+            tone="secondary"
+            numberOfLines={1}
+            style={{ fontSize: 24, lineHeight: 30 }}
+          >
             {m.text}
           </Text>
         </View>
@@ -1112,12 +1131,8 @@ function WelcomeCard({
   useEffect(() => onCompact(view === 'home'), [view]);
   // Mesma transição da aba "Rotas" do celular: o atual sai deslizando e o novo entra.
   return (
-    <View style={[styles.welcome, view !== 'home' && { justifyContent: 'flex-start' }]}>
-      <Swap
-        id={view}
-        dir={view === 'home' ? -1 : 1}
-        style={view === 'home' ? { gap: spacing[6] } : { flex: 1, gap: spacing[5] }}
-      >
+    <View style={styles.welcome}>
+      <Swap id={view} dir={view === 'home' ? -1 : 1} style={{ flex: 1, gap: spacing[5] }}>
         {view === 'pick' ? (
           <ClientPicker onClose={() => setView('home')} />
         ) : view === 'routes' ? (
@@ -1141,14 +1156,14 @@ function WelcomeCard({
         ) : (
           // Só o título e as opções: o cartão fica baixo e o WhatsApp ocupa o resto em cima.
           <View
-            style={{ gap: spacing[6] }}
+            style={{ flex: 1, gap: spacing[6], justifyContent: 'space-between' }}
             onLayout={(e) => onHomeHeight(e.nativeEvent.layout.height)}
           >
-            <View style={{ gap: spacing[1] }}>
-              <Text variant="largeTitle" style={{ fontSize: 42, lineHeight: 50 }}>
+            <View style={{ gap: spacing[2] }}>
+              <Text variant="largeTitle" style={{ fontSize: 50, lineHeight: 58 }}>
                 Para onde vamos?
               </Text>
-              <Text variant="body" tone="secondary" style={{ fontSize: 26, lineHeight: 32 }}>
+              <Text variant="body" tone="secondary" style={{ fontSize: 28, lineHeight: 34 }}>
                 Escolha um cliente ou uma rota montada.
               </Text>
             </View>
@@ -1196,9 +1211,9 @@ const TRIP_INNER = concentric(TRIP_R, spacing[4]);
 
 const LEFT = layout.sidebarWidth + layout.gutter;
 /** Coluna de cartões à direita do mapa. */
-const SIDE_W = 480;
+const SIDE_W = 520;
 /** Cartão do WhatsApp no tamanho de painel (quando o cartão de baixo cresce). */
-const WA_H = 200;
+const WA_H = 136;
 /** Altura do cartão do WhatsApp no início ("Para onde vamos?"). */
 const WA_HOME = 300;
 const WA_R = 48;

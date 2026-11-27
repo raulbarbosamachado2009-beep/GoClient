@@ -3,7 +3,7 @@ import { type ComponentRef, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { perfRecord } from '../perf';
-import { AGENT_HELPERS, JOBS } from './agent-page';
+import { AGENT_HELPERS, JOBS, type SalePlan } from './agent-page';
 import { KYTE_HOME, kyteScript } from './bridge';
 import { DESKTOP_USER_AGENT } from './config';
 import { CAPTURE_SCRIPT, DATA_HELPERS } from './data-page';
@@ -169,6 +169,9 @@ export const kyteAgent = {
     run<{ name: string; header: string; footer: string; logo: string } | null>(JOBS.readStore()),
   diagnose: () => run<KyteDiagnosis>(JOBS.diagnose(), 40000),
   cancelSale: (number: string) => run<{ canceled: boolean }>(JOBS.cancelSale(number), 40000),
+  /** Registra no Kyte a venda montada nas telas do GoClient (ver JOBS.registerSale). */
+  registerSale: (plan: SalePlan) =>
+    run<{ concluded: boolean; number: string; missing: string[] }>(JOBS.registerSale(plan), 90000),
 };
 
 /** Monta o lugar da janela invisível (uma vez, no layout principal do app). */

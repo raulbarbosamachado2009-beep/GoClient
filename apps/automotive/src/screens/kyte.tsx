@@ -20,7 +20,7 @@ import {
 } from '../kyte/screens/nav';
 import { ProductDetail, ProductsScreen } from '../kyte/screens/products';
 import { Receipt, SaleDetail } from '../kyte/screens/sale';
-import { type SellPlan, SellScreen } from '../kyte/screens/sell';
+import { SellFlow, type SellPlan } from '../kyte/sell/flow';
 import { Header, type IconName, KIcon, KY, Text, useKySize } from '../kyte/ui';
 import { KyteWindow, type KyteWindowHandle } from '../kyte/window';
 import { usePhone } from '../layout/form-factor';
@@ -168,8 +168,8 @@ export default function KyteScreen() {
   else if (top?.type === 'product') body = <ProductDetail id={top.id} />;
   else if (section === 'vender')
     body = (
-      <SellScreen
-        onFinish={(p) => {
+      <SellFlow
+        onOpenKyte={(p) => {
           filled.current = false;
           setSellMsg(null);
           setSell(p);

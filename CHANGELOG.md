@@ -5,17 +5,59 @@ Leia este arquivo antes de começar qualquer trabalho.
 
 ## Estado atual do app
 
-_Última atualização: 2026-11-26 21:03 — App mais rápido: Mapa, Kyte e WhatsApp ficam abertos por trás, mapa sem download da biblioteca, endereços salvos no aparelho, Kyte sem pausas fixas e cronômetro em Ajustes (PR aguardando revisão; entra por cima do #13)._
+_Última atualização: 2026-11-26 21:50 — Vendas do Kyte com telas próprias (fluxo do vídeo do usuário), impressão da comanda por impressora Bluetooth, cartão do cliente na navegação do celular que se recolhe e cartões do Mapa da multimídia ajustados. Os PRs #12, #13 e #14 e esta rodada estão na main._
 
 - **Automotive (`apps/automotive`)** é onde está quase todo o produto: Mapa (OSM + OpenRouteService,
   navegação com voz), Kyte (telas próprias sobre a janela do Kyte) e o assistente de voz Lucas.
   Não há mais Música/Spotify; no lugar entrou a aba **WhatsApp** (WhatsApp Web dentro do
   app, número da equipe). O Lucas (a nuvenzinha do logo) avisa o próximo cliente da rota pelo WhatsApp. Roda no carro (paisagem) e no celular (em pé, com aba puxável estilo Apple Maps).
+- **Kyte → Vender** tem o fluxo de vendas inteiro do Kyte em telas próprias (Vender, cliente,
+  carrinho, pagamento, dinheiro, venda concluída, recibo); ao concluir, a venda é registrada no
+  Kyte por trás. **Imprimir** manda a comanda para a impressora térmica Bluetooth pareada.
 - **Modo claro é o padrão** (o escuro continua em Ajustes → Tema). Login com fundo "aurora" em azuis.
 - **Mobile e Web** ainda são telas de diagnóstico; **API** (`apps/api`) com Hono + Drizzle.
 - Regras de negócio em `packages/core` (com testes); visual só com `@goclient/design-tokens`.
 
 ## Mudanças
+
+### 2026-11-26 21:50 — Vendas do Kyte refeitas, impressora Bluetooth e cartões do Mapa
+
+Pedido do usuário (thread "Refazer vendas do Kyte e cards do mapa", com 4 imagens e um vídeo
+do fluxo de vendas do Kyte). O usuário pediu tudo pronto, sem precisar aprovar PR: esta rodada e
+a pilha #12 → #13 → #14 foram juntadas direto na main.
+
+- **Celular, navegação (imagem 1):** um botão só para encerrar (antes havia "Encerrar navegação"
+  e um "×" com a mesma função; o "Parar" do topo também saiu). Novo cartão `map/nav-card.tsx`:
+  começa com o botão vermelho largo e, 2 s depois, se recolhe — o botão vira um quadrado
+  arredondado com "×" à direita e ficam a foto, o nome e o endereço (subtítulo). Tocar ou
+  arrastar para cima em qualquer canto (menos no "×") abre o tamanho médio (região e ícone do
+  WhatsApp) e, de novo, o grande (pedido e endereço completo); mais um toque ou arrastar para
+  baixo recolhe. O WhatsApp abre a conversa do cliente no WhatsApp do app com a mensagem de
+  "estamos chegando" já escrita (o envio continua sendo o toque da pessoa).
+- **Multimídia, Clientes do Mapa (imagem 2):** tudo maior — título, "Ver mais", "×" de 80,
+  busca de 96, regiões de 80 e linhas de 128 com ícones maiores (`map/client-picker.tsx`).
+- **Multimídia, Mapa (imagem 3):** o cartão do WhatsApp ficou baixo (136, logo de 80, uma linha)
+  e o "Para onde vamos?" ocupa o resto da coluna, com título maior e opções maiores perto da
+  mão. Coluna da direita de 480 para 520.
+- **Kyte → Vender (imagem 4 e vídeo):** o fluxo de vendas do Kyte inteiro em telas próprias
+  (`kyte/sell/`), no desenho do Kyte e com entrada/saída de cada página como no vídeo: Vender
+  (busca "Item ou código", categorias, "1X", contador no produto, "+👤") → Adicionar cliente
+  (busca, última compra, WhatsApp, "Desvincular cliente") → Carrinho (toque no item abre
+  quantidade, valor unitário só para esta venda e desconto; "Dar desconto"; "…" com Opções de
+  entrega, Adicionar observação, Adicionar desconto e Esvaziar carrinho) → Pagamento (Dinheiro,
+  Cartão de Débito/Crédito, Saldo Cliente, Link de Pagamento, Outros, Pix, Venda Fiado, Salvar
+  pedido) → Pagamento: Dinheiro (valor recebido e troco) → Venda Concluída (Falar com cliente,
+  Recibo, Iniciar outra venda) → Recibo (Configurar recibos, PDF, Email, Imprimir, Compartilhar).
+  No Preview a venda é simulada e entra no Histórico; no app, a janela invisível registra a
+  venda no Kyte (`JOBS.registerSale`) e, se não conseguir, oferece abrir o Kyte com o carrinho
+  montado. Regras do carrinho em centavos em `kyte/sell/cart.ts` (com testes).
+- **Impressora Bluetooth:** "Imprimir" manda a comanda direto para a impressora térmica pareada
+  no Bluetooth da multimídia, como o Kyte faz no celular. Escolha da impressora, papel 58/80 mm,
+  acentos e teste em Recibo → "Configurar recibos". Módulo nativo novo
+  `apps/automotive/modules/bt-printer` (Kotlin, SPP) e comanda ESC/POS em `kyte/print/escpos.ts`
+  (página 860, com testes). O recibo do Histórico usa a mesma tela.
+- Precisa de teste num aparelho de verdade: registrar a venda no Kyte Web (os textos das telas
+  de pagamento do Kyte Web foram presumidos a partir do vídeo do app) e imprimir na impressora.
 
 ### 2026-11-26 21:03 — Tempo de resposta: Mapa, Kyte e WhatsApp mais rápidos
 
