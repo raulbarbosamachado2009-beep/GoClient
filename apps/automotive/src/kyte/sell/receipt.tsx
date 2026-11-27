@@ -1,7 +1,8 @@
 import * as Print from 'expo-print';
+import { useRouter } from 'expo-router';
 import * as Sharing from 'expo-sharing';
-import { useState } from 'react';
-import { Linking, Platform, ScrollView, Share, Switch, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Linking, Platform, ScrollView, Switch, View } from 'react-native';
 import type { PairedDevice } from '../../../modules/bt-printer';
 import { useSystemInsets, useTabBarSpace } from '../../layout/form-factor';
 import { Swap } from '../../ui/motion';
@@ -19,6 +20,7 @@ import {
 } from '../print/printer';
 import { Header, type IconName, KIcon, KY, Text, useKySize } from '../ui';
 import { KyteButton, OptionLine } from './parts';
+import { ReceiptShare } from './receipt-share';
 
 const money = (c: number | null) =>
   c == null
@@ -71,6 +73,14 @@ function ReceiptView({
   const top = useSystemInsets().top;
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
   const [printing, setPrinting] = useState(false);
+  const [share, setShare] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const router = useRouter();
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 3200);
+    return () => clearTimeout(t);
+  }, [toast]);
   const fail = (e: unknown) =>
     setMsg({ text: e instanceof Error ? e.message : 'Não foi possível agora.', ok: false });
   const qty = r.lines.reduce((a, l) => a + l.qty, 0);
@@ -120,7 +130,8 @@ function ReceiptView({
     {
       icon: 'share-social-outline',
       label: 'Compartilhar',
-      run: () => void Share.share({ message: receiptPlainText(r) }).catch(fail),
+      // Abre o "Enviar para" do WhatsApp (pedido de 27/11/2026), subindo de baixo.
+      run: () => setShare(true),
     },
   ];
 
@@ -332,6 +343,44 @@ function ReceiptView({
           </Touchable>
         ))}
       </View>
+      {toast ? (
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            bottom: (s.phone ? 130 + tab : 140) + 20,
+            alignItems: 'center',
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: KY.navy,
+              borderRadius: 999,
+              paddingHorizontal: 28,
+              paddingVertical: 16,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 10,
+            }}
+          >
+            <KIcon name="checkmark-circle" size={s.sub + 4} color="#25D366" />
+            <Text size={s.sub} weight="semibold" color="#FFFFFF">
+              {toast}
+            </Text>
+          </View>
+        </View>
+      ) : null}
+      {share ? (
+        <ReceiptShare
+          data={r}
+          onClose={() => setShare(false)}
+          onSent={setToast}
+          onFail={fail}
+          router={router}
+        />
+      ) : null}
     </View>
   );
 }

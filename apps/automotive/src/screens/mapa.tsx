@@ -8,7 +8,7 @@ import { usePhone, useSystemInsets } from '../layout/form-factor';
 import { CarSearch } from '../map/car-search';
 import { ClientPicker } from '../map/client-picker';
 import { LiveMap, type MapPin } from '../map/live-map';
-import { useMapNav } from '../map/map-nav';
+import { rememberMap, useMapNav } from '../map/map-nav';
 import { NavCard } from '../map/nav-card';
 import {
   secondsToFirstStop,
@@ -60,6 +60,7 @@ export default function MapScreen() {
   const phone = usePhone();
   const { rota, id } = useKeptParams<{ rota?: string; id?: string }>();
   const mode: MapMode = rota === 'dia' ? 'day' : rota === 'cliente' ? 'client' : 'explore';
+  useEffect(() => rememberMap({ rota, id }), [rota, id]);
   const [stop, setStop] = useState(0);
   const target = mode === 'explore' ? USER : mode === 'day' ? DAY_FOCUS : CLIENT_FOCUS;
 
@@ -87,6 +88,12 @@ export default function MapScreen() {
   // cresce; escolher cliente ou rota (ou ter um destino) aumenta o cartão de baixo.
   const [, setWelcomeCompact] = useState(true);
   const [homeH, setHomeH] = useState(0);
+  // Altura do cartão de destino único (medida uma vez e guardada para as próximas).
+  const [fitH, setFitH] = useState(savedFit);
+  const setFit = useCallback((h: number) => {
+    savedFit = h;
+    setFitH(h);
+  }, []);
   // biome-ignore lint/correctness/useExhaustiveDependencies: troca de destino encerra a navegação
   useEffect(() => {
     setNavigating(false);
@@ -117,6 +124,7 @@ export default function MapScreen() {
   // usuário a escolher para onde ir.
   const client =
     mode === 'day' ? (routeClients[wrap(stop, routeClients.length)] as MockClient) : picked;
+  const single = !!client && !(mode === 'day' && routeClients.length > 1);
 
   const pins: MapPin[] =
     mode === 'explore'
@@ -181,7 +189,7 @@ export default function MapScreen() {
   const mapArea = useRef<ComponentRef<typeof View>>(null);
   const _router = useRouter();
   const mapNav = useMapNav();
-  // Dados da viagem: da rota real (Google) ou os de exemplo do protótipo.
+  // Dados da viagem: da rota real (OpenRouteService) ou os de exemplo do Preview.
   const left = guidance
     ? { s: guidance.remainingSeconds, m: guidance.remainingMeters }
     : shownRoute
@@ -195,9 +203,12 @@ export default function MapScreen() {
           duration: liveTime,
           km: formatKm(left.m),
         }
-      : mode === 'day'
-        ? { arrival: '11:58', duration: { value: '1:12', unit: 'hrs' }, km: '24,6' }
-        : { arrival: '09:59', duration: { value: '18', unit: 'min' }, km: '7,4' };
+      : live
+        ? // App real com a rota ainda sendo calculada: sem número inventado.
+          { arrival: '—', duration: { value: '—', unit: 'min' }, km: '—' }
+        : mode === 'day'
+          ? { arrival: '11:58', duration: { value: '1:12', unit: 'hrs' }, km: '24,6' }
+          : { arrival: '09:59', duration: { value: '18', unit: 'min' }, km: '7,4' };
   const stopLabel =
     mode === 'day' && routeClients.length > 1
       ? `Parada ${wrap(stop, routeClients.length) + 1} de ${routeClients.length}`
@@ -383,6 +394,9 @@ export default function MapScreen() {
           // de escolher cliente ou rota leva o resto da coluna.
           compact={false}
           compactHeight={homeH > 0 ? homeH + spacing[6] * 2 : 0}
+          // Destino único (um cliente só): pouca informação, então o cartão fica do tamanho
+          // dela (pedido de 27/11/2026).
+          fit={single ? fitH : 0}
         >
           {/* Trocar de cartão (entrar ou sair de uma rota, ir para outra parada) desliza: o
             atual sai e o novo entra, sem corte seco. */}
@@ -421,6 +435,7 @@ export default function MapScreen() {
                 }
                 trip={trip}
                 onClose={() => mapNav()}
+                onFit={setFit}
               />
             ) : (
               <WelcomeCard onCompact={setWelcomeCompact} onHomeHeight={setHomeH} />
@@ -613,15 +628,23 @@ function TripBar({
 }) {
   return (
     <Appear delay={160} fade={false} distance={40} style={styles.bottomLeft}>
-      <Material style={styles.trip}>
-        <Swap id={navigating ? 'stop' : 'go'} dir={navigating ? 1 : -1}>
-          {navigating ? (
+      {/* "Ir" fica sozinho sobre o mapa, sem a moldura branca (pedido de 27/11/2026); o
+          "Encerrar" vermelho-claro continua num material para ter contraste. */}
+      <Swap id={navigating ? 'stop' : 'go'} dir={navigating ? 1 : -1}>
+        {navigating ? (
+          <Material style={styles.trip}>
             <StopButton onPress={onStop} />
-          ) : (
-            <Button label="Ir" icon="navigate" style={styles.tripButton} onPress={onNavigate} />
-          )}
-        </Swap>
-      </Material>
+          </Material>
+        ) : (
+          <Button
+            label="Ir"
+            icon="navigate"
+            size="xl"
+            style={styles.tripButton}
+            onPress={onNavigate}
+          />
+        )}
+      </Swap>
     </Appear>
   );
 }
@@ -775,11 +798,15 @@ function WhatsAppCard() {
 function MorphColumn({
   compact,
   compactHeight,
+  fit = 0,
   top,
   children,
 }: {
   compact: boolean;
   compactHeight: number;
+  /** Altura do conteúdo (destino único): o cartão fica só desse tamanho, colado em cima, e o
+   * WhatsApp continua no tamanho de painel. O resto da coluna mostra o mapa. */
+  fit?: number;
   top: ReactNode;
   children: ReactNode;
 }) {
@@ -792,7 +819,7 @@ function MorphColumn({
   // parecida com a do CarPlay: cartão de cima menor, o de baixo maior).
   const small =
     compactHeight > 0 ? Math.min(Math.max(compactHeight, total - gap - WA_HOME), big) : big;
-  const target = compact ? small : big;
+  const target = fit > 0 ? Math.min(fit, big) : compact ? small : big;
   const h = useRef(new Animated.Value(0)).current;
   const m = useRef(new Animated.Value(0)).current;
   const first = useRef(true);
@@ -814,7 +841,8 @@ function MorphColumn({
       Animated.timing(m, { toValue: 1, duration: 560, useNativeDriver: false }),
     ]).start();
   }, [target, total, h, m]);
-  const topH = Animated.add(total - gap, Animated.multiply(h, -1));
+  // Com `fit`, o WhatsApp não cresce: fica em WA_H e o destino encolhe por baixo dele.
+  const topH = fit > 0 ? WA_H : Animated.add(total - gap, Animated.multiply(h, -1));
   const blurO = m.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 1, 0] });
   const webBlur =
     Platform.OS === 'web'
@@ -846,7 +874,10 @@ function MorphColumn({
             <Blur radius={44} tint={c.material.tint} />
             <View style={[StyleSheet.absoluteFill, { backgroundColor: c.material.fallback }]} />
             <Animated.View
-              style={[{ height: compact ? Math.max(target, 1) : big }, webBlur as object]}
+              style={[
+                { height: fit > 0 ? target : compact ? Math.max(target, 1) : big },
+                webBlur as object,
+              ]}
             >
               {children}
             </Animated.View>
@@ -888,6 +919,7 @@ function ClientCard({
   onPrevious,
   trip,
   onClose,
+  onFit,
 }: {
   client: MockClient;
   mode: MapMode;
@@ -903,6 +935,8 @@ function ClientCard({
   /** Chegada, tempo e distância (o botão "Ir" fica no canto do mapa). */
   trip: TripInfo;
   onClose: () => void;
+  /** Destino único: avisa a altura do conteúdo para o cartão ficar só desse tamanho. */
+  onFit?: (height: number) => void;
 }) {
   const c = useColors();
   const [list, setList] = useState(false);
@@ -924,6 +958,70 @@ function ClientCard({
       <Icon name={icon} size={38} />
     </Touchable>
   );
+
+  if (!hasQueue) {
+    // Destino único: cartão baixo e horizontal, do tamanho do que tem para mostrar.
+    return (
+      <View
+        style={styles.fitCard}
+        onLayout={(e) => onFit?.(Math.ceil(e.nativeEvent.layout.height))}
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[4] }}>
+          <Avatar name={client.name} size={104} radius={COMPACT_INNER} />
+          <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+            <Text variant="headline" tone="secondary" style={{ fontSize: 22, lineHeight: 28 }}>
+              {stopLabel ?? 'Destino'}
+            </Text>
+            <Text variant="title" numberOfLines={1} style={{ fontSize: 36, lineHeight: 42 }}>
+              {client.tradeName || client.name}
+            </Text>
+            <Marquee
+              text={[client.address, district].filter(Boolean).join(' · ')}
+              lineHeight={30}
+              style={{ fontSize: 24 }}
+            />
+          </View>
+          <IconButton
+            icon="close"
+            size={56}
+            iconSize={30}
+            variant="gray"
+            accessibilityLabel="Fechar destino"
+            onPress={onClose}
+          />
+        </View>
+        <View style={[styles.tripStats, { backgroundColor: tile }]}>
+          <Stat value={trip.arrival} label="chegada" />
+          <Stat value={trip.duration.value} label={trip.duration.unit} />
+          <Stat value={trip.km} label="km" />
+        </View>
+        {client.phone ? (
+          <View style={{ flexDirection: 'row', gap: spacing[3] }}>
+            <Touchable
+              accessibilityRole="button"
+              onPress={() => callPhone(client.phone)}
+              style={[styles.wideAction, { backgroundColor: tile }]}
+            >
+              <Icon name="call" size={34} />
+              <Text variant="headline" style={{ fontSize: 26 }}>
+                Ligar
+              </Text>
+            </Touchable>
+            <Touchable
+              accessibilityRole="button"
+              onPress={() => openWhatsApp(client.phone)}
+              style={[styles.wideAction, { backgroundColor: tile }]}
+            >
+              <Icon name="logo-whatsapp" size={34} />
+              <Text variant="headline" style={{ fontSize: 26 }}>
+                WhatsApp
+              </Text>
+            </Touchable>
+          </View>
+        ) : null}
+      </View>
+    );
+  }
 
   return (
     <View style={styles.compact}>
@@ -980,59 +1078,6 @@ function ClientCard({
               />
             </ScrollView>
           </SheetLock.Provider>
-        ) : !hasQueue ? (
-          // Destino único: tudo centrado e distribuído pelo cartão inteiro.
-          <View style={styles.compactBody}>
-            <View style={{ alignItems: 'center', gap: spacing[3], paddingTop: spacing[2] }}>
-              <Avatar name={client.name} size={136} radius={COMPACT_INNER} />
-              <Text
-                variant="title"
-                numberOfLines={2}
-                style={{ fontSize: 40, lineHeight: 46, textAlign: 'center' }}
-              >
-                {client.tradeName || client.name}
-              </Text>
-              <View style={{ alignSelf: 'stretch' }}>
-                <Marquee
-                  center
-                  text={[client.address, district].filter(Boolean).join(' · ')}
-                  lineHeight={30}
-                  style={{ fontSize: 24 }}
-                />
-              </View>
-            </View>
-            <View style={{ gap: spacing[4] }}>
-              {client.phone ? (
-                <View style={{ flexDirection: 'row', gap: spacing[3] }}>
-                  <Touchable
-                    accessibilityRole="button"
-                    onPress={() => callPhone(client.phone)}
-                    style={[styles.wideAction, { backgroundColor: tile }]}
-                  >
-                    <Icon name="call" size={34} />
-                    <Text variant="headline" style={{ fontSize: 26 }}>
-                      Ligar
-                    </Text>
-                  </Touchable>
-                  <Touchable
-                    accessibilityRole="button"
-                    onPress={() => openWhatsApp(client.phone)}
-                    style={[styles.wideAction, { backgroundColor: tile }]}
-                  >
-                    <Icon name="logo-whatsapp" size={34} />
-                    <Text variant="headline" style={{ fontSize: 26 }}>
-                      WhatsApp
-                    </Text>
-                  </Touchable>
-                </View>
-              ) : null}
-              <View style={[styles.tripStats, { backgroundColor: tile }]}>
-                <Stat value={trip.arrival} label="chegada" />
-                <Stat value={trip.duration.value} label={trip.duration.unit} />
-                <Stat value={trip.km} label="km" />
-              </View>
-            </View>
-          </View>
         ) : (
           <View style={styles.compactBody}>
             <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: spacing[4] }}>
@@ -1214,6 +1259,7 @@ const LEFT = layout.sidebarWidth + layout.gutter;
 const SIDE_W = 520;
 /** Cartão do WhatsApp no tamanho de painel (quando o cartão de baixo cresce). */
 const WA_H = 136;
+let savedFit = 0;
 /** Altura do cartão do WhatsApp no início ("Para onde vamos?"). */
 const WA_HOME = 300;
 const WA_R = 48;
@@ -1286,9 +1332,18 @@ const styles = StyleSheet.create({
   stop: { height: STOP_H, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
   stopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
   center: { alignItems: 'center', justifyContent: 'center' },
-  tripButton: { borderRadius: TRIP_INNER, width: STOP_W },
+  tripButton: {
+    borderRadius: TRIP_R,
+    width: STOP_W,
+    height: 100,
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+  },
   card: { flex: 1, borderRadius: 40, padding: spacing[8] },
   compact: { flex: 1, padding: spacing[6] },
+  fitCard: { padding: spacing[6], gap: spacing[4] },
   morph: { borderRadius: COMPACT_R, overflow: 'hidden', borderWidth: 1 },
   waShell: { borderRadius: WA_R, overflow: 'hidden' },
   wa: {
@@ -1303,7 +1358,7 @@ const styles = StyleSheet.create({
   waTime: { alignSelf: 'flex-start', marginTop: spacing[1] },
   wideAction: {
     flex: 1,
-    height: 96,
+    height: 84,
     borderRadius: COMPACT_INNER,
     flexDirection: 'row',
     alignItems: 'center',

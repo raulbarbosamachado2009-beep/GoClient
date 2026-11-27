@@ -24,6 +24,7 @@ import { usePhone } from '../../layout/form-factor';
 import { FONT, useColors } from '../../theme';
 import { Appear, Presence } from '../../ui/motion';
 import { Touchable } from '../../ui/primitives';
+import { AttachBody, AttachMenu, previewOf, showsText } from './attach';
 import { startCall } from './call';
 import { CallPanel } from './call-layer';
 import {
@@ -36,7 +37,9 @@ import {
   type SimContact,
   type SimMessage,
 } from './data';
+import { type AttachKind, attachMessage, useOutbox } from './outbox';
 import { PhoneWhatsApp } from './phone';
+import { Wallpaper } from './wallpaper';
 
 /**
  * WhatsApp **simulado** (Preview): as telas do WhatsApp Web redesenhadas no GoClient, com
@@ -246,6 +249,19 @@ function WhatsAppCar() {
     setMenu(false);
   };
 
+  // Acrescenta mensagens no fim de uma conversa (criando-a se preciso) e a leva ao topo.
+  const push = (contactId: string, msgs: SimMessage[]) =>
+    setChats((cur) => {
+      const had = cur.find((c) => c.id === contactId);
+      const base = had ?? { id: contactId, contact: contactId, unread: 0, messages: [] };
+      return [
+        { ...base, messages: [...base.messages, ...msgs] },
+        ...cur.filter((c) => c.id !== contactId),
+      ];
+    });
+  // Recibo compartilhado pelo Kyte ("Enviar para"): chega na conversa de cada destinatário.
+  useOutbox((d) => push(d.chatId, d.messages));
+
   const send = (text: string) => {
     if (!chat) return;
     const now = new Date();
@@ -446,6 +462,7 @@ function WhatsAppCar() {
             setSelecting(null);
           }}
           onSend={send}
+          onAttach={(kind) => chat && push(chat.id, [attachMessage(kind)])}
           onUnblock={() =>
             setBlocked((cur) => {
               const next = new Set(cur);
@@ -1010,19 +1027,14 @@ function ChatList({
 /** Prévia da última mensagem (✓✓ nas enviadas, ícone nos anexos, nome nos grupos). */
 function LastLine({ P, S, msg }: { P: Palette; S: Sizes; msg?: SimMessage }) {
   if (!msg) return null;
+  const { icon, text } = previewOf(msg);
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
       {msg.out && <Icon name="checkmark-done" size={S.sub} color={P.tick} />}
-      {msg.kind && (
-        <Icon
-          name={msg.kind === 'photo' ? 'camera' : msg.kind === 'call' ? 'call' : 'document-text'}
-          size={S.sub}
-          color={P.sub}
-        />
-      )}
+      {icon && <Icon name={icon} size={S.sub} color={P.sub} />}
       <Text size={S.sub} color={P.sub} lines={1} style={{ flex: 1 }}>
         {msg.from ? `${msg.from}: ` : ''}
-        {msg.text}
+        {text}
       </Text>
     </View>
   );
@@ -1183,6 +1195,7 @@ function Conversation({
   onSelect,
   onDeleteSelected,
   onSend,
+  onAttach,
   onUnblock,
 }: {
   P: Palette;
@@ -1200,10 +1213,12 @@ function Conversation({
   onSelect: (s: Set<string> | null) => void;
   onDeleteSelected: () => void;
   onSend: (text: string) => void;
+  onAttach: (kind: AttachKind) => void;
   onUnblock: () => void;
 }) {
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
   const [draft, setDraft] = useState('');
+  const [attach, setAttach] = useState(false);
   const q = finding ? norm(finding) : '';
   const msgs = q ? chat.messages.filter((m) => norm(m.text).includes(q)) : chat.messages;
 
@@ -1278,6 +1293,7 @@ function Conversation({
 
   return (
     <View style={{ flex: 1, backgroundColor: P.wall }}>
+      <Wallpaper dark={P.dark} tile={Math.round(460 * S.k)} />
       <View style={{ backgroundColor: P.head, borderBottomWidth: 1, borderBottomColor: P.line }}>
         {header}
       </View>
@@ -1384,6 +1400,17 @@ function Conversation({
             onSend(draft.trim());
             setDraft('');
           }}
+          onAttach={() => setAttach(true)}
+        />
+      )}
+      {attach && (
+        <AttachMenu
+          C={P}
+          px={(pt) => Math.round(pt * S.k)}
+          left={Math.round(12 * S.k)}
+          bottom={Math.round(72 * S.k)}
+          onPick={onAttach}
+          onClose={() => setAttach(false)}
         />
       )}
     </View>
@@ -1490,67 +1517,11 @@ function Bubble({
               <Icon name="image-outline" size={72} color={P.sub} />
             </View>
           )}
-          {msg.kind === 'call' && (
-            // Balão da ligação, como no WhatsApp Web: ícone redondo + "Ligação de voz".
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: Math.round(12 * S.k),
-                paddingVertical: Math.round(10 * S.k),
-                paddingLeft: Math.round(10 * S.k),
-                paddingRight: Math.round(40 * S.k),
-                borderRadius: R - 2,
-                backgroundColor: P.dark ? 'rgba(0,0,0,0.18)' : 'rgba(0,0,0,0.04)',
-              }}
-            >
-              <View
-                style={[
-                  styles.center,
-                  {
-                    width: Math.round(36 * S.k),
-                    height: Math.round(36 * S.k),
-                    borderRadius: 18 * S.k,
-                    backgroundColor: P.panel,
-                  },
-                ]}
-              >
-                <Icon name="call" size={Math.round(18 * S.k)} color={P.green} />
-              </View>
-              <View>
-                <Text size={S.name} color={P.ink}>
-                  {msg.text}
-                </Text>
-                <Text size={S.small} color={P.sub}>
-                  {msg.out ? 'Efetuada' : 'Recebida'}
-                </Text>
-              </View>
-            </View>
-          )}
-          {msg.kind === 'doc' && (
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 14,
-                padding: Math.round(10 * S.k),
-                borderRadius: R - 2,
-                backgroundColor: P.dark ? 'rgba(0,0,0,0.18)' : 'rgba(0,0,0,0.04)',
-              }}
-            >
-              <Icon name="document-text" size={44} color={P.red} />
-              <View>
-                <Text size={S.sub} color={P.ink}>
-                  {msg.text}.pdf
-                </Text>
-                <Text size={S.small} color={P.sub}>
-                  PDF · 2 páginas
-                </Text>
-              </View>
-            </View>
+          {!!msg.kind && msg.kind !== 'photo' && (
+            <AttachBody msg={msg} C={P} px={(pt) => Math.round(pt * S.k)} />
           )}
           <View style={{ flexDirection: 'row', alignItems: 'flex-end', flexWrap: 'wrap', gap: 10 }}>
-            {msg.kind !== 'doc' && msg.kind !== 'call' && (
+            {showsText(msg) && (
               <Text size={S.sub} color={P.ink} style={{ flexShrink: 1 }}>
                 {msg.text}
               </Text>
@@ -1582,12 +1553,14 @@ function Composer({
   value,
   onChange,
   onSend,
+  onAttach,
 }: {
   P: Palette;
   S: Sizes;
   value: string;
   onChange: (v: string) => void;
   onSend: () => void;
+  onAttach: () => void;
 }) {
   const h = Math.round(52 * S.k);
   const has = value.trim().length > 0;
@@ -1613,8 +1586,7 @@ function Composer({
           shadowOffset: { width: 0, height: 1 },
         }}
       >
-        <IconButton P={P} S={S} name="add" label="Anexar" />
-        <IconButton P={P} S={S} name="happy-outline" label="Emojis e figurinhas" />
+        <IconButton P={P} S={S} name="add" label="Anexar" onPress={onAttach} />
         <TextInput
           value={value}
           onChangeText={onChange}
