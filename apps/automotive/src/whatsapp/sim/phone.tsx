@@ -15,7 +15,7 @@ import {
   type SimContact,
   type SimMessage,
 } from './data';
-import { attachMessage, useOutbox } from './outbox';
+import { attachMessage, useOpenRequest, useOutbox } from './outbox';
 import { ChatScreen, pushEase, type SendStatus, STATUS_STEPS } from './phone-chat';
 import {
   Avatar,
@@ -118,6 +118,11 @@ export function PhoneWhatsApp() {
     setChats((cur) => cur.map((c) => (c.id === id ? { ...c, unread: 0 } : c)));
     push({ kind: 'chat', id });
   };
+  // Conversa tocada no cartão do WhatsApp do Mapa: abre direto nela.
+  useOpenRequest((id) => {
+    setStack([{ kind: 'root' }]);
+    openChat(id);
+  });
   const ring = (contactId: string) => {
     const who = contactOf(contactId);
     if (!who) return;
