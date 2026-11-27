@@ -1,28 +1,8 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
-import {
-  type ComponentProps,
-  type ComponentRef,
-  type ReactNode,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
-import {
-  Animated,
-  Pressable,
-  Text as RNText,
-  ScrollView,
-  type StyleProp,
-  StyleSheet,
-  TextInput,
-  type TextStyle,
-  View,
-} from 'react-native';
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { PHONE_SCROLL_END, useSystemInsets } from '../../layout/form-factor';
 import { usePrototype } from '../../prototype/state';
-import { FONT, useColors } from '../../theme';
-import { Appear } from '../../ui/motion';
+import { FONT, nativeDriver } from '../../theme';
 import { Touchable } from '../../ui/primitives';
 import { startCall } from './call';
 import {
@@ -34,6 +14,21 @@ import {
   type SimContact,
   type SimMessage,
 } from './data';
+import { ChatScreen, pushEase, type SendStatus, STATUS_STEPS } from './phone-chat';
+import {
+  Avatar,
+  Icon,
+  type IconName,
+  lastOf,
+  norm,
+  type Palette,
+  Round,
+  Text,
+  u,
+  usePalette,
+  whenOf,
+} from './phone-kit';
+import { ProfileScreen } from './phone-profile';
 
 /**
  * WhatsApp **simulado** do celular em pé (pedido do usuário em 26/11/2026), no desenho do
@@ -45,186 +40,6 @@ import {
  * canto esquerdo (os "três pontinhos" do WhatsApp) alterna Conversas ↔ Ligações, como na
  * multimídia. Sem chamada de vídeo e só dados fictícios.
  */
-type IconName = ComponentProps<typeof Ionicons>['name'];
-
-/** Pontos do iPhone (largura 393) → unidades da tela de referência do celular (720). */
-const K = 720 / 393;
-const u = (pt: number) => Math.round(pt * K);
-
-function usePalette() {
-  const dark = useColors().mode === 'dark';
-  return dark
-    ? {
-        dark,
-        bg: '#0B0B0B',
-        wall: '#0B0B0B',
-        card: '#1C1D1D',
-        button: '#232424',
-        field: '#1E1F1F',
-        chip: '#0B0B0B',
-        chipLine: '#2C2D2D',
-        chipOn: '#103629',
-        chipOnInk: '#D9FDD3',
-        line: '#232424',
-        ink: '#FFFFFF',
-        sub: '#8D9598',
-        green: '#21C063',
-        greenInk: '#21C063',
-        out: '#144D37',
-        in: '#242626',
-        red: '#F15C6D',
-        avatar: '#103B4F',
-        avatarInk: '#8ACDEA',
-        group: '#0B3A36',
-        groupInk: '#6FD1C5',
-        tick: '#53BDEB',
-        press: '#1A1B1B',
-      }
-    : {
-        dark,
-        bg: '#FFFFFF',
-        wall: '#EFEAE2',
-        card: '#FFFFFF',
-        button: '#F2F2F2',
-        field: '#F2F2F2',
-        chip: '#FFFFFF',
-        chipLine: '#E3E3E3',
-        chipOn: '#D9FDD3',
-        chipOnInk: '#15603E',
-        line: '#E9E9E9',
-        ink: '#000000',
-        sub: '#8A8A8E',
-        green: '#1DAA61',
-        greenInk: '#1DAA61',
-        out: '#D9FDD3',
-        in: '#FFFFFF',
-        red: '#EA0038',
-        avatar: '#CAECFA',
-        avatarInk: '#3D9BD1',
-        group: '#CBF2EE',
-        groupInk: '#048479',
-        tick: '#53BDEB',
-        press: '#F2F2F2',
-      };
-}
-type Palette = ReturnType<typeof usePalette>;
-/** Fundo agrupado (dados do contato), como nos Ajustes do iPhone. */
-const grouped = (P: Palette) => (P.dark ? '#0B0B0B' : '#F2F2F7');
-
-const FAMILY = {
-  regular: FONT.displayRegular,
-  medium: FONT.displayMedium,
-  semibold: FONT.displaySemibold,
-  bold: FONT.displayBold,
-} as const;
-
-function Text({
-  children,
-  pt,
-  weight = 'regular',
-  color,
-  style,
-  lines,
-}: {
-  children: ReactNode;
-  /** Tamanho em pontos do iPhone. */
-  pt: number;
-  weight?: keyof typeof FAMILY;
-  color?: string;
-  style?: StyleProp<TextStyle>;
-  lines?: number;
-}) {
-  return (
-    <RNText
-      numberOfLines={lines}
-      style={[
-        {
-          fontFamily: FAMILY[weight],
-          fontSize: u(pt),
-          lineHeight: Math.round(u(pt) * 1.25),
-          color,
-        },
-        style,
-      ]}
-    >
-      {children}
-    </RNText>
-  );
-}
-
-function Icon({ name, pt, color }: { name: IconName; pt: number; color: string }) {
-  return <Ionicons name={name} size={u(pt)} color={color} />;
-}
-
-function Avatar({ P, pt, group }: { P: Palette; pt: number; group?: boolean }) {
-  const s = u(pt);
-  return (
-    <View
-      style={[
-        styles.center,
-        { width: s, height: s, borderRadius: s / 2, backgroundColor: group ? P.group : P.avatar },
-      ]}
-    >
-      <Ionicons
-        name={group ? 'people' : 'person'}
-        size={s * (group ? 0.46 : 0.5)}
-        color={group ? P.groupInk : P.avatarInk}
-      />
-    </View>
-  );
-}
-
-/** Botão redondo de vidro do iOS 26 (44 pt). */
-function Round({
-  P,
-  icon,
-  label,
-  onPress,
-  filled,
-  wide,
-  badge,
-}: {
-  P: Palette;
-  icon: IconName;
-  label: string;
-  onPress?: () => void;
-  filled?: boolean;
-  wide?: boolean;
-  badge?: number;
-}) {
-  const h = u(44);
-  return (
-    <Touchable
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      onPress={onPress}
-      scaleTo={0.9}
-      style={[
-        styles.center,
-        {
-          width: wide ? u(56) : h,
-          height: h,
-          borderRadius: h / 2,
-          backgroundColor: filled ? P.green : P.button,
-        },
-      ]}
-    >
-      <Icon name={icon} pt={filled ? 26 : 22} color={filled ? '#FFFFFF' : P.ink} />
-      {!!badge && (
-        <View style={[styles.badge, { backgroundColor: P.green }]}>
-          <Text pt={11} weight="semibold" color="#FFFFFF">
-            {badge}
-          </Text>
-        </View>
-      )}
-    </Touchable>
-  );
-}
-
-const lastOf = (c: SimChat) => c.messages[c.messages.length - 1];
-const whenOf = (m?: SimMessage) => (!m ? '' : m.day === 'Hoje' ? m.time : m.day);
-const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-
 type Screen =
   | { kind: 'root' }
   | { kind: 'chat'; id: string }
@@ -239,6 +54,12 @@ export function PhoneWhatsApp() {
   const [contacts, setContacts] = useState<SimContact[]>(CONTACTS);
   const [chats, setChats] = useState<SimChat[]>(CHATS);
   const [blocked, setBlocked] = useState<Set<string>>(new Set());
+  // Mensagens enviadas agora: relógio → ✓ → ✓✓ (as antigas aparecem lidas).
+  const [status, setStatus] = useState<Record<string, SendStatus>>({});
+  // Não lidas de cada conversa no momento em que foi aberta (faixa "Mensagens não lidas").
+  const [unreadAt, setUnreadAt] = useState<Record<string, number>>({});
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  useEffect(() => () => timers.current.forEach(clearTimeout), []);
   const top = stack[stack.length - 1] as Screen;
   // Dentro de uma conversa (e das telas que saem dela) a barra de abas do app some e a
   // conversa ocupa a tela inteira (pedido de 26/11/2026). Volta ao sair do WhatsApp.
@@ -274,6 +95,8 @@ export function PhoneWhatsApp() {
     });
 
   const openChat = (id: string) => {
+    const n = chats.find((c) => c.id === id)?.unread ?? 0;
+    setUnreadAt((cur) => ({ ...cur, [id]: n }));
     setChats((cur) => cur.map((c) => (c.id === id ? { ...c, unread: 0 } : c)));
     push({ kind: 'chat', id });
   };
@@ -325,12 +148,20 @@ export function PhoneWhatsApp() {
         contact={contact}
         chat={chat}
         blocked={blocked.has(top.id)}
+        unreadFrom={unreadAt[top.id] ?? 0}
+        statusOf={(id) => status[id] ?? 'read'}
         onBack={pop}
         onProfile={() => push({ kind: 'profile', id: top.id, from: 'chat' })}
         onCall={() => ring(top.id)}
-        onSend={(text) =>
-          append(top.id, { id: `n${Date.now()}`, out: true, text, time: now(), day: 'Hoje' })
-        }
+        onSend={(text) => {
+          const id = `n${Date.now()}`;
+          setStatus((cur) => ({ ...cur, [id]: 'sending' }));
+          for (const step of STATUS_STEPS)
+            timers.current.push(
+              setTimeout(() => setStatus((cur) => ({ ...cur, [id]: step.status })), step.after),
+            );
+          append(top.id, { id, out: true, text, time: now(), day: 'Hoje' });
+        }}
       />
     );
   } else if (top.kind === 'profile') {
@@ -402,16 +233,112 @@ export function PhoneWhatsApp() {
         : `${top.kind}-${top.id}`;
   return (
     <View style={[StyleSheet.absoluteFill, { backgroundColor: P.bg }]}>
-      {/* Entrar numa tela desliza da direita; voltar, da esquerda (como no iPhone). */}
-      <Appear
-        key={key}
-        axis="x"
-        distance={top.kind === 'root' && !back ? 0 : back ? -u(40) : u(60)}
-        duration={320}
-        style={{ flex: 1 }}
-      >
+      <PushStack id={key} back={back} depth={stack.length} dim={P.dark ? 0.5 : 0.12}>
         {screen}
-      </Appear>
+      </PushStack>
+    </View>
+  );
+}
+
+/**
+ * Empilhar e voltar como no iPhone (vídeo do usuário, 27/11/2026): a tela nova entra inteira
+ * pela direita, por cima, e a de baixo recua um terço para a esquerda e escurece; ao voltar,
+ * a de cima sai pela direita e a de baixo volta. Trocar de aba (Conversas ↔ Ligações) só
+ * troca, sem deslizar. As duas telas ficam montadas durante a animação.
+ */
+function PushStack({
+  id,
+  back,
+  depth,
+  dim,
+  children,
+}: {
+  id: string;
+  back: boolean;
+  depth: number;
+  dim: number;
+  children: ReactNode;
+}) {
+  const [width, setWidth] = useState(0);
+  const v = useRef(new Animated.Value(1)).current;
+  const shown = useRef({ id, node: children, depth });
+  const [leaving, setLeaving] = useState<{
+    id: string;
+    node: ReactNode;
+    back: boolean;
+  } | null>(null);
+  if (shown.current.id !== id) {
+    const moved = shown.current.depth !== depth;
+    if (moved && width > 0) {
+      // Estado derivado na renderização: guarda a tela que sai para animar as duas juntas.
+      setLeaving({ id: shown.current.id, node: shown.current.node, back });
+    }
+    shown.current = { id, node: children, depth };
+  } else shown.current.node = children;
+
+  useEffect(() => {
+    if (!leaving) return;
+    v.setValue(0);
+    Animated.timing(v, {
+      toValue: 1,
+      duration: 420,
+      easing: pushEase,
+      useNativeDriver: nativeDriver,
+    }).start(({ finished }) => finished && setLeaving(null));
+  }, [leaving, v]);
+
+  const W = width || 1;
+  // Tela de cima (a que entra ao empilhar; a que sai ao voltar).
+  const topX = leaving?.back
+    ? v.interpolate({ inputRange: [0, 1], outputRange: [0, W] })
+    : v.interpolate({ inputRange: [0, 1], outputRange: [W, 0] });
+  // Tela de baixo (a que fica ao empilhar; a que volta ao voltar).
+  const underX = leaving?.back
+    ? v.interpolate({ inputRange: [0, 1], outputRange: [-W * 0.3, 0] })
+    : v.interpolate({ inputRange: [0, 1], outputRange: [0, -W * 0.3] });
+  const underDim = leaving?.back
+    ? v.interpolate({ inputRange: [0, 1], outputRange: [dim, 0] })
+    : v.interpolate({ inputRange: [0, 1], outputRange: [0, dim] });
+
+  const layer = (
+    key: string,
+    node: ReactNode,
+    x: Animated.AnimatedInterpolation<number> | 0,
+    shade?: Animated.AnimatedInterpolation<number>,
+    onTop?: boolean,
+  ) => (
+    <Animated.View
+      key={key}
+      style={[
+        StyleSheet.absoluteFill,
+        { transform: [{ translateX: x }], zIndex: onTop ? 2 : 1 },
+        onTop && leaving ? styles.edge : null,
+      ]}
+    >
+      {node}
+      {shade && (
+        <Animated.View
+          pointerEvents="none"
+          style={[StyleSheet.absoluteFill, { backgroundColor: '#000', opacity: shade }]}
+        />
+      )}
+    </Animated.View>
+  );
+
+  return (
+    <View style={{ flex: 1 }} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
+      {/* Sempre uma lista com chave: a tela de cima continua montada quando vira "a que sai". */}
+      {!leaving
+        ? [layer(id, children, 0)]
+        : leaving.back
+          ? [
+              layer(id, children, underX, underDim),
+              layer(leaving.id, leaving.node, topX, undefined, true),
+            ]
+          : [
+              layer(leaving.id, leaving.node, underX, underDim),
+              layer(id, children, topX, undefined, true),
+            ]}
     </View>
   );
 }
@@ -617,504 +544,6 @@ function Search({
         placeholderTextColor={P.sub}
         style={[styles.input, { flex: 1, fontSize: u(17), color: P.ink }]}
       />
-    </View>
-  );
-}
-
-/* ---------------- Conversa aberta ---------------- */
-
-function ChatScreen({
-  P,
-  contact,
-  chat,
-  blocked,
-  onBack,
-  onProfile,
-  onCall,
-  onSend,
-}: {
-  P: Palette;
-  contact: SimContact;
-  chat: SimChat;
-  blocked: boolean;
-  onBack: () => void;
-  onProfile: () => void;
-  onCall: () => void;
-  onSend: (text: string) => void;
-}) {
-  const insets = useSystemInsets();
-  // Sem a barra de abas, o campo encosta no rodapé e só se afasta da área de gestos.
-  const composerBottom = Math.max(insets.bottom, u(26)) + u(8);
-  const [text, setText] = useState('');
-  const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
-  const count = chat.messages.length;
-  // Abre (e segue) no fim da conversa, como no WhatsApp.
-  useEffect(() => {
-    if (count >= 0) requestAnimationFrame(() => scroll.current?.scrollToEnd({ animated: false }));
-  }, [count]);
-  const send = () => {
-    const t = text.trim();
-    if (!t) return;
-    onSend(t);
-    setText('');
-  };
-  const headH = insets.top + u(64);
-  return (
-    <View style={{ flex: 1, backgroundColor: P.wall }}>
-      <ScrollView
-        ref={scroll}
-        style={{ flex: 1 }}
-        contentContainerStyle={{
-          paddingTop: headH + u(8),
-          paddingBottom: composerBottom + u(76),
-          paddingHorizontal: u(12),
-          gap: u(4),
-        }}
-        showsVerticalScrollIndicator={false}
-      >
-        {chat.messages.map((m, i) => {
-          const prev = chat.messages[i - 1];
-          const newDay = !prev || prev.day !== m.day;
-          const tail = newDay || !prev || prev.out !== m.out;
-          return (
-            <View key={m.id} style={{ gap: u(4) }}>
-              {newDay && (
-                <View style={[styles.day, { backgroundColor: P.dark ? '#1C1D1D' : '#FFFFFF' }]}>
-                  <Text pt={12} weight="medium" color={P.sub}>
-                    {m.day}
-                  </Text>
-                </View>
-              )}
-              <Bubble P={P} msg={m} tail={tail} group={!!contact.members} />
-            </View>
-          );
-        })}
-        {blocked && (
-          <View style={[styles.day, { backgroundColor: P.dark ? '#1C1D1D' : '#FFFFFF' }]}>
-            <Text pt={13} color={P.sub}>
-              Você bloqueou este contato.
-            </Text>
-          </View>
-        )}
-      </ScrollView>
-
-      {/* Cabeçalho sobre a conversa (as mensagens passam por baixo dele). */}
-      <View
-        style={[
-          styles.chatHead,
-          {
-            height: headH,
-            paddingTop: insets.top,
-            backgroundColor: P.dark ? 'rgba(11,11,11,0.94)' : 'rgba(255,255,255,0.94)',
-          },
-        ]}
-      >
-        <Round P={P} icon="chevron-back" label="Voltar" onPress={onBack} />
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Dados do contato"
-          onPress={onProfile}
-          style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: u(10) }}
-        >
-          <Avatar P={P} pt={38} group={!!contact.members} />
-          <View style={{ flex: 1 }}>
-            <Text pt={17} weight="semibold" color={P.ink} lines={1}>
-              {contact.name}
-            </Text>
-            <Text pt={13} color={P.sub} lines={1}>
-              {contact.members ? contact.members.join(', ') : 'toque para dados do contato'}
-            </Text>
-          </View>
-        </Pressable>
-        <Round P={P} icon="call-outline" label="Ligação de voz" onPress={onCall} wide />
-      </View>
-
-      {/* Campo de mensagem no rodapé (a barra de abas do app some dentro da conversa). */}
-      <View
-        style={[
-          styles.composer,
-          {
-            bottom: 0,
-            paddingBottom: composerBottom,
-            backgroundColor: P.dark ? 'rgba(11,11,11,0.94)' : 'rgba(246,246,246,0.96)',
-          },
-        ]}
-      >
-        <Icon name="add" pt={28} color={P.ink} />
-        <View
-          style={{
-            flex: 1,
-            height: u(36),
-            borderRadius: u(18),
-            backgroundColor: P.dark ? '#1E1F1F' : '#FFFFFF',
-            borderWidth: P.dark ? 0 : 1,
-            borderColor: '#E3E3E3',
-            justifyContent: 'center',
-            paddingHorizontal: u(12),
-          }}
-        >
-          <TextInput
-            value={text}
-            onChangeText={setText}
-            onSubmitEditing={send}
-            editable={!blocked}
-            placeholder=""
-            style={{
-              fontFamily: FONT.displayRegular,
-              fontSize: u(17),
-              color: P.ink,
-            }}
-          />
-        </View>
-        {text.trim() ? (
-          <Touchable
-            accessibilityRole="button"
-            accessibilityLabel="Enviar"
-            onPress={send}
-            scaleTo={0.9}
-            style={[styles.send, { backgroundColor: P.green }]}
-          >
-            <Icon name="send" pt={17} color="#FFFFFF" />
-          </Touchable>
-        ) : (
-          <View style={[styles.send, { backgroundColor: P.green }]}>
-            <Icon name="mic" pt={20} color="#FFFFFF" />
-          </View>
-        )}
-      </View>
-    </View>
-  );
-}
-
-function Bubble({
-  P,
-  msg,
-  tail,
-  group,
-}: {
-  P: Palette;
-  msg: SimMessage;
-  tail: boolean;
-  group: boolean;
-}) {
-  const R = u(18);
-  const bg = msg.out ? P.out : P.in;
-  return (
-    <View style={{ alignItems: msg.out ? 'flex-end' : 'flex-start', marginTop: tail ? u(4) : 0 }}>
-      <View
-        style={{
-          maxWidth: '80%',
-          backgroundColor: bg,
-          borderRadius: R,
-          borderBottomRightRadius: tail && msg.out ? u(4) : R,
-          borderBottomLeftRadius: tail && !msg.out ? u(4) : R,
-          paddingHorizontal: u(12),
-          paddingVertical: u(7),
-          gap: u(4),
-          shadowColor: '#000',
-          shadowOpacity: P.dark ? 0 : 0.06,
-          shadowRadius: 1,
-          shadowOffset: { width: 0, height: 1 },
-        }}
-      >
-        {group && !msg.out && msg.from && tail && (
-          <Text pt={14} weight="semibold" color={P.groupInk}>
-            {msg.from}
-          </Text>
-        )}
-        {msg.kind === 'photo' && (
-          <View
-            style={[
-              styles.center,
-              {
-                width: u(230),
-                height: u(150),
-                borderRadius: u(12),
-                backgroundColor: P.dark ? '#2A2B2B' : '#E9EDEF',
-              },
-            ]}
-          >
-            <Icon name="image-outline" pt={40} color={P.sub} />
-          </View>
-        )}
-        {(msg.kind === 'doc' || msg.kind === 'call') && (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: u(10) }}>
-            <View
-              style={[
-                styles.center,
-                {
-                  width: u(36),
-                  height: u(36),
-                  borderRadius: u(18),
-                  backgroundColor: P.dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
-                },
-              ]}
-            >
-              <Icon
-                name={msg.kind === 'call' ? 'call' : 'document-text'}
-                pt={18}
-                color={msg.kind === 'call' ? P.green : P.red}
-              />
-            </View>
-            <View>
-              <Text pt={16} color={P.ink}>
-                {msg.kind === 'doc' ? `${msg.text}.pdf` : msg.text}
-              </Text>
-              <Text pt={13} color={P.sub}>
-                {msg.kind === 'doc' ? 'PDF · 2 páginas' : 'Efetuada'}
-              </Text>
-            </View>
-          </View>
-        )}
-        <View style={{ flexDirection: 'row', alignItems: 'flex-end', flexWrap: 'wrap', gap: u(8) }}>
-          {msg.kind !== 'doc' && msg.kind !== 'call' && (
-            <Text pt={17} color={P.ink} style={{ flexShrink: 1 }}>
-              {msg.text}
-            </Text>
-          )}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2, marginLeft: 'auto' }}>
-            <Text pt={11} color={P.sub}>
-              {msg.time}
-            </Text>
-            {msg.out && <Icon name="checkmark-done" pt={15} color={P.tick} />}
-          </View>
-        </View>
-      </View>
-    </View>
-  );
-}
-
-/* ---------------- Dados do contato ---------------- */
-
-function ProfileScreen({
-  P,
-  contact,
-  chat,
-  blocked,
-  onBack,
-  onCall,
-  onMessage,
-  onFavorite,
-  onClear,
-  onBlock,
-}: {
-  P: Palette;
-  contact: SimContact;
-  chat?: SimChat;
-  blocked: boolean;
-  onBack: () => void;
-  onCall: () => void;
-  onMessage: () => void;
-  onFavorite: () => void;
-  onClear: () => void;
-  onBlock: () => void;
-}) {
-  const insets = useSystemInsets();
-  const y = useRef(new Animated.Value(0)).current;
-  const group = !!contact.members;
-  const media = chat?.messages.filter((m) => m.kind === 'photo' || m.kind === 'doc').length ?? 0;
-  const headH = insets.top + u(64);
-  // O nome aparece no cabeçalho depois que a foto sai da tela (como no iPhone).
-  const nameIn = y.interpolate({
-    inputRange: [u(180), u(230)],
-    outputRange: [0, 1],
-    extrapolate: 'clamp',
-  });
-
-  const action = (icon: IconName, label: string, onPress?: () => void) => (
-    <Touchable
-      key={label}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      onPress={onPress}
-      scaleTo={0.94}
-      style={{ alignItems: 'center', gap: u(8), flex: 1 }}
-    >
-      <View
-        style={[
-          styles.center,
-          { width: u(64), height: u(48), borderRadius: u(24), backgroundColor: P.button },
-        ]}
-      >
-        <Icon name={icon} pt={22} color={P.ink} />
-      </View>
-      <Text pt={14} color={P.ink}>
-        {label}
-      </Text>
-    </Touchable>
-  );
-
-  const card = (children: ReactNode, key: string) => (
-    <View
-      key={key}
-      style={{
-        marginHorizontal: u(16),
-        marginBottom: u(16),
-        borderRadius: u(26),
-        backgroundColor: P.dark ? P.card : '#FFFFFF',
-        overflow: 'hidden',
-      }}
-    >
-      {children}
-    </View>
-  );
-  const row = (
-    label: string,
-    opts: {
-      icon?: IconName;
-      color?: string;
-      right?: string;
-      sub?: string;
-      chevron?: boolean;
-      last?: boolean;
-      onPress?: () => void;
-    } = {},
-  ) => (
-    <Pressable
-      key={label}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      onPress={opts.onPress}
-      disabled={!opts.onPress}
-      style={({ pressed }) => ({
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingLeft: u(18),
-        backgroundColor: pressed ? P.press : 'transparent',
-      })}
-    >
-      {opts.icon && (
-        <View style={{ width: u(36) }}>
-          <Icon name={opts.icon} pt={24} color={opts.color ?? P.ink} />
-        </View>
-      )}
-      <View
-        style={{
-          flex: 1,
-          flexDirection: 'row',
-          alignItems: 'center',
-          minHeight: u(52),
-          paddingVertical: u(10),
-          paddingRight: u(18),
-          marginLeft: opts.icon ? u(8) : 0,
-          borderBottomWidth: opts.last ? 0 : 1,
-          borderBottomColor: P.line,
-          gap: u(8),
-        }}
-      >
-        <View style={{ flex: 1 }}>
-          <Text pt={17} color={opts.color ?? P.ink} lines={1}>
-            {label}
-          </Text>
-          {!!opts.sub && (
-            <Text pt={14} color={P.sub}>
-              {opts.sub}
-            </Text>
-          )}
-        </View>
-        {!!opts.right && (
-          <Text pt={17} color={P.sub}>
-            {opts.right}
-          </Text>
-        )}
-        {opts.chevron && <Icon name="chevron-forward" pt={16} color={P.sub} />}
-      </View>
-    </Pressable>
-  );
-
-  return (
-    <View style={{ flex: 1, backgroundColor: grouped(P) }}>
-      <Animated.ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ paddingTop: headH, paddingBottom: PHONE_SCROLL_END }}
-        showsVerticalScrollIndicator={false}
-        scrollEventThrottle={16}
-        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y } } }], {
-          useNativeDriver: false,
-        })}
-      >
-        <View style={{ alignItems: 'center', gap: u(4), paddingVertical: u(16) }}>
-          <Avatar P={P} pt={120} group={group} />
-          <Text pt={26} weight="semibold" color={P.ink} style={{ marginTop: u(12) }}>
-            {contact.name}
-          </Text>
-          <Text pt={17} color={P.sub}>
-            {group ? `Grupo · ${contact.members?.length ?? 0} participantes` : contact.phone}
-          </Text>
-        </View>
-        <View style={{ flexDirection: 'row', paddingHorizontal: u(16), marginVertical: u(16) }}>
-          {action('call-outline', 'Ligar', onCall)}
-          {action('chatbubble-outline', 'Mensagem', onMessage)}
-          {action(contact.favorite ? 'star' : 'star-outline', 'Favorito', onFavorite)}
-        </View>
-        {!!contact.about && card(row(contact.about, { sub: 'Recado', last: true }), 'about')}
-        {card(
-          <>
-            {row('Mídia, links e docs', { icon: 'image-outline', right: String(media) })}
-            {row('Favoritas', {
-              icon: 'star-outline',
-              right: contact.favorite ? 'Sim' : 'Nenhuma',
-              chevron: true,
-              last: true,
-              onPress: onFavorite,
-            })}
-          </>,
-          'media',
-        )}
-        {card(
-          row('Criptografia', {
-            icon: 'lock-closed-outline',
-            sub: 'As mensagens e as ligações são protegidas com a criptografia de ponta a ponta.',
-            last: true,
-          }),
-          'privacy',
-        )}
-        {group &&
-          card(
-            (contact.members ?? []).map((m, i, all) =>
-              row(m, { icon: 'person-circle-outline', last: i === all.length - 1 }),
-            ),
-            'members',
-          )}
-        {card(
-          <>
-            {row(contact.favorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos', {
-              color: P.greenInk,
-              onPress: onFavorite,
-            })}
-            {row('Limpar conversa', { color: P.red, last: true, onPress: onClear })}
-          </>,
-          'actions',
-        )}
-        {!group &&
-          card(
-            row(blocked ? `Desbloquear ${contact.name}` : `Bloquear ${contact.name}`, {
-              color: P.red,
-              last: true,
-              onPress: onBlock,
-            }),
-            'block',
-          )}
-      </Animated.ScrollView>
-
-      <View style={[styles.chatHead, { height: headH, paddingTop: insets.top }]}>
-        <Animated.View
-          pointerEvents="none"
-          style={[StyleSheet.absoluteFill, { backgroundColor: grouped(P), opacity: nameIn }]}
-        />
-        <Round P={P} icon="chevron-back" label="Voltar" onPress={onBack} />
-        <View style={{ flex: 1, alignItems: 'center' }}>
-          <Text pt={17} weight="semibold" color={P.ink} lines={1}>
-            {group ? 'Dados do grupo' : 'Dados do contato'}
-          </Text>
-          <Animated.View style={{ opacity: nameIn, position: 'absolute', top: u(22) }}>
-            <Text pt={13} color={P.sub} lines={1}>
-              {contact.name}
-            </Text>
-          </Animated.View>
-        </View>
-        <View style={{ width: u(44) }} />
-      </View>
     </View>
   );
 }
@@ -1351,6 +780,13 @@ function CallsScreen({
 }
 
 const styles = StyleSheet.create({
+  // Sombra na borda esquerda da tela que desliza por cima (como no iPhone).
+  edge: {
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowRadius: 16,
+    shadowOffset: { width: -4, height: 0 },
+  },
   input: {
     fontFamily: FONT.displayRegular,
     paddingVertical: 0,
