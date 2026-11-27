@@ -59,3 +59,31 @@ export function attachMessage(kind: AttachKind): SimMessage {
       return { ...base, kind, text: 'Localização atual', meta: 'Av. Brasil, 1200 · Campinas' };
   }
 }
+
+/* Abrir uma conversa vinda de fora (ex.: tocar numa conversa do cartão do WhatsApp no Mapa). */
+let openRequest: string | null = null;
+const openListeners = new Set<() => void>();
+
+export function requestOpenChat(chatId: string) {
+  openRequest = chatId;
+  for (const l of openListeners) l();
+}
+
+/** A tela do WhatsApp abre a conversa pedida (ao montar ou quando o pedido chega). */
+export function useOpenRequest(open: (chatId: string) => void) {
+  const fn = useRef(open);
+  fn.current = open;
+  useEffect(() => {
+    const take = () => {
+      if (!openRequest) return;
+      const id = openRequest;
+      openRequest = null;
+      fn.current(id);
+    };
+    take();
+    openListeners.add(take);
+    return () => {
+      openListeners.delete(take);
+    };
+  }, []);
+}

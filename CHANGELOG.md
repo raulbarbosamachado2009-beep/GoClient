@@ -5,7 +5,7 @@ Leia este arquivo antes de começar qualquer trabalho.
 
 ## Estado atual do app
 
-_Última atualização: 2026-11-27 12:52 — Coluna do Mapa sem espaço vazio (WhatsApp mostra as últimas conversas), "Encerrar" sem moldura e papel de parede escuro do WhatsApp corrigido._
+_Última atualização: 2026-11-27 13:19 — Cartão do WhatsApp no Mapa abre a conversa tocada._
 
 - **Automotive (`apps/automotive`)** é onde está quase todo o produto: Mapa (OSM + OpenRouteService,
   navegação com voz), Kyte (telas próprias sobre a janela do Kyte) e o assistente de voz Lucas.
@@ -26,6 +26,16 @@ _Última atualização: 2026-11-27 12:52 — Coluna do Mapa sem espaço vazio (W
 - Regras de negócio em `packages/core` (com testes); visual só com `@goclient/design-tokens`.
 
 ## Mudanças
+
+### 2026-11-27 13:19 — Cartão do WhatsApp no Mapa abre a conversa tocada
+
+Pedido do usuário.
+
+- **Multimídia, cartão do WhatsApp no Mapa:** tocar numa conversa abre o WhatsApp direto nela;
+  tocar no título "WhatsApp" abre a lista. Com o cartão baixo, tocar abre a conversa mostrada.
+  O pedido passa por `requestOpenChat`/`useOpenRequest` (`whatsapp/sim/outbox.ts`), que o
+  WhatsApp do celular e o da multimídia atendem. No app (WhatsApp Web) o cartão não lê as
+  conversas de verdade, então abre o WhatsApp na lista.
 
 ### 2026-11-27 12:52 — Coluna do Mapa sem espaço vazio, "Encerrar" sem moldura e papel de parede escuro
 

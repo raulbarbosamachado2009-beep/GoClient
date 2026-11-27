@@ -37,7 +37,7 @@ import {
   type SimContact,
   type SimMessage,
 } from './data';
-import { type AttachKind, attachMessage, useOutbox } from './outbox';
+import { type AttachKind, attachMessage, useOpenRequest, useOutbox } from './outbox';
 import { PhoneWhatsApp } from './phone';
 import { Wallpaper } from './wallpaper';
 
@@ -261,6 +261,8 @@ function WhatsAppCar() {
     });
   // Recibo compartilhado pelo Kyte ("Enviar para"): chega na conversa de cada destinatário.
   useOutbox((d) => push(d.chatId, d.messages));
+  // Conversa tocada no cartão do WhatsApp do Mapa: abre direto nela.
+  useOpenRequest((id) => openChat(id));
 
   const send = (text: string) => {
     if (!chat) return;

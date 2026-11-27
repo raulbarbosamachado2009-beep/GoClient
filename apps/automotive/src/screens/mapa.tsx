@@ -50,6 +50,7 @@ import {
 } from '../ui/primitives';
 import { WhatsAppLogo } from '../whatsapp/brand';
 import { recentMessages } from '../whatsapp/sim/data';
+import { requestOpenChat } from '../whatsapp/sim/outbox';
 
 /**
  * Tela inicial (Mapa): o mapa ocupa todo o fundo e os painéis flutuam por cima com
@@ -759,32 +760,48 @@ function WhatsAppCard() {
   // em vez de deixar espaço vazio (pedido de 27/11/2026).
   const ROW = 92;
   const rows = h > WA_H + ROW ? Math.min(WA_RECENT.length, Math.floor((h - 120) / ROW)) : 0;
-  return (
-    <Touchable
-      accessibilityRole="button"
-      accessibilityLabel={`Abrir o WhatsApp: ${m.name}`}
-      onPress={() => router.push('/whatsapp')}
-      scaleTo={0.98}
-      style={[
-        styles.wa,
-        { borderColor: c.material.border },
-        rows > 0 && { justifyContent: 'flex-start', paddingTop: spacing[6] },
-      ]}
-      onLayout={(e) => setH(e.nativeEvent.layout.height)}
-    >
+  // Tocar numa conversa abre o WhatsApp direto nela (no Preview; no app o WhatsApp Web abre
+  // na lista, porque o cartão não lê as conversas de verdade).
+  const open = (chatId?: string) => {
+    if (chatId && WA_RECENT.some((r) => r.id === chatId)) requestOpenChat(chatId);
+    router.push('/whatsapp');
+  };
+  const shell = [
+    styles.wa,
+    { borderColor: c.material.border },
+    rows > 0 && { justifyContent: 'flex-start' as const, paddingTop: spacing[6] },
+  ];
+  const bg = (
+    <>
       <Blur radius={44} tint={c.material.tint} />
       <View style={[StyleSheet.absoluteFill, { backgroundColor: c.material.fallback }]} />
-      {rows > 0 ? (
+    </>
+  );
+  if (rows > 0)
+    return (
+      <View style={shell} onLayout={(e) => setH(e.nativeEvent.layout.height)}>
+        {bg}
         <View style={{ gap: spacing[3] }}>
-          <View style={styles.waRow}>
+          <Touchable
+            accessibilityRole="button"
+            accessibilityLabel="Abrir o WhatsApp"
+            onPress={() => open()}
+            scaleTo={0.98}
+            style={styles.waRow}
+          >
             <WhatsAppLogo size={64} />
             <Text variant="headline" style={{ fontSize: 30, lineHeight: 36, flex: 1 }}>
               WhatsApp
             </Text>
-          </View>
+            <Icon name="chevron-forward" size={28} color={c.textTertiary} />
+          </Touchable>
           {WA_RECENT.slice(0, rows).map((r, i) => (
-            <View
+            <Touchable
               key={r.id}
+              accessibilityRole="button"
+              accessibilityLabel={`Abrir a conversa com ${r.name}`}
+              onPress={() => open(r.id)}
+              scaleTo={0.98}
               style={[
                 styles.waItem,
                 i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.separator },
@@ -806,32 +823,42 @@ function WhatsAppCard() {
               <Text variant="callout" tone="secondary" style={styles.waTime}>
                 {r.time}
               </Text>
-            </View>
+            </Touchable>
           ))}
         </View>
-      ) : (
-        <View style={styles.waRow}>
-          <WhatsAppLogo size={80} />
-          <View style={{ flex: 1, gap: 2 }}>
-            <Text variant="headline" numberOfLines={1} style={{ fontSize: 30, lineHeight: 36 }}>
-              {m.name}
-            </Text>
-            <Text
-              variant="body"
-              tone="secondary"
-              numberOfLines={1}
-              style={{ fontSize: 24, lineHeight: 30 }}
-            >
-              {m.text}
-            </Text>
-          </View>
-          {!!m.time && (
-            <Text variant="callout" tone="secondary" style={styles.waTime}>
-              {m.time}
-            </Text>
-          )}
+      </View>
+    );
+  return (
+    <Touchable
+      accessibilityRole="button"
+      accessibilityLabel={`Abrir a conversa com ${m.name}`}
+      onPress={() => open(m.id)}
+      scaleTo={0.98}
+      style={shell}
+      onLayout={(e) => setH(e.nativeEvent.layout.height)}
+    >
+      {bg}
+      <View style={styles.waRow}>
+        <WhatsAppLogo size={80} />
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text variant="headline" numberOfLines={1} style={{ fontSize: 30, lineHeight: 36 }}>
+            {m.name}
+          </Text>
+          <Text
+            variant="body"
+            tone="secondary"
+            numberOfLines={1}
+            style={{ fontSize: 24, lineHeight: 30 }}
+          >
+            {m.text}
+          </Text>
         </View>
-      )}
+        {!!m.time && (
+          <Text variant="callout" tone="secondary" style={styles.waTime}>
+            {m.time}
+          </Text>
+        )}
+      </View>
     </Touchable>
   );
 }
