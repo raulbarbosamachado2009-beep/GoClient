@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import { Image, StyleSheet, View } from 'react-native';
 
 /**
@@ -22,29 +22,49 @@ export const Wallpaper = memo(function Wallpaper({
   tile?: number;
 }) {
   const source = dark ? DARK : LIGHT;
+  // Ladrilhos suficientes para cobrir a área inteira (sem faixa lisa sobrando na borda).
+  const [area, setArea] = useState({ w: 0, h: 0 });
+  const tileH = tile ? (tile * 16) / 9 : 0;
+  const count = tile && area.w ? Math.ceil(area.w / tile) * Math.ceil(area.h / tileH) : 0;
   return (
     <View
       pointerEvents="none"
-      style={[StyleSheet.absoluteFill, { backgroundColor: dark ? WALL_DARK : WALL_LIGHT }]}
+      onLayout={(e) => setArea({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}
+      style={[
+        StyleSheet.absoluteFill,
+        { backgroundColor: dark ? WALL_DARK : WALL_LIGHT, overflow: 'hidden' },
+      ]}
     >
       {tile ? (
-        <View style={[StyleSheet.absoluteFill, styles.grid]}>
-          {Array.from({ length: 12 }, (_, i) => (
+        <View style={[styles.grid, { width: Math.ceil(area.w / tile) * tile }]}>
+          {Array.from({ length: count }, (_, i) => (
             <Image
               // biome-ignore lint/suspicious/noArrayIndexKey: ladrilhos fixos
               key={i}
               source={source}
-              style={{ width: tile, height: (tile * 16) / 9 }}
+              style={{ width: tile, height: tileH }}
             />
           ))}
         </View>
       ) : (
-        <Image source={source} resizeMode="cover" style={StyleSheet.absoluteFill} />
+        // "Cobrir" com o tamanho calculado (no navegador o `cover` deixava uma faixa lisa).
+        area.w > 0 && (
+          <Image
+            source={source}
+            style={{
+              position: 'absolute',
+              width: Math.ceil(Math.max(area.w, (area.h * 9) / 16)),
+              height: Math.ceil(Math.max(area.h, (area.w * 16) / 9)),
+              left: Math.min(0, (area.w - Math.max(area.w, (area.h * 9) / 16)) / 2),
+              top: 0,
+            }}
+          />
+        )
       )}
     </View>
   );
 });
 
 const styles = StyleSheet.create({
-  grid: { flexDirection: 'row', flexWrap: 'wrap', overflow: 'hidden' },
+  grid: { flexDirection: 'row', flexWrap: 'wrap' },
 });
