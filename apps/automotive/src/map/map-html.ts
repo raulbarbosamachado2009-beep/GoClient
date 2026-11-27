@@ -1,10 +1,13 @@
+import { MAPLIBRE_CSS, MAPLIBRE_JS } from './vendor/maplibre.generated';
+
 /**
  * Página do mapa real (OpenFreeMap + MapLibre GL JS), aberta numa WebView. O app manda o
  * estado com `window.__gc(estado)`: posição e direção do carro, linha da rota, pinos dos
  * clientes, se a câmera segue o carro (navegação) e as margens livres da tela.
  *
  * O mapa vem do OpenFreeMap (gratuito, sem chave e sem limite de uso; dados do
- * OpenStreetMap). A biblioteca é carregada do unpkg, com o jsDelivr de reserva.
+ * OpenStreetMap). A biblioteca (MapLibre) vem dentro do app, sem download: ver
+ * scripts/vendor-maplibre.mjs. O tema troca sem recarregar a página (`restyle`).
  */
 export interface MapState {
   dark: boolean;
@@ -16,7 +19,34 @@ export interface MapState {
   padding: { top: number; right: number; bottom: number; left: number };
 }
 
-const VERSION = '5.24.1';
+/** Cores do mapa (controles, fundo) para o tema claro ou escuro. */
+function themeCss(dark: boolean): string {
+  return `
+  html, body, #map { margin: 0; padding: 0; width: 100%; height: 100%; background: ${dark ? '#1b1b1d' : '#e9e9ec'}; }
+  .me { width: 22px; height: 22px; border-radius: 50%; background: #0A84FF; border: 3px solid #fff;
+        box-shadow: 0 0 0 8px rgba(10,132,255,.22); position: relative; }
+  .me .cone { position: absolute; left: 50%; top: -15px; width: 0; height: 0; margin-left: -7px;
+        border-left: 7px solid transparent; border-right: 7px solid transparent;
+        border-bottom: 12px solid #0A84FF; display: none; }
+  .pin { min-width: 26px; height: 26px; padding: 0 6px; border-radius: 13px; border: 2px solid #fff;
+        color: #fff; font: 600 14px -apple-system, Roboto, sans-serif; display: flex;
+        align-items: center; justify-content: center; box-sizing: border-box; }
+  .maplibregl-ctrl-attrib { font-size: 10px; }
+  ${dark ? '.maplibregl-ctrl-attrib, .maplibregl-ctrl-attrib.maplibregl-compact { background: rgba(46,59,85,.9) !important; color: #c9d3e6; } .maplibregl-ctrl-attrib a { color: #c9d3e6 !important; } .maplibregl-ctrl-attrib-button { filter: invert(1); }' : ''}
+  #ctl { position: absolute; z-index: 5; display: none; flex-direction: column; gap: 10px; }
+  #ctl .grp { display: flex; flex-direction: column; border-radius: 26px; overflow: hidden;
+        background: ${dark ? 'rgba(46,59,85,.95)' : 'rgba(250,250,252,.96)'};
+        border: 1px solid ${dark ? 'rgba(255,255,255,.12)' : 'rgba(0,0,0,.08)'};
+        box-shadow: 0 2px 10px rgba(0,0,0,.25); }
+  #ctl button { width: 52px; height: 50px; border: 0; background: transparent; padding: 0;
+        color: ${dark ? '#F2F2F7' : '#1C1C1E'}; font: 400 28px/48px -apple-system, Roboto, sans-serif;
+        display: flex; align-items: center; justify-content: center; -webkit-tap-highlight-color: transparent; }
+  #ctl button:active { background: ${dark ? 'rgba(255,255,255,.1)' : 'rgba(0,0,0,.06)'}; }
+  #ctl .sep { height: 1px; margin: 0 10px; background: ${dark ? 'rgba(255,255,255,.12)' : 'rgba(0,0,0,.08)'}; }
+  #ctl svg { width: 24px; height: 24px; }
+  #ctl .on svg { fill: #0A84FF; }
+`;
+}
 
 /**
  * Estilo do mapa (JavaScript da página). Escuro: paleta do Apple Maps à noite (terra
@@ -116,35 +146,9 @@ export function mapHtml(dark: boolean): string {
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
 <link rel="preconnect" href="https://tiles.openfreemap.org" crossorigin />
-<link rel="preconnect" href="https://unpkg.com" crossorigin />
-<link rel="preload" as="script" href="https://unpkg.com/maplibre-gl@${VERSION}/dist/maplibre-gl.js" crossorigin />
-<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@${VERSION}/dist/maplibre-gl.css"
-  onerror="this.href='https://cdn.jsdelivr.net/npm/maplibre-gl@${VERSION}/dist/maplibre-gl.css'" />
-<style>
-  html, body, #map { margin: 0; padding: 0; width: 100%; height: 100%; background: ${dark ? '#1b1b1d' : '#e9e9ec'}; }
-  .me { width: 22px; height: 22px; border-radius: 50%; background: #0A84FF; border: 3px solid #fff;
-        box-shadow: 0 0 0 8px rgba(10,132,255,.22); position: relative; }
-  .me .cone { position: absolute; left: 50%; top: -15px; width: 0; height: 0; margin-left: -7px;
-        border-left: 7px solid transparent; border-right: 7px solid transparent;
-        border-bottom: 12px solid #0A84FF; display: none; }
-  .pin { min-width: 26px; height: 26px; padding: 0 6px; border-radius: 13px; border: 2px solid #fff;
-        color: #fff; font: 600 14px -apple-system, Roboto, sans-serif; display: flex;
-        align-items: center; justify-content: center; box-sizing: border-box; }
-  .maplibregl-ctrl-attrib { font-size: 10px; }
-  ${dark ? '.maplibregl-ctrl-attrib, .maplibregl-ctrl-attrib.maplibregl-compact { background: rgba(46,59,85,.9) !important; color: #c9d3e6; } .maplibregl-ctrl-attrib a { color: #c9d3e6 !important; } .maplibregl-ctrl-attrib-button { filter: invert(1); }' : ''}
-  #ctl { position: absolute; z-index: 5; display: none; flex-direction: column; gap: 10px; }
-  #ctl .grp { display: flex; flex-direction: column; border-radius: 26px; overflow: hidden;
-        background: ${dark ? 'rgba(46,59,85,.95)' : 'rgba(250,250,252,.96)'};
-        border: 1px solid ${dark ? 'rgba(255,255,255,.12)' : 'rgba(0,0,0,.08)'};
-        box-shadow: 0 2px 10px rgba(0,0,0,.25); }
-  #ctl button { width: 52px; height: 50px; border: 0; background: transparent; padding: 0;
-        color: ${dark ? '#F2F2F7' : '#1C1C1E'}; font: 400 28px/48px -apple-system, Roboto, sans-serif;
-        display: flex; align-items: center; justify-content: center; -webkit-tap-highlight-color: transparent; }
-  #ctl button:active { background: ${dark ? 'rgba(255,255,255,.1)' : 'rgba(0,0,0,.06)'}; }
-  #ctl .sep { height: 1px; margin: 0 10px; background: ${dark ? 'rgba(255,255,255,.12)' : 'rgba(0,0,0,.08)'}; }
-  #ctl svg { width: 24px; height: 24px; }
-  #ctl .on svg { fill: #0A84FF; }
-</style>
+<style>${MAPLIBRE_CSS}</style>
+<style id="theme-light">${themeCss(false)}</style>
+<style id="theme-dark" media="${dark ? 'all' : 'not all'}">${themeCss(true)}</style>
 </head><body><div id="map"></div>
 <div id="ctl">
   <div class="grp">
@@ -156,37 +160,60 @@ export function mapHtml(dark: boolean): string {
 </div>
 <script>
   function post(m) { try { window.ReactNativeWebView.postMessage(JSON.stringify(m)); } catch (e) {} }
-  function load(src, alt, done) {
-    var s = document.createElement('script'); s.src = src; s.onload = done;
-    s.onerror = function () { var b = document.createElement('script'); b.src = alt; b.onload = done;
-      b.onerror = function () { post({ type: 'error', message: 'Não foi possível carregar o mapa' }); };
-      document.head.appendChild(b); };
-    document.head.appendChild(s);
-  }
+  // O estilo é pedido antes de a biblioteca (que vem dentro do app, sem baixar da internet;
+  // ver vendor-maplibre.mjs) ser lida, para os dois andarem juntos.
+  var styleReq = fetch('${style}').then(function (r) { return r.json(); });
+</script>
+<script>${MAPLIBRE_JS}</script>
+<script>
   var state = null, map = null, me = null, markers = {}, lastRoute = '', centered = false, wasFollow = false;
   // Navegando: zoom escolhido pela pessoa (pinça ou botões) e pausa quando ela arrasta o mapa.
   var followZoom = 17, paused = false;
   var styled = false;
-  window.__gc = function (s) { state = s; if (map && styled) apply(); };
+  window.__gc = function (s) {
+    state = s;
+    if (!map || !styled) return;
+    if (s.dark !== curDark) restyle(s.dark); else apply();
+  };
+  // Troca de tema sem recarregar a página: só o estilo muda (a rota e os pinos continuam).
+  function restyle(d) {
+    curDark = d;
+    document.getElementById('theme-dark').media = d ? 'all' : 'not all';
+    if (typeof styleJson === 'string') return apply();
+    styled = false;
+    map.setStyle(styleFor(JSON.parse(JSON.stringify(styleJson)), d), {
+      diff: false,
+      transformStyle: function (prev, next) {
+        next.sources.route = { type: 'geojson', data: line(state ? state.path : []) };
+        next.layers.push(ROUTE_CASE, ROUTE_LINE);
+        return next;
+      },
+    });
+    map.once('style.load', function () { styled = true; if (state) apply(); });
+  }
+  var ROUTE_CASE = { id: 'route-case', type: 'line', source: 'route',
+    layout: { 'line-join': 'round', 'line-cap': 'round' },
+    paint: { 'line-color': '#0A3D91', 'line-width': 10 } };
+  var ROUTE_LINE = { id: 'route', type: 'line', source: 'route',
+    layout: { 'line-join': 'round', 'line-cap': 'round' },
+    paint: { 'line-color': '#0A84FF', 'line-width': 6 } };
   // Carregamento rápido: o estilo é pedido junto com a biblioteca (não depois dela) e fica
   // guardado no aparelho; da segunda vez em diante o mapa abre com o estilo salvo na hora e
   // a cópia é atualizada por trás.
   var STYLE_KEY = 'gc-style-v1';
-  var styleJson = null, libReady = false;
+  var styleJson = null, libReady = typeof maplibregl !== 'undefined', curDark = ${dark};
   try { styleJson = JSON.parse(localStorage.getItem(STYLE_KEY) || 'null'); } catch (e) {}
-  fetch('${style}').then(function (r) { return r.json(); })
+  styleReq
     .then(function (st) {
       try { localStorage.setItem(STYLE_KEY, JSON.stringify(st)); } catch (e) {}
       if (!styleJson) { styleJson = st; start(); }
     })
     .catch(function () { if (!styleJson) { styleJson = '${style}'; start(); } });
-  load('https://unpkg.com/maplibre-gl@${VERSION}/dist/maplibre-gl.js',
-       'https://cdn.jsdelivr.net/npm/maplibre-gl@${VERSION}/dist/maplibre-gl.js',
-       function () { libReady = true; start(); });
+  if (!libReady) post({ type: 'error', message: 'Não foi possível carregar o mapa' });
 
   function start() {
     if (!libReady || !styleJson || map) return;
-    create(typeof styleJson === 'string' ? styleJson : styleFor(JSON.parse(JSON.stringify(styleJson)), ${dark}));
+    create(typeof styleJson === 'string' ? styleJson : styleFor(JSON.parse(JSON.stringify(styleJson)), curDark));
   }
 ${NIGHT_STYLE}
   // Abre onde a pessoa estava da última vez (até o GPS responder), nunca numa cidade fixa.
@@ -210,13 +237,10 @@ ${NIGHT_STYLE}
     map.once('style.load', function () {
       styled = true;
       map.addSource('route', { type: 'geojson', data: line([]) });
-      map.addLayer({ id: 'route-case', type: 'line', source: 'route',
-        layout: { 'line-join': 'round', 'line-cap': 'round' },
-        paint: { 'line-color': '#0A3D91', 'line-width': 10 } });
-      map.addLayer({ id: 'route', type: 'line', source: 'route',
-        layout: { 'line-join': 'round', 'line-cap': 'round' },
-        paint: { 'line-color': '#0A84FF', 'line-width': 6 } });
+      map.addLayer(ROUTE_CASE);
+      map.addLayer(ROUTE_LINE);
       post({ type: 'ready' });
+      map.once('load', function () { post({ type: 'loaded' }); });
       mark();
       if (state) apply();
     });
@@ -259,7 +283,8 @@ ${NIGHT_STYLE}
   function apply() {
     var s = state;
     place(s.padding);
-    map.getSource('route').setData(line(s.path));
+    var src = map.getSource('route');
+    if (src) src.setData(line(s.path));
 
     // Pinos dos clientes / paradas.
     var keep = {};
@@ -305,6 +330,8 @@ ${NIGHT_STYLE}
     lastRoute = key;
     wasFollow = !!(s.follow && s.user);
   }
+  // Estilo já salvo no aparelho: o mapa começa na hora, sem esperar a rede.
+  start();
 </script>
 </body></html>`;
 }
@@ -317,16 +344,11 @@ export function warmupHtml(): string {
   const style = 'https://tiles.openfreemap.org/styles/liberty';
   return `<!DOCTYPE html><html><head><meta charset="utf-8" /></head><body><script>
   function done() { try { window.ReactNativeWebView.postMessage('warm'); } catch (e) {} }
-  var left = 2;
-  function one() { left -= 1; if (left <= 0) done(); }
   fetch('${style}').then(function (r) { return r.json(); }).then(function (st) {
     try { localStorage.setItem('gc-style-v1', JSON.stringify(st)); } catch (e) {}
     // Sprite dos ícones também (é o próximo pedido do mapa).
     if (st.sprite) { var s = Array.isArray(st.sprite) ? st.sprite[0].url : st.sprite;
-      fetch(s + '.json').catch(function () {}); fetch(s + '.png').catch(function () {}); }
-  }).catch(function () {}).then(one);
-  var sc = document.createElement('script');
-  sc.src = 'https://unpkg.com/maplibre-gl@${VERSION}/dist/maplibre-gl.js';
-  sc.onload = one; sc.onerror = one; document.head.appendChild(sc);
+      return Promise.all([fetch(s + '.json'), fetch(s + '.png')]); }
+  }).catch(function () {}).then(done);
 </script></body></html>`;
 }

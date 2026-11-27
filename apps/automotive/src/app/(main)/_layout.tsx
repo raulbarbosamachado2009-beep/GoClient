@@ -1,12 +1,14 @@
 import { Slot, usePathname } from 'expo-router';
 import { type ComponentRef, useEffect, useRef } from 'react';
-import { Animated, Platform, StyleSheet, View } from 'react-native';
+import { Animated, Platform, StyleSheet, View, type ViewStyle } from 'react-native';
 import { warmVoice } from '../../havena/voice';
 import { WakeListener } from '../../havena/wake';
 import { KyteAgentHost } from '../../kyte/agent';
+import { restoreKyteCache } from '../../kyte/store';
 import { usePhone, useSystemInsets, useTabBarSpace } from '../../layout/form-factor';
 import { StopsProvider } from '../../map/stops';
 import { usePrototype } from '../../prototype/state';
+import { isKept, KeptScreens } from '../../shell/kept-screens';
 import { Sidebar } from '../../shell/sidebar';
 import { TabBar } from '../../shell/tab-bar';
 import { layout, useColors } from '../../theme';
@@ -30,17 +32,30 @@ export default function MainLayout() {
   const content = useRef<ComponentRef<typeof View>>(null);
   const screen = useRef<ComponentRef<typeof View>>(null);
   const phone = usePhone();
-  // O Mapa passa por baixo da barra (lateral ou de abas), que é translúcida.
-  const underBar = section === 'mapa';
-  // No celular, o Kyte também vai até o rodapé, por trás da barra de abas flutuante.
-  // O WhatsApp simulado do celular (Preview) também é tela cheia: passa por trás da barra
-  // de abas e vai até a borda de cima, afastando só o próprio conteúdo.
-  const waFull = phone && section === 'whatsapp' && Platform.OS === 'web';
-  const fullHeight = underBar || section === 'kyte' || waFull;
   const system = useSystemInsets();
   const tabSpace = useTabBarSpace();
+  // Margens de cada seção. O Mapa passa por baixo da barra (lateral ou de abas), que é
+  // translúcida. No celular, o Kyte também vai até o rodapé, por trás da barra de abas
+  // flutuante. O WhatsApp simulado do celular (Preview) também é tela cheia: passa por trás
+  // da barra de abas e vai até a borda de cima, afastando só o próprio conteúdo.
+  const frame = (s: string): ViewStyle => {
+    const underBar = s === 'mapa';
+    const waFull = phone && s === 'whatsapp' && Platform.OS === 'web';
+    const fullHeight = underBar || s === 'kyte' || waFull;
+    return {
+      marginLeft: phone || underBar ? 0 : layout.sidebarWidth,
+      marginBottom: phone && !fullHeight ? tabSpace : 0,
+      // Celular: o fundo vai até a borda de cima; o conteúdo desce da câmera/entalhe.
+      // (O Mapa vai inteiro até a borda e afasta só os próprios controles.)
+      paddingTop: phone && !underBar && s !== 'kyte' && !waFull ? system.top : 0,
+    };
+  };
   // Liga o motor de voz logo ao abrir o app: a primeira resposta do Lucas já sai na hora.
   useEffect(warmVoice, []);
+  // Dados do Kyte já lidos antes (arquivo do aparelho): as telas do Kyte abrem com eles na hora.
+  useEffect(() => {
+    void restoreKyteCache();
+  }, []);
   const page = usePageTransition();
   return (
     <StopsProvider>
@@ -51,23 +66,25 @@ export default function MainLayout() {
         {/* Ativação por voz ("olá Lucas", "bom dia", "oh IA"…), com o Lucas fechado. */}
         <WakeListener />
         <BlurArea targetRef={screen} style={StyleSheet.absoluteFill}>
-          {/* No Mapa o conteúdo passa por baixo da barra lateral (que é translúcida). */}
-          <BlurArea
-            targetRef={content}
-            style={{
-              flex: 1,
-              marginLeft: phone || underBar ? 0 : layout.sidebarWidth,
-              marginBottom: phone && !fullHeight ? tabSpace : 0,
-              // Celular: o fundo vai até a borda de cima; o conteúdo desce da câmera/entalhe.
-              // (O Mapa vai inteiro até a borda e afasta só os próprios controles.)
-              paddingTop: phone && !underBar && section !== 'kyte' && !waFull ? system.top : 0,
-            }}
-          >
+          {/* Área do conteúdo: ocupa a tela toda; cada camada (a rota atual e as telas
+              mantidas) põe a própria margem, conforme a seção dela. */}
+          <BlurArea targetRef={content} style={{ flex: 1 }}>
             {/* Dentro das telas não há área definida: cada tela define a sua (ex.: o Mapa). */}
             <BlurTargetProvider value={null}>
-              <ScreenTransition routeKey={section}>
-                <Slot />
-              </ScreenTransition>
+              <View
+                style={[
+                  StyleSheet.absoluteFill,
+                  frame(section),
+                  { zIndex: isKept(section) ? 0 : 2 },
+                ]}
+                pointerEvents="box-none"
+              >
+                <ScreenTransition routeKey={section}>
+                  <Slot />
+                </ScreenTransition>
+              </View>
+              {/* Mapa, Kyte e WhatsApp ficam abertos por trás: trocar de aba é instantâneo. */}
+              <KeptScreens section={section} frame={frame} />
             </BlurTargetProvider>
           </BlurArea>
           <BlurTargetProvider value={content}>

@@ -1,6 +1,7 @@
 import { File, Paths } from 'expo-file-system';
 import { useCallback, useEffect, useState } from 'react';
 import { Platform } from 'react-native';
+import { perfStart } from '../perf';
 import { kyteAgent, kyteAgentAvailable, kyteLogged } from './agent';
 import { brl, type KyteCustomer, type KyteProduct, type KyteSale, summarize } from './model';
 import { SAMPLE, SAMPLE_STORE } from './sample';
@@ -57,7 +58,11 @@ function persist() {
 async function load(kind: Kind) {
   if (loading[kind]) return loading[kind];
   const p = (async () => {
+    const end = perfStart(
+      `Kyte: ler ${{ product: 'produtos', customer: 'clientes', sale: 'vendas' }[kind]}`,
+    );
     const r = await kyteAgent.readData(kind);
+    end();
     if (!r.list.length) {
       const what = { product: 'os produtos', customer: 'os clientes', sale: 'as vendas' }[kind];
       throw new Error(

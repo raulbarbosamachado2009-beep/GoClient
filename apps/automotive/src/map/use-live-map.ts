@@ -2,7 +2,15 @@ import * as Location from 'expo-location';
 import { useEffect, useRef, useState } from 'react';
 import { MAPS_ENABLED } from '../integrations/env';
 import type { MockClient } from '../mocks/data';
-import { computeRoute, geocode, type LatLng, type LiveRoute } from './routing';
+import { perfFirst, perfStart } from '../perf';
+import {
+  computeRoute,
+  geocode,
+  geocodeReady,
+  knownPlace,
+  type LatLng,
+  type LiveRoute,
+} from './routing';
 
 /** Posição do carro pelo GPS (pede a permissão na primeira vez). */
 /** Última posição conhecida do carro (para a Havena procurar lugares por perto). */
@@ -64,26 +72,60 @@ export const clientAddress = (c: MockClient) =>
     ? `${c.address}, ${c.district.split(' · ').slice(1).join(' ') || c.district}, Brasil`
     : `${c.address}, Brasil`;
 
-/** Coordenadas dos clientes (pelo endereço cadastrado). */
+/**
+ * Coordenadas dos clientes (pelo endereço cadastrado). Os já conhecidos (guardados no
+ * aparelho) entram na hora; os outros são buscados juntos, 4 de cada vez, e entram todos de
+ * uma vez (assim a rota é calculada uma vez só, e não a cada pino que chega).
+ */
 export function useClientPlaces(clients: MockClient[], enabled = MAPS_ENABLED) {
   const [places, setPlaces] = useState<Record<string, LatLng>>({});
-  const key = clients.map((c) => c.id).join(',');
+  const key = clients.map((c) => `${c.id}:${clientAddress(c)}`).join('|');
   // biome-ignore lint/correctness/useExhaustiveDependencies: refaz só quando a lista muda
   useEffect(() => {
     if (!enabled) return;
     let alive = true;
     (async () => {
+      await geocodeReady();
+      if (!alive) return;
+      const now: Record<string, LatLng> = {};
+      const missing: MockClient[] = [];
       for (const c of clients) {
-        const p = await geocode(clientAddress(c)).catch(() => null);
-        if (!alive) return;
-        if (p) setPlaces((cur) => ({ ...cur, [c.id]: p }));
+        const p = knownPlace(clientAddress(c));
+        if (p) now[c.id] = p;
+        else if (p === undefined) missing.push(c);
       }
+      if (Object.keys(now).length) setPlaces((cur) => ({ ...cur, ...now }));
+      if (!missing.length) {
+        perfFirst('Mapa: endereços dos clientes');
+        return;
+      }
+      const end = perfStart(`Mapa: buscar ${missing.length} endereços`);
+      const found: Record<string, LatLng> = {};
+      await inParallel(missing, 4, async (c) => {
+        const p = await geocode(clientAddress(c)).catch(() => null);
+        if (p) found[c.id] = p;
+      });
+      end();
+      perfFirst('Mapa: endereços dos clientes');
+      if (alive && Object.keys(found).length) setPlaces((cur) => ({ ...cur, ...found }));
     })();
     return () => {
       alive = false;
     };
   }, [key, enabled]);
   return places;
+}
+
+/** Roda `fn` em cada item, no máximo `limit` ao mesmo tempo. */
+async function inParallel<T>(items: T[], limit: number, fn: (item: T) => Promise<void>) {
+  let next = 0;
+  const worker = async () => {
+    while (next < items.length) {
+      const item = items[next++] as T;
+      await fn(item);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
 }
 
 /**
@@ -143,8 +185,10 @@ export function useLiveRoute(
     }
     let alive = true;
     lastAt.current = Date.now();
+    const end = perfStart('Mapa: calcular rota');
     computeRoute(from, stops, optimize)
       .then((r) => {
+        end();
         if (!alive) return;
         setRoute(r);
         setError(null);

@@ -10,7 +10,8 @@
     "export:web": "expo export --platform web --output-dir dist",
     "typecheck": "tsc -p tsconfig.json",
     "preview:bundle": "expo export --platform web --output-dir dist && node scripts/single-file-preview.mjs",
-    "test": "vitest run"
+    "test": "vitest run",
+    "postinstall": "node scripts/vendor-maplibre.mjs"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.1.1",
@@ -48,6 +49,7 @@
   "devDependencies": {
     "@types/node": "26.6.6",
     "@types/react": "~19.3.0",
+    "maplibre-gl": "5.24.1",
     "typescript": "~6.0.3",
     "vitest": "5.1.1"
   }

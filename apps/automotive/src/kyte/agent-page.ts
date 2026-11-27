@@ -22,9 +22,37 @@ export const AGENT_HELPERS = `(function(){
     var start = Date.now();
     while (Date.now() - start < (ms || 9000)) {
       try { var v = fn(); if (v) return v; } catch (e) {}
-      await A.sleep(150);
+      await A.sleep(80);
     }
     throw new Error('O Kyte não mostrou ' + (what || 'a tela esperada') + ' a tempo.');
+  };
+  /** Assinatura de um resultado (para saber se mudou). */
+  A.sig = function(v){ try { return JSON.stringify(v); } catch (e) { return String(v); } };
+  /**
+   * Espera o resultado de \`fn\` mudar em relação a \`before\` (ex.: a lista depois de digitar
+   * na busca) e parar de mudar por \`quiet\` ms. Se não mudar até \`max\` ms, segue com o que
+   * tem (antes era sempre uma pausa fixa de 1,3 s).
+   */
+  A.afterChange = async function(fn, before, max, quiet){
+    var start = Date.now(), last = A.sig(fn()), since = Date.now(), changed = last !== before;
+    max = max || 1300; quiet = quiet || 250;
+    while (Date.now() - start < max) {
+      await A.sleep(80);
+      var now = A.sig(fn());
+      if (now !== last) { last = now; since = Date.now(); changed = changed || now !== before; }
+      else if (changed && Date.now() - since >= quiet) return;
+    }
+  };
+  /** Espera a página parar de receber dados do servidor por \`quiet\` ms (até \`max\` ms). */
+  A.netQuiet = async function(quiet, max){
+    var start = Date.now(), net = window.__gcNet;
+    // Dá tempo de a página pedir a próxima parte da lista depois da rolagem.
+    await A.sleep(300);
+    while (Date.now() - start < (max || 1500)) {
+      var l = net && net.list[net.list.length - 1];
+      if (!l || Date.now() - l.t >= (quiet || 400)) return;
+      await A.sleep(100);
+    }
   };
   A.click = function(e){
     try { e.scrollIntoView({ block: 'center' }); } catch (x) {}
@@ -45,7 +73,7 @@ export const AGENT_HELPERS = `(function(){
     var hit = A.leaves(re, nav)[0];
     if (!hit) throw new Error('Não achei "' + label + '" no menu do Kyte.');
     A.click(hit.closest('a,button,li') || hit);
-    await A.sleep(400);
+    await A.sleep(120);
   };
   /** Rótulo de um campo: placeholder, aria-label ou a legenda escrita junto dele. */
   A.labelOf = function(i){
@@ -119,8 +147,9 @@ export const JOBS = {
   findClient: (name: string) => `
     await A.menu('Clientes');
     var box = await A.waitFor(function(){ return A.field(/procure|busc|nome/i); }, 9000, 'a lista de clientes');
+    var before = A.sig(A.clientNames().map(function(c){ return c.name; }));
     A.set(box, ${JSON.stringify(name)});
-    await A.sleep(1300);
+    await A.afterChange(function(){ return A.clientNames().map(function(c){ return c.name; }); }, before);
     var q = A.norm(${JSON.stringify(name)});
     var list = A.clientNames().filter(function(c){ return A.norm(c.name).indexOf(q) >= 0; });
     if (!list.length) return { matches: [] };
@@ -129,7 +158,8 @@ export const JOBS = {
     if (!pick) return { matches: list.slice(0, 8).map(function(c){ return c.name; }) };
     A.click(pick.el.closest('tr,li,[role=row]') || pick.el);
     await A.waitFor(function(){ return A.field(/endere[cç]o/i); }, 9000, 'a ficha do cliente');
-    await A.sleep(400);
+    // Campos preenchidos (o Kyte põe os valores logo depois de mostrar a ficha).
+    await A.afterChange(function(){ return A.readClient(); }, '', 600, 150);
     var c = A.readClient();
     c.name = c.name || pick.name;
     return { client: c };`,
@@ -137,21 +167,24 @@ export const JOBS = {
   listClients: (query: string) => `
     await A.menu('Clientes');
     var box = await A.waitFor(function(){ return A.field(/procure|busc|nome/i); }, 9000, 'a lista de clientes');
+    var before = A.sig(A.clientNames().map(function(c){ return c.name; }));
     A.set(box, ${JSON.stringify(query)});
-    await A.sleep(${query ? 1300 : 700});
+    await A.afterChange(function(){ return A.clientNames().map(function(c){ return c.name; }); }, before, ${query ? 1300 : 700});
     return { names: A.clientNames().slice(0, 40).map(function(c){ return c.name; }) };`,
   /** Abre a ficha de um cliente pelo nome exato e lê os dados. */
   openClient: (name: string) => `
     await A.menu('Clientes');
     var box = await A.waitFor(function(){ return A.field(/procure|busc|nome/i); }, 9000, 'a lista de clientes');
+    var before = A.sig(A.clientNames().map(function(c){ return c.name; }));
     A.set(box, ${JSON.stringify(name)});
-    await A.sleep(1300);
+    await A.afterChange(function(){ return A.clientNames().map(function(c){ return c.name; }); }, before);
     var q = A.norm(${JSON.stringify(name)});
     var hit = A.clientNames().find(function(c){ return A.norm(c.name) === q; }) || A.clientNames()[0];
     if (!hit) return { client: null };
     A.click(hit.el.closest('tr,li,[role=row]') || hit.el);
     await A.waitFor(function(){ return A.field(/endere[cç]o/i); }, 9000, 'a ficha do cliente');
-    await A.sleep(400);
+    // Campos preenchidos (o Kyte põe os valores logo depois de mostrar a ficha).
+    await A.afterChange(function(){ return A.readClient(); }, '', 600, 150);
     return { client: A.readClient() };`,
   /** Números do Histórico de vendas: hoje, ontem, semana e mês. */
   salesSummary: () => `
@@ -202,9 +235,10 @@ export const JOBS = {
     var label = ${JSON.stringify({ product: 'Produtos', customer: 'Clientes', sale: 'Hist[oó]rico' })}[${JSON.stringify(kind)}];
     try { await A.menu(label); } catch (e) {}
     var list = [], start = Date.now();
-    while (Date.now() - start < 9000) { list = await A.read(${JSON.stringify(kind)}); if (list.length) break; await A.sleep(700); }
-    // Listas longas chegam aos poucos: rola até parar de crescer (3 voltas sem novidade).
-    for (var round = 0, last = -1, still = 0; round < 70 && still < 3 && Date.now() - start < 100000; round++) {
+    while (Date.now() - start < 9000) { list = await A.read(${JSON.stringify(kind)}); if (list.length) break; await A.sleep(250); }
+    // Listas longas chegam aos poucos: rola até parar de crescer (2 voltas sem novidade). Cada
+    // volta espera só a página parar de receber dados (antes: pausa fixa de 1,3 s).
+    for (var round = 0, last = -1, still = 0; round < 70 && still < 2 && Date.now() - start < 100000; round++) {
       still = list.length === last ? still + 1 : 0;
       last = list.length;
       Array.prototype.forEach.call(document.querySelectorAll('div,main,section,ul'), function(e){
@@ -213,7 +247,7 @@ export const JOBS = {
       var rows = document.querySelectorAll('[role=row],li,tr');
       if (rows.length) try { rows[rows.length - 1].scrollIntoView({ block: 'end' }); } catch (e) {}
       window.scrollTo(0, document.body.scrollHeight);
-      await A.sleep(1300);
+      await A.netQuiet(400, 1500);
       list = await A.read(${JSON.stringify(kind)});
     }
     return { list: list };`,
@@ -229,9 +263,11 @@ export const JOBS = {
     for (var i = 0; i < items.length; i++) {
       var it = items[i];
       A.set(box, it.name);
-      await A.sleep(900);
       var want = A.norm(it.name);
-      var tile = A.leaves(/./).filter(function(e){ return A.visible(e) && A.norm(e.innerText) === want; })[0];
+      // Espera só até o produto aparecer (antes: pausa fixa de 0,9 s por item).
+      var tile = await A.waitFor(function(){
+        return A.leaves(/./).filter(function(e){ return A.visible(e) && A.norm(e.innerText) === want; })[0];
+      }, 2000).catch(function(){ return null; });
       if (!tile) { miss.push(it.name); continue; }
       var target = tile.closest('[role=button],button,a,li') || tile.parentElement || tile;
       for (var n = 0; n < Math.round(it.qty); n++) { A.click(target); await A.sleep(250); }
@@ -244,8 +280,9 @@ export const JOBS = {
         A.click(sel.closest('a,button,[role=button]') || sel);
         var cbox = await A.waitFor(function(){ return A.field(/procure|nome|cliente/i); }, 9000, 'a busca de clientes');
         A.set(cbox, cust);
-        await A.sleep(1300);
-        var row = A.leaves(/./).filter(function(e){ return A.visible(e) && A.norm(e.innerText) === A.norm(cust); })[0];
+        var row = await A.waitFor(function(){
+          return A.leaves(/./).filter(function(e){ return A.visible(e) && A.norm(e.innerText) === A.norm(cust); })[0];
+        }, 2500).catch(function(){ return null; });
         if (row) A.click(row.closest('tr,li,[role=row],[role=button],a,button') || row); else miss.push('cliente ' + cust);
       } else miss.push('cliente ' + cust);
     }

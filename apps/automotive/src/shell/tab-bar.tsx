@@ -46,8 +46,10 @@ export function TabBar() {
   const c = useColors();
   const pathname = usePathname();
   const router = useRouter();
-  const { setOverlay, immersive } = usePrototype();
+  const { setOverlay, immersive: inChat } = usePrototype();
   // Dentro de uma conversa do WhatsApp a barra desce e some (a conversa fica em tela cheia).
+  // O WhatsApp fica aberto por trás nas outras abas: lá a barra volta.
+  const immersive = inChat && pathname.split('/')[1] === 'whatsapp';
   const hide = useRef(new Animated.Value(immersive ? 1 : 0)).current;
   useEffect(() => {
     Animated.spring(hide, {

@@ -5,7 +5,7 @@ Leia este arquivo antes de começar qualquer trabalho.
 
 ## Estado atual do app
 
-_Última atualização: 2026-11-26 14:40 — Nuvem do Lucas sem cortes secos ao trocar de expressão (PR #13 aguardando revisão)._
+_Última atualização: 2026-11-26 21:03 — App mais rápido: Mapa, Kyte e WhatsApp ficam abertos por trás, mapa sem download da biblioteca, endereços salvos no aparelho, Kyte sem pausas fixas e cronômetro em Ajustes (PR aguardando revisão; entra por cima do #13)._
 
 - **Automotive (`apps/automotive`)** é onde está quase todo o produto: Mapa (OSM + OpenRouteService,
   navegação com voz), Kyte (telas próprias sobre a janela do Kyte) e o assistente de voz Lucas.
@@ -16,6 +16,37 @@ _Última atualização: 2026-11-26 14:40 — Nuvem do Lucas sem cortes secos ao 
 - Regras de negócio em `packages/core` (com testes); visual só com `@goclient/design-tokens`.
 
 ## Mudanças
+
+### 2026-11-26 21:03 — Tempo de resposta: Mapa, Kyte e WhatsApp mais rápidos
+
+Pedido do usuário: o app tem que ser extremamente rápido em **tempo de resposta** (abrir telas,
+carregar dados, rede), não em animações. Diagnóstico: trocar de aba fechava a tela e o Mapa, o
+Kyte e o WhatsApp recarregavam do zero a cada vez.
+
+- **Telas sempre abertas:** Mapa, Kyte e WhatsApp são montados uma vez e ficam por trás
+  (`shell/kept-screens.tsx`); trocar de aba só mostra ou esconde. Depois que o app abre, o Kyte
+  (1,5 s) e o WhatsApp (4 s) são abertos escondidos, para já estarem prontos. O código das
+  telas foi para `src/screens/`; as rotas de `app/(main)/` só marcam a seção. Parâmetros como
+  `?rota=dia` e `?secao=clientes` chegam por `useKeptParams`. A navegação continua falando
+  mesmo com outra aba aberta. Se o Android fechar uma janela por falta de memória, ela reabre
+  sozinha (`onRenderProcessGone`).
+- **Mapa:** a biblioteca MapLibre vem dentro do app (sem baixar ~1 MB do unpkg; gerada por
+  `scripts/vendor-maplibre.mjs` no `pnpm install`, fora do git); o estilo é pedido antes da
+  biblioteca ser lida e o mapa começa na hora com o estilo salvo. Trocar claro/escuro só troca
+  o estilo, sem recarregar a página.
+- **Endereços:** os já encontrados ficam salvos no aparelho (`map/geo-cache.ts`) e entram na
+  hora; os novos são buscados 4 de cada vez e entram juntos (a rota é calculada uma vez só, e
+  não a cada pino).
+- **Kyte:** a janela de dados abre 2,5 s depois do app (se já entrou no Kyte) e fica aberta 10
+  min sem uso (antes: só no primeiro pedido, fechando em 90 s); a espera dela é por aviso, sem
+  checar a cada 300 ms; os dados salvos são lidos ao abrir o app. As pausas fixas (1,3 s depois
+  da busca, 0,9 s por item na venda, 1,3 s por volta ao ler listas) viraram esperas pelo
+  resultado (`A.afterChange`, `A.netQuiet`, `waitFor`).
+- **Ajustes → Tempo de resposta:** cronômetro de cada etapa medido no aparelho (mapa pronto,
+  ruas desenhadas, endereços, rota, janela do Kyte, leituras do Kyte, WhatsApp pronto), em
+  `src/perf.ts`. Aparece só no app Android (no Preview não há medidas).
+- Ainda não medido num aparelho de verdade. Abrir a conversa pelo Lucas ainda recarrega o
+  WhatsApp Web (o link `/send` só funciona abrindo a página).
 
 ### 2026-11-26 14:40 — Nuvem do Lucas sem cortes secos
 
