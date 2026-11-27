@@ -5,7 +5,7 @@ Leia este arquivo antes de começar qualquer trabalho.
 
 ## Estado atual do app
 
-_Última atualização: 2026-11-27 12:39 — Papel de parede do WhatsApp, "+" com anexos, recibo compartilhado pelo "Enviar para" do WhatsApp e Mapa que guarda a rota ao trocar de página._
+_Última atualização: 2026-11-27 12:52 — Coluna do Mapa sem espaço vazio (WhatsApp mostra as últimas conversas), "Encerrar" sem moldura e papel de parede escuro do WhatsApp corrigido._
 
 - **Automotive (`apps/automotive`)** é onde está quase todo o produto: Mapa (OSM + OpenRouteService,
   navegação com voz), Kyte (telas próprias sobre a janela do Kyte) e o assistente de voz Lucas.
@@ -26,6 +26,19 @@ _Última atualização: 2026-11-27 12:39 — Papel de parede do WhatsApp, "+" co
 - Regras de negócio em `packages/core` (com testes); visual só com `@goclient/design-tokens`.
 
 ## Mudanças
+
+### 2026-11-27 12:52 — Coluna do Mapa sem espaço vazio, "Encerrar" sem moldura e papel de parede escuro
+
+Correções pedidas pelo usuário (3 imagens).
+
+- **Destino de um cliente só (multimídia):** o cartão continua baixo, mas agora fica embaixo e o
+  cartão do WhatsApp cresce e ocupa o resto da coluna com as últimas conversas (antes sobrava
+  um espaço vazio abaixo do destino).
+- **Botão "Encerrar":** sem a moldura branca, como o "Ir"; fundo vermelho-claro sólido, cantos
+  e altura iguais aos do "Ir" e sombra leve.
+- **Papel de parede do WhatsApp:** na multimídia os ladrilhos cobrem a conversa inteira (antes
+  sobrava uma faixa lisa à direita) e no celular a imagem cobre até o rodapé (antes sobrava uma
+  faixa lisa embaixo). Vale para o claro e o escuro.
 
 ### 2026-11-27 12:39 — WhatsApp com papel de parede e anexos, recibo pelo WhatsApp e ajustes no Mapa
 

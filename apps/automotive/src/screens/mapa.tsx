@@ -628,13 +628,11 @@ function TripBar({
 }) {
   return (
     <Appear delay={160} fade={false} distance={40} style={styles.bottomLeft}>
-      {/* "Ir" fica sozinho sobre o mapa, sem a moldura branca (pedido de 27/11/2026); o
-          "Encerrar" vermelho-claro continua num material para ter contraste. */}
+      {/* "Ir" e "Encerrar" ficam sozinhos sobre o mapa, sem a moldura branca (pedido de
+          27/11/2026), com fundo sólido e sombra leve para ter contraste. */}
       <Swap id={navigating ? 'stop' : 'go'} dir={navigating ? 1 : -1}>
         {navigating ? (
-          <Material style={styles.trip}>
-            <StopButton onPress={onStop} />
-          </Material>
+          <StopButton onPress={onStop} />
         ) : (
           <Button
             label="Ir"
@@ -655,7 +653,7 @@ function TripBar({
  * durante a troca. Tocar (grande ou recolhido) encerra a navegação.
  */
 const STOP_W = 280;
-const STOP_H = 84;
+const STOP_H = 100;
 function StopButton({ onPress }: { onPress: () => void }) {
   const c = useColors();
   const p = useRef(new Animated.Value(0)).current;
@@ -675,7 +673,7 @@ function StopButton({ onPress }: { onPress: () => void }) {
     };
   }, [p]);
   const fg = c.danger;
-  const bg = c.mode === 'dark' ? 'rgba(255,69,58,0.2)' : 'rgba(255,59,48,0.12)';
+  const bg = c.mode === 'dark' ? '#3B1F1D' : '#FFE7E5';
   const width = p.interpolate({ inputRange: [0, 1], outputRange: [STOP_W, STOP_H] });
   const labelW = p.interpolate({
     inputRange: [0, 0.7],
@@ -710,7 +708,11 @@ function StopButton({ onPress }: { onPress: () => void }) {
       scaleTo={0.96}
     >
       <Animated.View
-        style={[styles.stop, { width, backgroundColor: bg, borderRadius: TRIP_INNER }]}
+        style={[
+          styles.stop,
+          styles.floatShadow,
+          { width, backgroundColor: bg, borderRadius: TRIP_R },
+        ]}
       >
         <Animated.View style={[styles.stopRow, webBlur as object]}>
           <Animated.View style={{ width: 34, height: 34, transform: [{ scale: iconScale }] }}>
@@ -745,43 +747,91 @@ function StopButton({ onPress }: { onPress: () => void }) {
  * No Preview a mensagem vem do WhatsApp simulado (fictícia). No app instalado o WhatsApp Web
  * não expõe as conversas, então o cartão mostra só o atalho.
  */
-const WA_LAST = Platform.OS === 'web' ? recentMessages(1)[0] : undefined;
+const WA_RECENT = Platform.OS === 'web' ? recentMessages(6) : [];
+const WA_LAST = WA_RECENT[0];
 
 function WhatsAppCard() {
   const c = useColors();
   const router = useRouter();
+  const [h, setH] = useState(0);
   const m = WA_LAST ?? { id: 'app', name: 'WhatsApp', text: 'Conversas da equipe', time: '' };
+  // Cartão alto (destino de um cliente só deixa a coluna livre): mostra as últimas conversas
+  // em vez de deixar espaço vazio (pedido de 27/11/2026).
+  const ROW = 92;
+  const rows = h > WA_H + ROW ? Math.min(WA_RECENT.length, Math.floor((h - 120) / ROW)) : 0;
   return (
     <Touchable
       accessibilityRole="button"
       accessibilityLabel={`Abrir o WhatsApp: ${m.name}`}
       onPress={() => router.push('/whatsapp')}
       scaleTo={0.98}
-      style={[styles.wa, { borderColor: c.material.border }]}
+      style={[
+        styles.wa,
+        { borderColor: c.material.border },
+        rows > 0 && { justifyContent: 'flex-start', paddingTop: spacing[6] },
+      ]}
+      onLayout={(e) => setH(e.nativeEvent.layout.height)}
     >
       <Blur radius={44} tint={c.material.tint} />
       <View style={[StyleSheet.absoluteFill, { backgroundColor: c.material.fallback }]} />
-      <View style={styles.waRow}>
-        <WhatsAppLogo size={80} />
-        <View style={{ flex: 1, gap: 2 }}>
-          <Text variant="headline" numberOfLines={1} style={{ fontSize: 30, lineHeight: 36 }}>
-            {m.name}
-          </Text>
-          <Text
-            variant="body"
-            tone="secondary"
-            numberOfLines={1}
-            style={{ fontSize: 24, lineHeight: 30 }}
-          >
-            {m.text}
-          </Text>
+      {rows > 0 ? (
+        <View style={{ gap: spacing[3] }}>
+          <View style={styles.waRow}>
+            <WhatsAppLogo size={64} />
+            <Text variant="headline" style={{ fontSize: 30, lineHeight: 36, flex: 1 }}>
+              WhatsApp
+            </Text>
+          </View>
+          {WA_RECENT.slice(0, rows).map((r, i) => (
+            <View
+              key={r.id}
+              style={[
+                styles.waItem,
+                i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.separator },
+              ]}
+            >
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text variant="headline" numberOfLines={1} style={{ fontSize: 26, lineHeight: 32 }}>
+                  {r.name}
+                </Text>
+                <Text
+                  variant="body"
+                  tone="secondary"
+                  numberOfLines={1}
+                  style={{ fontSize: 22, lineHeight: 28 }}
+                >
+                  {r.text}
+                </Text>
+              </View>
+              <Text variant="callout" tone="secondary" style={styles.waTime}>
+                {r.time}
+              </Text>
+            </View>
+          ))}
         </View>
-        {!!m.time && (
-          <Text variant="callout" tone="secondary" style={styles.waTime}>
-            {m.time}
-          </Text>
-        )}
-      </View>
+      ) : (
+        <View style={styles.waRow}>
+          <WhatsAppLogo size={80} />
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text variant="headline" numberOfLines={1} style={{ fontSize: 30, lineHeight: 36 }}>
+              {m.name}
+            </Text>
+            <Text
+              variant="body"
+              tone="secondary"
+              numberOfLines={1}
+              style={{ fontSize: 24, lineHeight: 30 }}
+            >
+              {m.text}
+            </Text>
+          </View>
+          {!!m.time && (
+            <Text variant="callout" tone="secondary" style={styles.waTime}>
+              {m.time}
+            </Text>
+          )}
+        </View>
+      )}
     </Touchable>
   );
 }
@@ -804,8 +854,8 @@ function MorphColumn({
 }: {
   compact: boolean;
   compactHeight: number;
-  /** Altura do conteúdo (destino único): o cartão fica só desse tamanho, colado em cima, e o
-   * WhatsApp continua no tamanho de painel. O resto da coluna mostra o mapa. */
+  /** Altura do conteúdo (destino único): o cartão fica só desse tamanho, embaixo, e o
+   * WhatsApp cresce e ocupa o resto da coluna com as últimas conversas. */
   fit?: number;
   top: ReactNode;
   children: ReactNode;
@@ -841,8 +891,7 @@ function MorphColumn({
       Animated.timing(m, { toValue: 1, duration: 560, useNativeDriver: false }),
     ]).start();
   }, [target, total, h, m]);
-  // Com `fit`, o WhatsApp não cresce: fica em WA_H e o destino encolhe por baixo dele.
-  const topH = fit > 0 ? WA_H : Animated.add(total - gap, Animated.multiply(h, -1));
+  const topH = Animated.add(total - gap, Animated.multiply(h, -1));
   const blurO = m.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, 1, 0] });
   const webBlur =
     Platform.OS === 'web'
@@ -1252,7 +1301,6 @@ const WELCOME_R = 48;
 const COMPACT_R = 48;
 const TRIP_R = layout.radius.xl;
 const COMPACT_INNER = concentric(COMPACT_R, spacing[6]);
-const TRIP_INNER = concentric(TRIP_R, spacing[4]);
 
 const LEFT = layout.sidebarWidth + layout.gutter;
 /** Coluna de cartões à direita do mapa. */
@@ -1328,14 +1376,19 @@ const styles = StyleSheet.create({
     paddingRight: spacing[10],
     borderRadius: layout.radius.xl,
   },
-  trip: { padding: spacing[4], borderRadius: TRIP_R },
   stop: { height: STOP_H, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
   stopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
   center: { alignItems: 'center', justifyContent: 'center' },
   tripButton: {
     borderRadius: TRIP_R,
     width: STOP_W,
-    height: 100,
+    height: STOP_H,
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+  },
+  floatShadow: {
     shadowColor: '#000',
     shadowOpacity: 0.18,
     shadowRadius: 16,
@@ -1356,6 +1409,7 @@ const styles = StyleSheet.create({
   },
   waRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[5] },
   waTime: { alignSelf: 'flex-start', marginTop: spacing[1] },
+  waItem: { flexDirection: 'row', alignItems: 'center', gap: spacing[4], height: 92 },
   wideAction: {
     flex: 1,
     height: 84,
