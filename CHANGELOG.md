@@ -5,7 +5,7 @@ Leia este arquivo antes de começar qualquer trabalho.
 
 ## Estado atual do app
 
-_Última atualização: 2026-11-26 21:50 — Vendas do Kyte com telas próprias (fluxo do vídeo do usuário), impressão da comanda por impressora Bluetooth, cartão do cliente na navegação do celular que se recolhe e cartões do Mapa da multimídia ajustados. Os PRs #12, #13 e #14 e esta rodada estão na main._
+_Última atualização: 2026-11-26 21:48 — Correção: `pnpm check` não falha mais por faltar a biblioteca do mapa gerada (`maplibre.generated`). Vendas do Kyte em telas próprias, impressora Bluetooth, PRs #12, #13 e #14 já estão na main._
 
 - **Automotive (`apps/automotive`)** é onde está quase todo o produto: Mapa (OSM + OpenRouteService,
   navegação com voz), Kyte (telas próprias sobre a janela do Kyte) e o assistente de voz Lucas.
@@ -19,6 +19,15 @@ _Última atualização: 2026-11-26 21:50 — Vendas do Kyte com telas próprias 
 - Regras de negócio em `packages/core` (com testes); visual só com `@goclient/design-tokens`.
 
 ## Mudanças
+
+### 2026-11-26 21:48 — `pnpm check` sem depender do postinstall
+
+- O typecheck da main falhava numa pasta já instalada antes da mudança de velocidade: faltava
+  `src/map/vendor/maplibre.generated.ts`, que só era criado no postinstall (o pnpm pula o
+  postinstall quando não há nada novo para instalar).
+- Agora `typecheck`, `dev`, `web`, `android`, `export:web` e `preview:bundle` do Automotive
+  geram o arquivo antes (`scripts/vendor-maplibre.mjs`, que não regrava se nada mudou). O
+  arquivo continua fora do git.
 
 ### 2026-11-26 21:50 — Vendas do Kyte refeitas, impressora Bluetooth e cartões do Mapa
 
