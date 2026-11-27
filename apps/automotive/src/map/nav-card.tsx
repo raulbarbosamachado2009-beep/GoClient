@@ -21,13 +21,14 @@ import { Avatar, Blur, Icon, Text, Touchable } from '../ui/primitives';
  * - O ícone do WhatsApp abre a conversa do cliente no WhatsApp do app com a mensagem de
  *   "estamos chegando" já escrita (o envio é sempre o toque da pessoa).
  *
- * Bordas concêntricas: cartão 64 de raio com 28 de margem → peças de dentro com 36.
+ * Bordas concêntricas: cartão 52 de raio com 20 de margem → peças de dentro com 32.
+ * 27/11 (2ª rodada): o mesmo cartão, só mais baixo, para sobrar mapa.
  */
-const R = 64;
-const PAD = 28;
+const R = 52;
+const PAD = 20;
 const INNER = concentric(R, PAD);
 /** Altura da linha de cima (foto, nome, endereço e o "×"). */
-const ROW = 104;
+const ROW = 84;
 const GAP = spacing[5];
 const COLLAPSE_AFTER = 2000;
 
@@ -270,6 +271,7 @@ export function NavCard({
             accessibilityRole="button"
             accessibilityLabel="Encerrar navegação"
             onPress={onStop}
+            sound
             scaleTo={0.95}
             style={[styles.stopInner, { backgroundColor: c.danger }]}
           >
@@ -280,7 +282,7 @@ export function NavCard({
               </Text>
             </Animated.View>
             <Animated.View style={[StyleSheet.absoluteFill, styles.center, { opacity: xO }]}>
-              <Icon name="close" size={52} color="#FFFFFF" />
+              <Icon name="close" size={44} color="#FFFFFF" />
             </Animated.View>
             <Animated.View
               pointerEvents="none"
@@ -296,8 +298,8 @@ export function NavCard({
 }
 
 const TYPE = StyleSheet.create({
-  name: { fontSize: 36, lineHeight: 44 },
-  sub: { fontSize: 27, lineHeight: 34 },
+  name: { fontSize: 32, lineHeight: 38 },
+  sub: { fontSize: 25, lineHeight: 31 },
   pill: { fontSize: 28, lineHeight: 34, flexShrink: 1 },
   label: { fontSize: 25, lineHeight: 31, opacity: 0.6 },
   body: { fontSize: 30, lineHeight: 38 },

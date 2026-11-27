@@ -53,9 +53,12 @@ export function SaleDetail({ id }: { id: string }) {
     setWorking(true);
     setMsg(null);
     try {
-      if (PREVIEW) setLocalCancel(true);
-      else {
+      if (PREVIEW) {
+        setLocalCancel(true);
+        patchSale(sale.id, { canceled: true });
+      } else {
         const r = await kyteAgent.cancelSale(sale.number);
+        setLocalCancel(true);
         patchSale(sale.id, { canceled: true });
         setMsg(
           r.canceled ? 'Venda cancelada no Kyte.' : 'Pedido enviado ao Kyte. Confira no Histórico.',
@@ -84,7 +87,7 @@ export function SaleDetail({ id }: { id: string }) {
         >
           <View style={{ flex: 1, gap: 6 }}>
             <Text
-              size={s.phone ? 56 : 78}
+              size={s.phone ? 63 : 78}
               weight="bold"
               style={canceled ? { textDecorationLine: 'line-through' } : undefined}
             >
@@ -148,7 +151,7 @@ export function SaleDetail({ id }: { id: string }) {
                       gap: 20,
                     }}
                   >
-                    <Text size={s.big} color={KY.sub} style={{ width: s.phone ? 74 : 90 }}>
+                    <Text size={s.big} color={KY.sub} style={{ width: s.phone ? 83 : 90 }}>
                       {fmtQty(i.qty)} x
                     </Text>
                     <Text size={s.big} weight="semibold" style={{ flex: 1 }}>
@@ -213,8 +216,8 @@ export function SaleDetail({ id }: { id: string }) {
           onPress={() => nav.open({ type: 'receipt', id: sale.id })}
           accessibilityLabel="Ver recibo"
           style={{
-            width: s.phone ? 110 : 170,
-            height: s.phone ? 96 : 128,
+            width: s.phone ? 123 : 170,
+            height: s.phone ? 108 : 128,
             borderRadius: 18,
             borderWidth: 2,
             borderColor: '#C8CFD8',
@@ -229,7 +232,7 @@ export function SaleDetail({ id }: { id: string }) {
           onPress={() => !canceled && setConfirm(true)}
           style={{
             flex: 1,
-            height: s.phone ? 96 : 128,
+            height: s.phone ? 108 : 128,
             borderRadius: 18,
             backgroundColor: canceled ? '#9AA3AF' : KY.night,
             flexDirection: 'row',
@@ -299,7 +302,7 @@ function Pair({ label, value }: { label: string; value: string }) {
   const s = useKySize();
   return (
     <View style={{ flexDirection: 'row', gap: 20 }}>
-      <Text size={s.row} color={KY.sub} style={{ width: s.phone ? 170 : 220 }}>
+      <Text size={s.row} color={KY.sub} style={{ width: s.phone ? 190 : 220 }}>
         {label}
       </Text>
       <Text size={s.row} weight="medium" style={{ flex: 1 }}>

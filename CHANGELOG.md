@@ -5,7 +5,7 @@ Leia este arquivo antes de começar qualquer trabalho.
 
 ## Estado atual do app
 
-_Última atualização: 2026-11-26 21:48 — Correção: `pnpm check` não falha mais por faltar a biblioteca do mapa gerada (`maplibre.generated`). Vendas do Kyte em telas próprias, impressora Bluetooth, PRs #12, #13 e #14 já estão na main._
+_Última atualização: 2026-11-26 23:58 — Cancelar venda volta a tirar a venda dos totais, bolinha de novidade no menu, onboarding numa página só, Kyte maior no celular, cartão de navegação mais baixo e som nos botões importantes._
 
 - **Automotive (`apps/automotive`)** é onde está quase todo o produto: Mapa (OSM + OpenRouteService,
   navegação com voz), Kyte (telas próprias sobre a janela do Kyte) e o assistente de voz Lucas.
@@ -14,11 +14,42 @@ _Última atualização: 2026-11-26 21:48 — Correção: `pnpm check` não falha
 - **Kyte → Vender** tem o fluxo de vendas inteiro do Kyte em telas próprias (Vender, cliente,
   carrinho, pagamento, dinheiro, venda concluída, recibo); ao concluir, a venda é registrada no
   Kyte por trás. **Imprimir** manda a comanda para a impressora térmica Bluetooth pareada.
+- **Bolinha de novidade** nos ícones do Kyte e do WhatsApp no menu (celular e multimídia), só
+  quando há venda nova ou mensagem não lida; abrir o app limpa. Botões importantes tocam um
+  som curto (`assets/sounds/tap.wav`).
 - **Modo claro é o padrão** (o escuro continua em Ajustes → Tema). Login com fundo "aurora" em azuis.
 - **Mobile e Web** ainda são telas de diagnóstico; **API** (`apps/api`) com Hono + Drizzle.
 - Regras de negócio em `packages/core` (com testes); visual só com `@goclient/design-tokens`.
 
 ## Mudanças
+
+### 2026-11-26 23:58 — Cancelamento de venda, bolinhas do menu, onboarding numa página e som
+
+Pedido do usuário (thread "Refazer vendas do Kyte e cards do mapa", 4 imagens). Juntado direto
+na main, como na rodada anterior.
+
+- **Cancelar venda (Histórico):** a venda cancelada continuava contando no Início. No Preview o
+  cancelamento só mudava a tela aberta; agora marca a venda (`patchSale` também no Preview) e
+  os totais do Início saem sem ela. No app, os totais lidos do Kyte são descartados a cada venda
+  ou cancelamento e relidos (4 s depois, para o Kyte atualizar). Em "Últimas vendas" a venda
+  aparece riscada, com "Cancelada".
+- **Kyte no celular maior:** tamanhos do celular em `kyte/ui.tsx` (~+30%) e medidas fixas das
+  telas do Kyte e do Vender (+12%).
+- **Bolinha de notificação** (`shell/badges.ts`, `shell/badge-dot.tsx`) nos ícones do Kyte e do
+  WhatsApp, na barra de abas e na barra lateral. WhatsApp: número de não lidas lido do título do
+  WhatsApp Web (só observação, `whatsapp/bridge.ts`); no Preview, as conversas não lidas do
+  simulado. Kyte: vendas novas que aparecem numa leitura (o app relê as vendas a cada 3 min).
+  O app aberto não ganha bolinha; abrir limpa.
+- **Onboarding numa página só** (celular e multimídia): o quadro fica parado; os elementos da
+  ilustração saem (sobem, encolhem e desfocam) e os da próxima etapa entram; selo, título e
+  texto não se movem, só trocam desfocando (`Morph` em `ui/motion.tsx`, `morph` em
+  `OnboardingLayout`). Os textos reservam duas linhas para nada pular.
+- **Cartão do cliente na navegação (celular)** mais baixo, com os mesmos elementos: raio 52,
+  margem 20, linha 84 (antes 64/28/104).
+- **Som nos botões importantes** (`ui/sound.ts`, `Touchable sound`): um toque curto de vidro,
+  gerado para o app (`assets/sounds/tap.wav`, 0,16 s). Toca em Continuar/Começar do onboarding,
+  botões cheios (Navegar, Ir...), botões verdes do Vender (Pagamento, Concluir...) e no
+  encerrar navegação. O Preview embute o `.wav` (`single-file-preview.mjs`).
 
 ### 2026-11-26 21:48 — `pnpm check` sem depender do postinstall
 

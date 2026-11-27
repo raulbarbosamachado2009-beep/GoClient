@@ -27,6 +27,7 @@ import { usePhone } from '../layout/form-factor';
 import { layout, nativeDriver, spacing, type TypeVariant, type, useColors } from '../theme';
 import { LIVE_BLUR, useBlurTarget } from './blur-target';
 import { useSpring } from './motion';
+import { playTap } from './sound';
 
 export type IconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -76,8 +77,15 @@ export function Touchable({
   style,
   children,
   scaleTo = 0.96,
+  sound = false,
   ...rest
-}: PressableProps & { style?: StyleProp<ViewStyle>; children: ReactNode; scaleTo?: number }) {
+}: PressableProps & {
+  style?: StyleProp<ViewStyle>;
+  children: ReactNode;
+  scaleTo?: number;
+  /** Botão importante: toca o som curto do GoClient ao tocar (ver ui/sound.ts). */
+  sound?: boolean;
+}) {
   const s = useRef(new Animated.Value(1)).current;
   const to = (v: number) =>
     Animated.spring(s, {
@@ -96,6 +104,10 @@ export function Touchable({
       onPressOut={(e) => {
         to(1);
         rest.onPressOut?.(e);
+      }}
+      onPress={(e) => {
+        if (sound && !rest.disabled) playTap();
+        rest.onPress?.(e);
       }}
       style={[style, { transform: [{ scale: s }] }]}
     >
@@ -143,6 +155,7 @@ export function Button({
   return (
     <Touchable
       accessibilityRole="button"
+      sound={variant === 'filled' || variant === 'destructive'}
       {...rest}
       style={[
         styles.button,

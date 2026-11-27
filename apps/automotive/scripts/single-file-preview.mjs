@@ -38,7 +38,7 @@ const fontRefs = new Set();
 const allJs = [runtime, common, ...chunks, entry].filter(Boolean);
 for (const p of allJs) {
   for (const m of readFileSync(join(dist, p), 'utf8').matchAll(
-    /"(\/assets\/[^"]+\.(?:ttf|otf|png|jpe?g))"/g,
+    /"(\/assets\/[^"]+\.(?:ttf|otf|png|jpe?g|wav))"/g,
   ))
     fontRefs.add(m[1]);
 }
@@ -54,6 +54,7 @@ function mimeOf(ref) {
   if (path.endsWith('.otf')) return 'font/otf';
   if (path.endsWith('.ttf')) return 'font/ttf';
   if (path.endsWith('.png')) return 'image/png';
+  if (path.endsWith('.wav')) return 'audio/wav';
   return 'image/jpeg';
 }
 

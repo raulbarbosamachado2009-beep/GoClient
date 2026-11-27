@@ -53,14 +53,14 @@ export function HomeScreen() {
           gap: s.phone ? 6 : 10,
         }}
       >
-        <Text size={s.phone ? 26 : 40} weight="semibold" color={KY.green}>
+        <Text size={s.phone ? 30 : 40} weight="semibold" color={KY.green}>
           HOJE
         </Text>
-        <Text size={s.phone ? 76 : 120} weight="bold" color="#FFFFFF" lines={1}>
+        <Text size={s.phone ? 84 : 120} weight="bold" color="#FFFFFF" lines={1}>
           {money(sum.today.total)}
         </Text>
         {sum.today.count != null && (
-          <Text size={s.phone ? 26 : 40} weight="medium" color={KY.green}>
+          <Text size={s.phone ? 30 : 40} weight="medium" color={KY.green}>
             em {sum.today.count} {sum.today.count === 1 ? 'venda concluída' : 'vendas concluídas'}
           </Text>
         )}
@@ -73,8 +73,8 @@ export function HomeScreen() {
             marginHorizontal: s.phone ? 40 : 160,
           }}
         />
-        <Line label="Ontem:" value={money(sum.yesterday.total)} size={s.phone ? 28 : 44} />
-        <Line label="Esse mês:" value={money(sum.month.total)} size={s.phone ? 28 : 44} />
+        <Line label="Ontem:" value={money(sum.yesterday.total)} size={s.phone ? 32 : 44} />
+        <Line label="Esse mês:" value={money(sum.month.total)} size={s.phone ? 32 : 44} />
         <GreenButton
           label="Registrar venda"
           onPress={() => nav.go('vender')}
@@ -84,7 +84,7 @@ export function HomeScreen() {
             marginHorizontal: s.phone ? 0 : 120,
             marginBottom: s.phone ? 0 : 50,
           }}
-          height={s.phone ? 96 : 128}
+          height={s.phone ? 108 : 128}
         />
       </View>
     </View>
@@ -115,7 +115,7 @@ export function HomeScreen() {
             }}
           >
             <Touchable style={{ alignItems: 'center', flex: 1 }} onPress={() => nav.go('produtos')}>
-              <Text size={40} weight="bold">
+              <Text size={s.phone ? 46 : 40} weight="bold">
                 {products.list ? products.list.length : '—'}
               </Text>
               <Text size={s.small} weight="semibold" color={KY.ink} style={{ textAlign: 'center' }}>
@@ -128,7 +128,7 @@ export function HomeScreen() {
               icon="add"
               onPress={nav.havena}
               style={{ flex: 1.3 }}
-              height={78}
+              height={s.phone ? 88 : 78}
             />
           </View>
         </View>
@@ -157,13 +157,18 @@ export function HomeScreen() {
                   borderTopColor: KY.line,
                 }}
               >
-                <KIcon name="cash-outline" size={30} color={KY.ink} />
+                <KIcon name="cash-outline" size={s.phone ? 36 : 30} color={KY.ink} />
                 <View style={{ flex: 1 }}>
-                  <Text size={s.row} weight="semibold">
+                  <Text
+                    size={s.row}
+                    weight="semibold"
+                    color={v.canceled ? KY.sub : KY.ink}
+                    style={v.canceled ? { textDecorationLine: 'line-through' } : undefined}
+                  >
                     {money(brl(v.total))}
                   </Text>
-                  <Text size={s.small} color={KY.sub} lines={1}>
-                    {v.customer?.name || 'Sem cliente'}
+                  <Text size={s.small} color={v.canceled ? KY.red : KY.sub} lines={1}>
+                    {v.canceled ? 'Cancelada' : v.customer?.name || 'Sem cliente'}
                   </Text>
                 </View>
                 <Text size={s.small} color={KY.sub}>

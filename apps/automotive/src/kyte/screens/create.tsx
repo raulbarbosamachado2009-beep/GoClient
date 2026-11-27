@@ -48,7 +48,7 @@ function Field({
         gap: 14,
         borderBottomWidth: 2,
         borderBottomColor: focus ? KY.green : '#B8C0CB',
-        height: s.phone ? 84 : 104,
+        height: s.phone ? 94 : 104,
       }}
     >
       {left}
@@ -111,8 +111,8 @@ function Notice({ text, error }: { text: string; error?: boolean }) {
       <View
         style={{
           backgroundColor: error ? '#FDECEC' : '#E6FAF4',
-          borderRadius: s.phone ? 14 : 20,
-          padding: s.phone ? 16 : 22,
+          borderRadius: s.phone ? 16 : 20,
+          padding: s.phone ? 18 : 22,
         }}
       >
         <Text size={s.sub} weight="medium" color={error ? KY.red : KY.greenInk}>
@@ -264,7 +264,7 @@ export function NewClient() {
   const [address, setAddress] = useState('');
   const save = useSave();
   const ready = !!name.trim();
-  const avatar = s.phone ? 180 : 200;
+  const avatar = s.phone ? 202 : 200;
   return (
     <View style={{ flex: 1, backgroundColor: KY.bg }}>
       <Header title="Adicionar cliente" onBack={nav.back} />

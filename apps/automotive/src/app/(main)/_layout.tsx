@@ -4,10 +4,11 @@ import { Animated, Platform, StyleSheet, View, type ViewStyle } from 'react-nati
 import { warmVoice } from '../../havena/voice';
 import { WakeListener } from '../../havena/wake';
 import { KyteAgentHost } from '../../kyte/agent';
-import { restoreKyteCache } from '../../kyte/store';
+import { pollKyteSales, restoreKyteCache } from '../../kyte/store';
 import { usePhone, useSystemInsets, useTabBarSpace } from '../../layout/form-factor';
 import { StopsProvider } from '../../map/stops';
 import { usePrototype } from '../../prototype/state';
+import { setBadge, setCurrentApp } from '../../shell/badges';
 import { isKept, KeptScreens } from '../../shell/kept-screens';
 import { Sidebar } from '../../shell/sidebar';
 import { TabBar } from '../../shell/tab-bar';
@@ -15,6 +16,7 @@ import { layout, useColors } from '../../theme';
 import { BlurArea, BlurTargetProvider } from '../../ui/blur-target';
 import { ScreenTransition, usePageTransition } from '../../ui/motion';
 import { CallMini, CallScreen } from '../../whatsapp/sim/call-layer';
+import { CHATS } from '../../whatsapp/sim/data';
 
 /**
  * Estrutura das telas principais. Multimídia (ou celular deitado): barra lateral do CarPlay
@@ -55,6 +57,17 @@ export default function MainLayout() {
   // Dados do Kyte já lidos antes (arquivo do aparelho): as telas do Kyte abrem com eles na hora.
   useEffect(() => {
     void restoreKyteCache();
+  }, []);
+  // Preview: o WhatsApp simulado começa com conversas não lidas (bolinha no menu).
+  useEffect(() => {
+    if (Platform.OS === 'web') setBadge('whatsapp', CHATS.filter((x) => x.unread).length);
+  }, []);
+  // Bolinhas do menu: abrir um app limpa a dele.
+  useEffect(() => setCurrentApp(section), [section]);
+  // Vendas novas no Kyte (feitas por outra pessoa da equipe) acendem a bolinha do Kyte.
+  useEffect(() => {
+    const t = setInterval(pollKyteSales, 3 * 60_000);
+    return () => clearInterval(t);
   }, []);
   const page = usePageTransition();
   return (

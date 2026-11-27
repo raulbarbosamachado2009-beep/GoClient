@@ -2,6 +2,7 @@ import { File, Paths } from 'expo-file-system';
 import { useCallback, useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 import { perfStart } from '../perf';
+import { bumpBadge } from '../shell/badges';
 import { kyteAgent, kyteAgentAvailable, kyteLogged } from './agent';
 import { brl, type KyteCustomer, type KyteProduct, type KyteSale, summarize } from './model';
 import { SAMPLE, SAMPLE_STORE } from './sample';
@@ -69,6 +70,11 @@ async function load(kind: Kind) {
         `Não reconheci ${what} do Kyte. Abra Ajustes → Diagnóstico do Kyte, toque em "Ler agora" e mande o texto.`,
       );
     }
+    if (kind === 'sale' && cache.sale) {
+      // Vendas que não conhecíamos: acendem a bolinha do Kyte no menu.
+      const known = new Set(cache.sale.list.map((s) => s.id));
+      bumpBadge('kyte', (r.list as KyteSale[]).filter((s) => !known.has(s.id)).length);
+    }
     (cache as Record<Kind, unknown>)[kind] = { list: r.list as Row[Kind][], at: Date.now() };
     persist();
     emit();
@@ -105,9 +111,17 @@ export function clearKyteData() {
 
 /** Vendas feitas pelo GoClient no Preview (lá não há Kyte de verdade). */
 const previewSales: KyteSale[] = [];
+/** Mudanças nas vendas do Preview (ex.: cancelada), por id. */
+const previewPatches = new Map<string, Partial<KyteSale>>();
+const previewSaleList = () =>
+  [...previewSales, ...SAMPLE.sale].map((s) => {
+    const p = previewPatches.get(s.id);
+    return p ? { ...s, ...p } : s;
+  });
 
 /** Venda recém-registrada: entra no topo do Histórico na hora, sem esperar ler o Kyte. */
 export function addLocalSale(sale: KyteSale) {
+  invalidateNumbers();
   if (PREVIEW) previewSales.unshift(sale);
   else if (cache.sale) {
     cache.sale.list = [sale, ...cache.sale.list.filter((s) => s.id !== sale.id)];
@@ -118,13 +132,25 @@ export function addLocalSale(sale: KyteSale) {
 
 /** Próximo número de venda (o maior que conhecemos + 1), enquanto o Kyte não diz o dele. */
 export function nextSaleNumber(): string {
-  const all = PREVIEW ? [...previewSales, ...SAMPLE.sale] : (cache.sale?.list ?? []);
+  const all = PREVIEW ? previewSaleList() : (cache.sale?.list ?? []);
   const max = all.reduce((m, s) => Math.max(m, Number(s.number) || 0), 0);
   return max ? String(max + 1) : '';
 }
 
+/** Leitura discreta das vendas, de tempos em tempos (para a bolinha de venda nova). */
+export function pollKyteSales() {
+  if (PREVIEW || !kyteAgentAvailable() || !kyteLogged()) return;
+  load('sale').catch(() => {});
+}
+
 /** Remove/atualiza uma venda localmente (ex.: depois de cancelar). */
 export function patchSale(id: string, patch: Partial<KyteSale>) {
+  invalidateNumbers();
+  if (PREVIEW) {
+    previewPatches.set(id, { ...previewPatches.get(id), ...patch });
+    emit();
+    return;
+  }
   const c = cache.sale;
   if (!c) return;
   c.list = c.list.map((s) => (s.id === id ? { ...s, ...patch } : s));
@@ -173,11 +199,7 @@ export function useKyteList<K extends Kind>(kind: K, active = true) {
   }, [refresh, active]);
 
   const list = (
-    PREVIEW
-      ? kind === 'sale'
-        ? [...previewSales, ...SAMPLE.sale]
-        : SAMPLE[kind]
-      : (cache[kind]?.list ?? null)
+    PREVIEW ? (kind === 'sale' ? previewSaleList() : SAMPLE[kind]) : (cache[kind]?.list ?? null)
   ) as Row[K][] | null;
   return {
     list,
@@ -199,6 +221,13 @@ let kyteNumbers: {
   at: number;
   data: Record<'today' | 'yesterday' | 'month' | 'last30', Figure | null>;
 } | null = null;
+let numbersVersion = 0;
+
+/** Uma venda entrou ou foi cancelada: os totais do Kyte lidos antes ficaram velhos. */
+function invalidateNumbers() {
+  kyteNumbers = null;
+  numbersVersion += 1;
+}
 
 /**
  * Números do Início. Preferência: os totais que o próprio Kyte mostra no Histórico (incluem
@@ -206,12 +235,16 @@ let kyteNumbers: {
  */
 export function useKyteSummary(sales: KyteSale[] | null) {
   const [, tick] = useState(0);
+  const version = numbersVersion;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: relê os totais do Kyte quando uma venda muda (version).
   useEffect(() => {
     if (PREVIEW || !kyteAgentAvailable() || !kyteLogged()) return;
     if (kyteNumbers && Date.now() - kyteNumbers.at < 2 * 60_000) return;
     let alive = true;
-    kyteAgent
-      .salesSummary()
+    // Logo depois de uma venda/cancelamento o Kyte ainda está atualizando os totais.
+    const wait = version ? new Promise((r) => setTimeout(r, 4000)) : Promise.resolve();
+    wait
+      .then(() => kyteAgent.salesSummary())
       .then((d) => {
         const f = (v: { count: number; total: string } | null) =>
           v ? { count: v.count, total: v.total } : null;
@@ -230,7 +263,7 @@ export function useKyteSummary(sales: KyteSale[] | null) {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [version]);
   const mine = summarize(sales ?? []);
   const own = (k: 'today' | 'yesterday' | 'month' | 'last30'): Figure =>
     kyteNumbers?.data[k] ?? { count: mine[k].count, total: brl(mine[k].total) };
