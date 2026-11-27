@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useRef, useState } from 'react';
-import { Animated, Easing, type StyleProp, type ViewStyle } from 'react-native';
+import { Animated, Easing, Platform, type StyleProp, type ViewStyle } from 'react-native';
 import { nativeDriver } from '../theme';
 
 /** Curva padrão da Apple para entradas (ease-out suave). */
@@ -322,4 +322,93 @@ export function usePageTransition() {
         ],
       };
   return { leave, style: style as StyleProp<ViewStyle> };
+}
+
+/**
+ * Troca no lugar, sem trocar de página (onboarding, pedido de 27/11/2026). A cada mudança de
+ * `id`:
+ * - `scene`: os elementos atuais saem juntos (somem subindo e encolhendo de leve) e os novos
+ *   entram com as animações de entrada deles (o conteúdo é montado de novo).
+ * - `text`: o texto não se move; some desfocando e o novo aparece entrando em foco (no
+ *   aparelho, onde não há desfoque, só a opacidade).
+ */
+export function Morph({
+  id,
+  mode,
+  delay = 0,
+  children,
+  style,
+}: {
+  id: string;
+  mode: 'scene' | 'text';
+  /** Atraso da saída e da entrada (escalona selo, título e texto). */
+  delay?: number;
+  children: ReactNode;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const v = useRef(new Animated.Value(1)).current;
+  const [shown, setShown] = useState(id);
+  const frozen = useRef<ReactNode>(children);
+  const latest = useRef(id);
+  latest.current = id;
+  if (shown === id) frozen.current = children;
+  useEffect(() => {
+    if (id === shown) return;
+    const out = Animated.timing(v, {
+      toValue: 0,
+      duration: mode === 'scene' ? 260 : 180,
+      delay,
+      easing: Easing.in(Easing.quad),
+      useNativeDriver: nativeDriver,
+    });
+    out.start(({ finished }) => {
+      if (!finished) return;
+      setShown(latest.current);
+      if (mode === 'scene') v.setValue(1);
+      else
+        Animated.timing(v, {
+          toValue: 1,
+          duration: 360,
+          delay: 40,
+          easing: appleEase,
+          useNativeDriver: nativeDriver,
+        }).start();
+    });
+    // Sem parar na limpeza: `stop()` pararia qualquer animação do valor (inclusive a entrada
+    // que começa logo depois). Uma troca nova chama `timing` de novo, que substitui a atual.
+  }, [id, shown, mode, delay, v]);
+  const web = Platform.OS === 'web';
+  const anim =
+    mode === 'scene'
+      ? {
+          opacity: v,
+          transform: [
+            { translateY: v.interpolate({ inputRange: [0, 1], outputRange: [-28, 0] }) },
+            { scale: v.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1] }) },
+          ],
+          ...(web
+            ? {
+                filter: v.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: ['blur(6px)', 'blur(0px)'],
+                }),
+              }
+            : null),
+        }
+      : {
+          opacity: v,
+          ...(web
+            ? {
+                filter: v.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: ['blur(10px)', 'blur(0px)'],
+                }),
+              }
+            : null),
+        };
+  return (
+    <Animated.View key={mode === 'scene' ? shown : undefined} style={[style, anim as object]}>
+      {shown === id ? children : frozen.current}
+    </Animated.View>
+  );
 }

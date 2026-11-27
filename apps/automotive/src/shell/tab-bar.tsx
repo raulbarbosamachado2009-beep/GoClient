@@ -12,6 +12,7 @@ import { KyteLogo } from '../ui/brand';
 import { Blur, Touchable } from '../ui/primitives';
 import { WhatsAppLogo } from '../whatsapp/brand';
 import { OutlineGlyph } from './app-icons';
+import { BadgeDot } from './badge-dot';
 
 /** Telas abertas a partir da aba puxável do Mapa (a aba Mapa fica marcada nelas). */
 export const MAP_ROUTES = ['/mapa', '/clientes', '/produtos', '/rotas', '/mais'];
@@ -264,7 +265,17 @@ export function TabBar() {
             scaleTo={0.88}
             style={styles.tab}
           >
-            {icon(i, i === highlighted ? ink : muted)}
+            <View>
+              {icon(i, i === highlighted ? ink : muted)}
+              {(t.key === 'kyte' || t.key === 'whatsapp') && (
+                <BadgeDot
+                  app={t.key}
+                  size={18}
+                  ring={dark ? '#1C1C1E' : '#FAFAFC'}
+                  hidden={i === active}
+                />
+              )}
+            </View>
           </Touchable>
         ))}
       </View>

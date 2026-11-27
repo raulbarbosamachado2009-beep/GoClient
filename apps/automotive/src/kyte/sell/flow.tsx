@@ -503,7 +503,7 @@ export function SellFlow({ onOpenKyte }: { onOpenKyte: (p: SellPlan) => void }) 
             gap: 22,
           }}
         >
-          <Spinner color={KY.green} size={s.phone ? 56 : 80} />
+          <Spinner color={KY.green} size={s.phone ? 63 : 80} />
           <Text size={s.body} weight="medium" color={KY.sub}>
             {busy ?? ''}
           </Text>
@@ -604,9 +604,9 @@ function SellPage({
               onPress={onCustomer}
               accessibilityLabel="Adicionar cliente"
               style={{
-                width: s.phone ? 72 : 100,
-                height: s.phone ? 72 : 100,
-                borderRadius: s.phone ? 16 : 24,
+                width: s.phone ? 81 : 100,
+                height: s.phone ? 81 : 100,
+                borderRadius: s.phone ? 18 : 24,
                 backgroundColor: KY.green,
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -620,7 +620,7 @@ function SellPage({
       {/* Barra de ferramentas: busca e "1X" (quantos itens cada toque põe). */}
       <View
         style={{
-          height: s.phone ? 84 : 112,
+          height: s.phone ? 94 : 112,
           flexDirection: 'row',
           alignItems: 'center',
           paddingHorizontal: s.pad,
@@ -671,8 +671,8 @@ function SellPage({
                 borderColor: KY.ink,
                 borderRadius: 8,
                 paddingHorizontal: 12,
-                height: s.phone ? 44 : 64,
-                minWidth: s.phone ? 60 : 84,
+                height: s.phone ? 49 : 64,
+                minWidth: s.phone ? 67 : 84,
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
@@ -690,7 +690,7 @@ function SellPage({
           showsHorizontalScrollIndicator={false}
           style={{
             flexGrow: 0,
-            height: s.phone ? 64 : 88,
+            height: s.phone ? 72 : 88,
             borderBottomWidth: 1,
             borderBottomColor: KY.line,
           }}
@@ -703,9 +703,9 @@ function SellPage({
                 onPress={() => setCat(c)}
                 scaleTo={0.98}
                 style={{
-                  minWidth: s.phone ? 200 : 260,
+                  minWidth: s.phone ? 224 : 260,
                   paddingHorizontal: 24,
-                  height: s.phone ? 64 : 88,
+                  height: s.phone ? 72 : 88,
                   alignItems: 'center',
                   justifyContent: 'center',
                   borderBottomWidth: 4,
@@ -747,7 +747,7 @@ function SellPage({
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',
-                gap: s.phone ? 18 : 26,
+                gap: s.phone ? 20 : 26,
                 height: s.rowH,
                 paddingHorizontal: s.pad,
                 borderBottomWidth: 1,
@@ -765,8 +765,8 @@ function SellPage({
                   <Appear distance={6} style={{ position: 'absolute', top: -6, right: -6 }}>
                     <View
                       style={{
-                        minWidth: s.phone ? 36 : 52,
-                        height: s.phone ? 36 : 52,
+                        minWidth: s.phone ? 40 : 52,
+                        height: s.phone ? 40 : 52,
                         borderRadius: s.phone ? 8 : 12,
                         backgroundColor: KY.green,
                         alignItems: 'center',
@@ -851,9 +851,9 @@ function CustomerPage({
             onPress={onNew}
             accessibilityLabel="Cadastrar cliente"
             style={{
-              width: s.phone ? 72 : 100,
-              height: s.phone ? 72 : 100,
-              borderRadius: s.phone ? 16 : 24,
+              width: s.phone ? 81 : 100,
+              height: s.phone ? 81 : 100,
+              borderRadius: s.phone ? 18 : 24,
               backgroundColor: KY.green,
               alignItems: 'center',
               justifyContent: 'center',
@@ -865,7 +865,7 @@ function CustomerPage({
       />
       <View
         style={{
-          height: s.phone ? 84 : 112,
+          height: s.phone ? 94 : 112,
           flexDirection: 'row',
           alignItems: 'center',
           gap: 16,
@@ -919,7 +919,7 @@ function CustomerPage({
                 flexDirection: 'row',
                 alignItems: 'center',
                 gap: 14,
-                minHeight: s.phone ? 104 : 136,
+                minHeight: s.phone ? 116 : 136,
                 paddingLeft: s.pad,
                 paddingRight: s.pad - 8,
                 borderBottomWidth: 1,
@@ -1067,7 +1067,7 @@ function CartRow({
       scaleTo={0.97}
       style={{
         flex: 1,
-        height: s.phone ? 104 : 140,
+        height: s.phone ? 116 : 140,
         alignItems: 'center',
         justifyContent: 'center',
         gap: 2,
@@ -1102,11 +1102,11 @@ function CartRow({
           flexDirection: 'row',
           alignItems: 'center',
           gap: 12,
-          minHeight: s.phone ? 96 : 128,
+          minHeight: s.phone ? 108 : 128,
           paddingHorizontal: s.pad,
         }}
       >
-        <Text size={s.body} weight="medium" style={{ minWidth: s.phone ? 48 : 70 }}>
+        <Text size={s.body} weight="medium" style={{ minWidth: s.phone ? 54 : 70 }}>
           {l.qty}
           <Text size={s.small} color={KY.faint}>
             {' '}
@@ -1193,7 +1193,7 @@ function NumberPage({
         alignItems: 'center',
         gap: 14,
         paddingHorizontal: s.pad,
-        paddingVertical: s.phone ? 40 : 20,
+        paddingVertical: s.phone ? 45 : 20,
       }}
     >
       <Text size={s.sub} weight="medium" color={KY.ink}>
@@ -1207,7 +1207,7 @@ function NumberPage({
           paddingBottom: 6,
         }}
       >
-        <Text size={s.phone ? 64 : 88} color={KY.sub} style={{ fontFamily: FONT.displayLight }}>
+        <Text size={s.phone ? 72 : 88} color={KY.sub} style={{ fontFamily: FONT.displayLight }}>
           {shown}
         </Text>
       </View>
@@ -1271,7 +1271,7 @@ function DiscountPage({
       }}
       style={{
         flex: 1,
-        height: s.phone ? 60 : 84,
+        height: s.phone ? 67 : 84,
         borderRadius: r - 4,
         alignItems: 'center',
         justifyContent: 'center',
@@ -1305,7 +1305,7 @@ function DiscountPage({
           paddingBottom: 6,
         }}
       >
-        <Text size={s.phone ? 64 : 88} color={KY.sub} style={{ fontFamily: FONT.displayLight }}>
+        <Text size={s.phone ? 72 : 88} color={KY.sub} style={{ fontFamily: FONT.displayLight }}>
           {shown}
         </Text>
       </View>
@@ -1401,7 +1401,7 @@ function NotePage({
             alignItems: 'center',
             justifyContent: 'center',
             gap: 14,
-            height: s.phone ? 84 : 112,
+            height: s.phone ? 94 : 112,
           }}
         >
           <KIcon
@@ -1501,7 +1501,7 @@ function PaymentPage({
         alignItems: 'center',
         justifyContent: 'center',
         gap: 22,
-        paddingVertical: s.phone ? 44 : 0,
+        paddingVertical: s.phone ? 49 : 0,
         flex: s.phone ? undefined : 1,
       }}
     >
@@ -1513,7 +1513,7 @@ function PaymentPage({
           borderColor: KY.navy,
           borderRadius: s.phone ? 10 : 14,
           paddingHorizontal: 18,
-          height: s.phone ? 56 : 80,
+          height: s.phone ? 63 : 80,
           justifyContent: 'center',
         }}
       >
@@ -1544,7 +1544,7 @@ function PaymentPage({
             scaleTo={0.96}
             style={{
               width: '33.333%',
-              height: s.phone ? 136 : 150,
+              height: s.phone ? 152 : 150,
               alignItems: 'center',
               justifyContent: 'center',
               gap: 6,
@@ -1628,7 +1628,7 @@ function CashPage({
   const change = changeCents(value, total);
   const short = value < total;
   const display = (
-    <View style={{ alignItems: 'center', gap: 10, paddingVertical: s.phone ? 44 : 0 }}>
+    <View style={{ alignItems: 'center', gap: 10, paddingVertical: s.phone ? 49 : 0 }}>
       <Text size={s.small} color={KY.sub} weight="medium">
         VALOR RECEBIDO
       </Text>
@@ -1712,12 +1712,12 @@ function DonePage({
         style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10, padding: s.pad }}
       >
         <Appear distance={20}>
-          <KIcon name="checkmark" size={s.phone ? 200 : 220} color={KY.green} />
+          <KIcon name="checkmark" size={s.phone ? 224 : 220} color={KY.green} />
         </Appear>
-        <Text size={s.phone ? 34 : 48} weight="semibold" color={KY.sub}>
+        <Text size={s.phone ? 38 : 48} weight="semibold" color={KY.sub}>
           {title}
         </Text>
-        <Text size={s.phone ? 44 : 60} color={KY.sub} style={{ fontFamily: FONT.displayLight }}>
+        <Text size={s.phone ? 49 : 60} color={KY.sub} style={{ fontFamily: FONT.displayLight }}>
           {brl(done.sale.total)}
         </Text>
         {done.changeCents ? (

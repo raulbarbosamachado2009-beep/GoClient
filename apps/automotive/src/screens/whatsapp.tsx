@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 import { usePhone } from '../layout/form-factor';
+import { setBadge } from '../shell/badges';
 import { concentric, useColors } from '../theme';
 import { AppIntro, type IntroFeature } from '../ui/app-intro';
 import { Presence } from '../ui/motion';
@@ -80,6 +81,10 @@ function RealWhatsApp() {
   const onMessage = (m: WhatsAppMessage) => {
     if (m.type === 'wa') {
       noteWhatsAppLinked(m.logged);
+      return;
+    }
+    if (m.type === 'wa-unread') {
+      setBadge('whatsapp', m.count);
       return;
     }
     const d = currentDraft();

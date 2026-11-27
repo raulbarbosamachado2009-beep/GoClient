@@ -11,6 +11,7 @@ import { useSpring } from '../ui/motion';
 import { Blur, Text, Touchable } from '../ui/primitives';
 import { WhatsAppLogo } from '../whatsapp/brand';
 import { type AppGlyph, MapAppIcon, OutlineGlyph } from './app-icons';
+import { BadgeDot } from './badge-dot';
 
 interface Item {
   href: Href;
@@ -103,6 +104,16 @@ export function Sidebar() {
               label={item.label}
               selected={i === activeIndex}
               onPress={() => router.replace(item.href)}
+              badge={
+                item.glyph === 'kyte' || item.glyph === 'whatsapp' ? (
+                  <BadgeDot
+                    app={item.glyph}
+                    size={22}
+                    ring={dark ? '#1C1C1E' : LIGHT_PANEL}
+                    hidden={i === activeIndex}
+                  />
+                ) : null
+              }
             >
               {item.glyph === 'kyte' ? (
                 <KyteLogo size={ICON} />
@@ -146,12 +157,15 @@ function Tile({
   selected,
   onPress,
   children,
+  badge,
 }: {
   top: number;
   label: string;
   selected?: boolean;
   onPress: () => void;
   children: ReactNode;
+  /** Bolinha de novidade no canto do ícone. */
+  badge?: ReactNode;
 }) {
   return (
     <Touchable
@@ -163,6 +177,7 @@ function Tile({
       style={[styles.tile, { top }]}
     >
       {children}
+      {badge}
     </Touchable>
   );
 }

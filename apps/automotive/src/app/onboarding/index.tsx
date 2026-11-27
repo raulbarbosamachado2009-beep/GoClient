@@ -9,7 +9,8 @@ import { useColors } from '../../theme';
 import { usePageTransition } from '../../ui/motion';
 
 /**
- * Onboarding — 1) a nuvem do Lucas se forma e sai; 2) três páginas com uma ilustração animada cada
+ * Onboarding — 1) a nuvem do Lucas se forma e sai; 2) uma página só com três etapas (27/11: o
+ * quadro fica, os elementos dele saem e entram; os textos trocam desfocando) com uma ilustração cada
  * (clientes, rota, voz), no mesmo molde no celular e na multimídia.
  */
 export default function Welcome() {
@@ -87,6 +88,7 @@ function Pages({ onDone }: { onDone: () => void }) {
   return (
     <View style={{ flex: 1 }} {...swipe.panHandlers}>
       <OnboardingLayout
+        morph
         sceneKey={page.key}
         scene={page.scene}
         badge={page.badge}

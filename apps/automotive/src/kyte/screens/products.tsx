@@ -203,7 +203,7 @@ export function ProductDetail({ id }: { id: string }) {
             >
               <View
                 style={{
-                  height: s.phone ? 150 : 140,
+                  height: s.phone ? 168 : 140,
                   alignItems: 'center',
                   justifyContent: 'center',
                   paddingHorizontal: 12,

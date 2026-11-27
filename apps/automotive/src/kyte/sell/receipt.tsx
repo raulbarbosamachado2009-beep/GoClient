@@ -135,7 +135,7 @@ function ReceiptView({
         style={{
           backgroundColor: '#E7EAEE',
           paddingTop: s.phone ? top : 0,
-          height: (s.phone ? 64 : 88) + (s.phone ? top : 0),
+          height: (s.phone ? 72 : 88) + (s.phone ? top : 0),
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'center',
@@ -149,7 +149,7 @@ function ReceiptView({
       </Touchable>
       <View
         style={{
-          height: s.phone ? 80 : 104,
+          height: s.phone ? 90 : 104,
           justifyContent: 'center',
           paddingHorizontal: s.pad - 6,
         }}
@@ -158,8 +158,8 @@ function ReceiptView({
           onPress={onClose}
           accessibilityLabel="Fechar recibo"
           style={{
-            width: s.phone ? 64 : 96,
-            height: s.phone ? 64 : 96,
+            width: s.phone ? 72 : 96,
+            height: s.phone ? 72 : 96,
             alignItems: 'center',
             justifyContent: 'center',
           }}
@@ -313,7 +313,7 @@ function ReceiptView({
             scaleTo={0.94}
             style={{
               flex: 1,
-              height: s.phone ? 116 : 140,
+              height: s.phone ? 130 : 140,
               alignItems: 'center',
               justifyContent: 'center',
               gap: 6,
@@ -405,8 +405,8 @@ function PrinterSettings({
         onPress={() => printer && setPrinter({ ...printer, paper: v })}
         style={{
           flex: 1,
-          height: s.phone ? 64 : 88,
-          borderRadius: s.phone ? 12 : 18,
+          height: s.phone ? 72 : 88,
+          borderRadius: s.phone ? 13 : 18,
           alignItems: 'center',
           justifyContent: 'center',
           backgroundColor: on ? KY.card : 'transparent',
@@ -447,8 +447,8 @@ function PrinterSettings({
               alignItems: 'center',
               gap: 16,
               backgroundColor: '#E6FAF4',
-              borderRadius: s.phone ? 18 : 26,
-              padding: s.phone ? 18 : 24,
+              borderRadius: s.phone ? 20 : 26,
+              padding: s.phone ? 20 : 24,
             }}
           >
             <KIcon name="print" size={s.icon + 6} color={KY.greenInk} />
@@ -494,7 +494,7 @@ function PrinterSettings({
               style={{
                 flexDirection: 'row',
                 backgroundColor: '#E9ECF0',
-                borderRadius: s.phone ? 16 : 24,
+                borderRadius: s.phone ? 18 : 24,
                 padding: 4,
                 gap: 4,
               }}

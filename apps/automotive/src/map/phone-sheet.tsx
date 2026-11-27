@@ -1170,6 +1170,7 @@ export function RouteSheet({
                   sheet.current?.snap(0);
                   onNavigate();
                 }}
+                sound
                 scaleTo={0.97}
                 style={[styles.go, { backgroundColor: c.accent }]}
               >

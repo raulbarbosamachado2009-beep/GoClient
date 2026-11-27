@@ -14,7 +14,7 @@ import { type IconName, KIcon, KY, Text, useKySize } from '../ui';
 /** Raio dos botões grandes do rodapé (e as peças de dentro seguem o concêntrico). */
 export function useRadius() {
   const s = useKySize();
-  return s.phone ? 18 : 26;
+  return s.phone ? 20 : 26;
 }
 
 /** Cliente da venda no canto do cabeçalho ("Danilo DR… 👤"), como no Kyte. */
@@ -31,8 +31,8 @@ export function CustomerChip({ name, onPress }: { name: string; onPress: () => v
         borderWidth: 2,
         borderColor: KY.navy,
         borderRadius: s.phone ? 10 : 14,
-        paddingHorizontal: s.phone ? 12 : 18,
-        height: s.phone ? 52 : 76,
+        paddingHorizontal: s.phone ? 13 : 18,
+        height: s.phone ? 58 : 76,
         maxWidth: s.phone ? 230 : 380,
       }}
     >
@@ -74,11 +74,12 @@ export function KyteButton({
   return (
     <Touchable
       onPress={disabled ? undefined : onPress}
+      sound={!outline && !disabled}
       accessibilityRole="button"
       accessibilityState={{ disabled }}
       style={{
         flex: flex ? 1 : undefined,
-        height: s.phone ? 88 : 128,
+        height: s.phone ? 99 : 128,
         borderRadius: r,
         backgroundColor: outline ? KY.card : color,
         borderWidth: outline ? 2 : 0,
@@ -87,13 +88,13 @@ export function KyteButton({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        paddingHorizontal: s.phone ? 24 : 36,
+        paddingHorizontal: s.phone ? 27 : 36,
         gap: 14,
       }}
     >
       {icon ? <KIcon name={icon} size={s.icon} color={ink} /> : null}
       <Text
-        size={s.phone ? 28 : 40}
+        size={s.phone ? 31 : 40}
         weight="semibold"
         color={ink}
         lines={1}
@@ -113,7 +114,7 @@ export function Bottom({ children }: { children: ReactNode }) {
   return (
     <View
       style={{
-        paddingHorizontal: s.phone ? 16 : s.pad,
+        paddingHorizontal: s.phone ? 18 : s.pad,
         paddingTop: 10,
         paddingBottom: s.phone ? tab + 12 : 20,
         gap: 12,
@@ -129,7 +130,7 @@ export function Bottom({ children }: { children: ReactNode }) {
 export function MoreButton({ onPress }: { onPress: () => void }) {
   const s = useKySize();
   const r = useRadius();
-  const box = s.phone ? 88 : 128;
+  const box = s.phone ? 99 : 128;
   return (
     <Touchable
       onPress={onPress}
@@ -215,7 +216,7 @@ export function Numpad({
           }
           style={{
             width: '33.333%',
-            height: s.phone ? 112 : 150,
+            height: s.phone ? 125 : 150,
             alignItems: 'center',
             justifyContent: 'center',
             borderBottomWidth: i < 9 ? 1 : 0,
@@ -228,7 +229,7 @@ export function Numpad({
           ) : k === 'ok' ? (
             <KIcon name="checkmark" size={s.icon + 8} color={okDisabled ? KY.faint : KY.greenInk} />
           ) : k === null ? null : (
-            <Text size={s.phone ? 40 : 56} weight="regular">
+            <Text size={s.phone ? 45 : 56} weight="regular">
               {k}
             </Text>
           )}
@@ -251,7 +252,7 @@ export function BigAmount({
   cursor?: boolean;
 }) {
   const s = useKySize();
-  const big = size ?? (s.phone ? 96 : 128);
+  const big = size ?? (s.phone ? 108 : 128);
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
       <Text size={big * 0.3} color={color}>
@@ -287,7 +288,7 @@ export function OptionLine({
       style={{
         flexDirection: 'row',
         alignItems: 'center',
-        minHeight: s.phone ? 84 : 116,
+        minHeight: s.phone ? 94 : 116,
         borderBottomWidth: 1,
         borderBottomColor: KY.line,
         paddingHorizontal: 4,
@@ -306,8 +307,8 @@ export function OptionLine({
 export function SheetCard({ children, onClose }: { children: ReactNode; onClose: () => void }) {
   const s = useKySize();
   const tab = useTabBarSpace();
-  const R = s.phone ? 36 : 44;
-  const pad = s.phone ? 22 : 32;
+  const R = s.phone ? 40 : 44;
+  const pad = s.phone ? 25 : 32;
   return (
     <View style={{ position: 'absolute', inset: 0, justifyContent: 'flex-end' }}>
       <Touchable

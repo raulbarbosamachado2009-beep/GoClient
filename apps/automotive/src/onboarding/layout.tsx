@@ -3,7 +3,7 @@ import { Animated, StyleSheet, View } from 'react-native';
 import { usePhone, useSystemInsets } from '../layout/form-factor';
 import { nativeDriver, spacing, useColors } from '../theme';
 import { LogoMark } from '../ui/brand';
-import { Appear, appleEase, useSpring } from '../ui/motion';
+import { Appear, appleEase, Morph, useSpring } from '../ui/motion';
 import { Text, Touchable } from '../ui/primitives';
 import { SceneFrame } from './scenes';
 
@@ -27,6 +27,7 @@ export function OnboardingLayout({
   hero,
   body,
   backdrop,
+  morph = false,
 }: {
   /** Ilustração; `null` = tela só com marca, texto e ações (ex.: login). */
   scene: ReactNode | null;
@@ -47,6 +48,12 @@ export function OnboardingLayout({
   body?: ReactNode;
   /** Fundo decorativo atrás de tudo (ex.: logos flutuando na tela de e-mail). */
   backdrop?: ReactNode;
+  /**
+   * Uma página só que troca o conteúdo (onboarding, pedido de 27/11/2026): o quadro fica
+   * parado, os elementos dele saem e os da próxima etapa entram; os textos só trocam
+   * desfocando, sem sair do lugar. Os textos reservam duas linhas para nada pular.
+   */
+  morph?: boolean;
 }) {
   const c = useColors();
   const phone = usePhone();
@@ -54,7 +61,41 @@ export function OnboardingLayout({
 
   // Texto centrado no celular e nas telas sem ilustração.
   const mid = phone || scene === null;
-  const copy = (
+  const titleStyle = [phone ? styles.titlePhone : styles.titleCar, mid && styles.center];
+  const textStyle = [
+    phone ? styles.textPhone : styles.textCar,
+    mid && styles.center,
+    mid && { alignSelf: 'center' as const },
+  ];
+  const copy = morph ? (
+    <Appear distance={12} style={[styles.copy, mid ? styles.copyPhone : styles.copyCar]}>
+      {badge ? (
+        <Morph id={sceneKey} mode="text" style={mid ? styles.centerSelf : undefined}>
+          <View style={[styles.badge, { backgroundColor: c.fill }]}>
+            <Text variant="subhead" tone="accent" style={{ fontSize: 26, lineHeight: 32 }}>
+              {badge}
+            </Text>
+          </View>
+        </Morph>
+      ) : null}
+      <Morph id={sceneKey} mode="text" delay={40}>
+        <Text variant="largeTitle" style={[...titleStyle, { minHeight: 2 * (phone ? 62 : 70) }]}>
+          {title}
+        </Text>
+      </Morph>
+      {text ? (
+        <Morph id={sceneKey} mode="text" delay={80}>
+          <Text
+            variant="body"
+            tone="secondary"
+            style={[...textStyle, { minHeight: 2 * (phone ? 39 : 40) }]}
+          >
+            {text}
+          </Text>
+        </Morph>
+      ) : null}
+    </Appear>
+  ) : (
     <View style={[styles.copy, mid ? styles.copyPhone : styles.copyCar]}>
       {/* O logo (sem selo nem ícone) fica parado ao trocar de etapa no login. */}
       <Appear
@@ -150,9 +191,19 @@ export function OnboardingLayout({
         <>
           <View style={styles.topBar}>{onSkip && <SkipButton onPress={onSkip} />}</View>
           <View style={styles.scenePhone}>
-            <FadeIn key={sceneKey}>
-              <SceneFrame>{scene}</SceneFrame>
-            </FadeIn>
+            {morph ? (
+              <FadeIn>
+                <SceneFrame>
+                  <Morph id={sceneKey} mode="scene" style={{ flex: 1 }}>
+                    {scene}
+                  </Morph>
+                </SceneFrame>
+              </FadeIn>
+            ) : (
+              <FadeIn key={sceneKey}>
+                <SceneFrame>{scene}</SceneFrame>
+              </FadeIn>
+            )}
           </View>
           <View style={styles.bottomPhone}>
             {copy}
@@ -162,9 +213,19 @@ export function OnboardingLayout({
       ) : (
         <>
           <View style={styles.sceneCar}>
-            <FadeIn key={sceneKey}>
-              <SceneFrame>{scene}</SceneFrame>
-            </FadeIn>
+            {morph ? (
+              <FadeIn>
+                <SceneFrame>
+                  <Morph id={sceneKey} mode="scene" style={{ flex: 1 }}>
+                    {scene}
+                  </Morph>
+                </SceneFrame>
+              </FadeIn>
+            ) : (
+              <FadeIn key={sceneKey}>
+                <SceneFrame>{scene}</SceneFrame>
+              </FadeIn>
+            )}
           </View>
           <View style={styles.sideCar}>
             {onSkip && (
@@ -259,6 +320,7 @@ export function PillButton({
     <Touchable
       accessibilityRole="button"
       onPress={onPress}
+      sound={variant === 'primary'}
       scaleTo={0.97}
       style={[styles.pill, { height, borderRadius: height / 2, backgroundColor: bg }]}
     >

@@ -43,17 +43,18 @@ export function useKySize() {
   return phone
     ? {
         phone,
-        title: 34,
-        big: 30,
-        body: 22,
-        row: 23,
-        sub: 18,
-        small: 16,
-        icon: 30,
-        rowH: 92,
-        thumb: 76,
-        pad: 22,
-        radius: 16,
+        // 27/11: um pouco maior no celular (pedido do usuário: "tá bem pequeno").
+        title: 44,
+        big: 38,
+        body: 29,
+        row: 31,
+        sub: 24,
+        small: 22,
+        icon: 38,
+        rowH: 120,
+        thumb: 96,
+        pad: 28,
+        radius: 18,
       }
     : // Multimídia: tudo bem maior, para tocar com o carro em movimento (alvos de 96+).
       {
