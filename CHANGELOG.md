@@ -5,7 +5,7 @@ Leia este arquivo antes de começar qualquer trabalho.
 
 ## Estado atual do app
 
-_Última atualização: 2026-11-28 11:57 — Cartões do Mapa na multimídia com elementos bem maiores._
+_Última atualização: 2026-11-28 13:21 — Tema "Automático" segue o horário (escuro das 17h às 6h)._
 
 - **Automotive (`apps/automotive`)** é onde está quase todo o produto: Mapa (OSM + OpenRouteService,
   navegação com voz), Kyte (telas próprias sobre a janela do Kyte) e o assistente de voz Lucas.
@@ -26,6 +26,16 @@ _Última atualização: 2026-11-28 11:57 — Cartões do Mapa na multimídia com
 - Regras de negócio em `packages/core` (com testes); visual só com `@goclient/design-tokens`.
 
 ## Mudanças
+
+### 2026-11-28 13:21 — Tema "Automático" segue o horário
+
+Pedido do usuário: com o tema em "Automático", o app fica escuro das 17h às 5h59 e claro das 6h
+às 16h59 (as lacunas 5h–6h e 16h–17h foram lidas assim). Vale para celular e multimídia.
+
+- `src/theme-schedule.ts`: `modeAt()` decide pelo horário do aparelho e `useClockMode()` troca
+  sozinho na virada da hora, sem reabrir o app. Testes em `theme-schedule.test.ts`.
+- `ThemeProvider` usa o horário no lugar do tema do sistema quando a preferência é "Automático".
+- Ajustes (multimídia): a linha Tema mostra "Escuro das 17h às 6h" quando "Automático" está ativo.
 
 ### 2026-11-28 11:57 — Cartões do Mapa na multimídia com elementos bem maiores
 

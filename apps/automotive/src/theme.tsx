@@ -1,5 +1,6 @@
 import { createContext, type ReactNode, useContext, useMemo, useState } from 'react';
-import { Platform, type TextStyle, useColorScheme } from 'react-native';
+import { Platform, type TextStyle } from 'react-native';
+import { useClockMode } from './theme-schedule';
 import { LIVE_BLUR } from './ui/blur-target';
 
 /**
@@ -213,9 +214,10 @@ const ThemeContext = createContext<ThemeState>({
 });
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const system = useColorScheme();
   const [preference, setPreference] = useState<ThemePreference>('light');
-  const mode: Mode = preference === 'auto' ? (system === 'dark' ? 'dark' : 'light') : preference;
+  // "Automático" segue o horário (escuro das 17h às 5h59), não o tema do aparelho.
+  const clock = useClockMode(preference === 'auto');
+  const mode: Mode = preference === 'auto' ? clock : preference;
   const value = useMemo(
     () => ({ c: palettes[mode], preference, setPreference }),
     [mode, preference],
