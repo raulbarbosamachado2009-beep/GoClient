@@ -181,6 +181,8 @@ export const layout = {
   height: 900,
   sidebarWidth: 204,
   gutter: 24,
+  /** Raio da moldura das páginas na multimídia (o mesmo do painel do Mapa). */
+  pageRadius: 48,
   /** Alvo mínimo de toque no carro. */
   touch: 76,
   radius: { sm: 12, md: 18, lg: 24, xl: 32 },

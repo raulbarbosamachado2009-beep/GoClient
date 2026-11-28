@@ -44,6 +44,20 @@ export default function MainLayout() {
     const underBar = s === 'mapa';
     const waFull = phone && s === 'whatsapp' && Platform.OS === 'web';
     const fullHeight = underBar || s === 'kyte' || waFull;
+    // Multimídia: as outras páginas ficam numa moldura de cantos arredondados, como o painel
+    // do Mapa (mesmo raio e mesmo afastamento da barra lateral e das bordas).
+    if (!phone && !underBar)
+      return {
+        top: layout.gutter,
+        bottom: layout.gutter,
+        right: layout.gutter,
+        left: layout.sidebarWidth + layout.gutter,
+        borderRadius: layout.pageRadius,
+        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: c.material.border,
+        backgroundColor: c.background,
+      };
     return {
       marginLeft: phone || underBar ? 0 : layout.sidebarWidth,
       marginBottom: phone && !fullHeight ? tabSpace : 0,

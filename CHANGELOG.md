@@ -5,7 +5,7 @@ Leia este arquivo antes de começar qualquer trabalho.
 
 ## Estado atual do app
 
-_Última atualização: 2026-11-28 13:21 — Tema "Automático" segue o horário (escuro das 17h às 6h)._
+_Última atualização: 2026-11-28 14:31 — Páginas da multimídia numa moldura de cantos arredondados, como o Mapa._
 
 - **Automotive (`apps/automotive`)** é onde está quase todo o produto: Mapa (OSM + OpenRouteService,
   navegação com voz), Kyte (telas próprias sobre a janela do Kyte) e o assistente de voz Lucas.
@@ -26,6 +26,16 @@ _Última atualização: 2026-11-28 13:21 — Tema "Automático" segue o horário
 - Regras de negócio em `packages/core` (com testes); visual só com `@goclient/design-tokens`.
 
 ## Mudanças
+
+### 2026-11-28 14:31 — Páginas da multimídia com cantos arredondados, como o Mapa
+
+Pedido do usuário: a moldura das páginas deve ter as bordas arredondadas da página do Mapa (só
+na multimídia).
+
+- `app/(main)/_layout.tsx`: na multimídia, Kyte, WhatsApp, Ajustes e as demais páginas ficam
+  numa moldura afastada 24 da barra lateral e das bordas, com raio 48 e contorno fino (o mesmo
+  painel do Mapa). O celular não muda.
+- `layout.pageRadius` (48) no tema; o painel do Mapa usa o mesmo valor.
 
 ### 2026-11-28 13:21 — Tema "Automático" segue o horário
 
