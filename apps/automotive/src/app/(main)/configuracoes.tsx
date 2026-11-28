@@ -57,6 +57,7 @@ export default function SettingsScreen() {
         <Row
           leading={<AppIcon icon="contrast" color="#0A84FF" size={ic} />}
           title="Tema"
+          subtitle={preference === 'auto' && !phone ? 'Escuro das 17h às 6h' : undefined}
           trailing={
             <Segmented<ThemePreference>
               value={preference}
