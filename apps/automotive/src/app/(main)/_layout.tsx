@@ -9,7 +9,8 @@ import { usePhone, useSystemInsets, useTabBarSpace } from '../../layout/form-fac
 import { StopsProvider } from '../../map/stops';
 import { usePrototype } from '../../prototype/state';
 import { setBadge, setCurrentApp } from '../../shell/badges';
-import { isKept, KeptScreens } from '../../shell/kept-screens';
+import { isKept, KeptScreens, type KeptSection } from '../../shell/kept-screens';
+import { PageBackdrop } from '../../shell/page-backdrop';
 import { Sidebar } from '../../shell/sidebar';
 import { TabBar } from '../../shell/tab-bar';
 import { layout, useColors } from '../../theme';
@@ -83,6 +84,10 @@ export default function MainLayout() {
     const t = setInterval(pollKyteSales, 3 * 60_000);
     return () => clearInterval(t);
   }, []);
+  // Fundo desfocado da multimídia: a moldura da página aberta (rota atual ou tela mantida).
+  const slotNode = useRef<ComponentRef<typeof View>>(null);
+  const keptNodes = useRef<Partial<Record<KeptSection, ComponentRef<typeof View> | null>>>({});
+  const framed = !phone && section !== 'mapa';
   const page = usePageTransition();
   return (
     <StopsProvider>
@@ -92,6 +97,12 @@ export default function MainLayout() {
         <KyteAgentHost />
         {/* Ativação por voz ("olá Lucas", "bom dia", "oh IA"…), com o Lucas fechado. */}
         <WakeListener />
+        {framed && (
+          <PageBackdrop
+            page={section}
+            target={() => (isKept(section) ? keptNodes.current[section] : slotNode.current) ?? null}
+          />
+        )}
         <BlurArea targetRef={screen} style={StyleSheet.absoluteFill}>
           {/* Área do conteúdo: ocupa a tela toda; cada camada (a rota atual e as telas
               mantidas) põe a própria margem, conforme a seção dela. */}
@@ -99,6 +110,8 @@ export default function MainLayout() {
             {/* Dentro das telas não há área definida: cada tela define a sua (ex.: o Mapa). */}
             <BlurTargetProvider value={null}>
               <View
+                ref={slotNode}
+                collapsable={false}
                 style={[
                   StyleSheet.absoluteFill,
                   frame(section),
@@ -111,7 +124,13 @@ export default function MainLayout() {
                 </ScreenTransition>
               </View>
               {/* Mapa, Kyte e WhatsApp ficam abertos por trás: trocar de aba é instantâneo. */}
-              <KeptScreens section={section} frame={frame} />
+              <KeptScreens
+                section={section}
+                frame={frame}
+                nodeRef={(s, n) => {
+                  keptNodes.current[s] = n;
+                }}
+              />
             </BlurTargetProvider>
           </BlurArea>
           <BlurTargetProvider value={content}>

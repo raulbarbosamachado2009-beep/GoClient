@@ -1,5 +1,12 @@
 import { useGlobalSearchParams } from 'expo-router';
-import { type ComponentType, type ReactNode, useEffect, useRef, useState } from 'react';
+import {
+  type ComponentRef,
+  type ComponentType,
+  type ReactNode,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { Platform, StyleSheet, View, type ViewStyle } from 'react-native';
 import KyteScreen from '../screens/kyte';
 import MapScreen from '../screens/mapa';
@@ -35,9 +42,12 @@ export const isKept = (s: string): s is KeptSection => (KEPT as readonly string[
 export function KeptScreens({
   section,
   frame,
+  nodeRef,
 }: {
   section: string;
   frame: (s: KeptSection) => ViewStyle;
+  /** Recebe a moldura de cada tela (o fundo desfocado da multimídia fotografa a aberta). */
+  nodeRef?: (s: KeptSection, node: ComponentRef<typeof View> | null) => void;
 }) {
   const [mounted, setMounted] = useState<Set<KeptSection>>(
     () => new Set(isKept(section) ? [section] : []),
@@ -64,7 +74,13 @@ export function KeptScreens({
   return (
     <>
       {KEPT.filter((s) => mounted.has(s)).map((s) => (
-        <Kept key={s} active={s === section} params={last.current[s]} style={frame(s)}>
+        <Kept
+          key={s}
+          active={s === section}
+          params={last.current[s]}
+          style={frame(s)}
+          nodeRef={(n) => nodeRef?.(s, n)}
+        >
           {(() => {
             const Screen = SCREENS[s];
             return <Screen />;
@@ -79,11 +95,13 @@ function Kept({
   active,
   params,
   style,
+  nodeRef,
   children,
 }: {
   active: boolean;
   params: Params;
   style: ViewStyle;
+  nodeRef: (node: ComponentRef<typeof View> | null) => void;
   children: ReactNode;
 }) {
   // Parâmetros estáveis enquanto escondida (evita refazer a tela por mudança de outra aba).
@@ -92,6 +110,8 @@ function Kept({
     value.current = { active, params };
   return (
     <View
+      ref={nodeRef}
+      collapsable={false}
       style={[StyleSheet.absoluteFill, style, active ? styles.on : styles.off]}
       pointerEvents={active ? 'box-none' : 'none'}
       importantForAccessibility={active ? 'auto' : 'no-hide-descendants'}

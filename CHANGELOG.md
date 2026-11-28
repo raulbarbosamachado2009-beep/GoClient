@@ -5,7 +5,7 @@ Leia este arquivo antes de começar qualquer trabalho.
 
 ## Estado atual do app
 
-_Última atualização: 2026-11-28 14:31 — Páginas da multimídia numa moldura de cantos arredondados, como o Mapa._
+_Última atualização: 2026-11-28 15:03 — Fundo da multimídia é um desfoque da própria página._
 
 - **Automotive (`apps/automotive`)** é onde está quase todo o produto: Mapa (OSM + OpenRouteService,
   navegação com voz), Kyte (telas próprias sobre a janela do Kyte) e o assistente de voz Lucas.
@@ -26,6 +26,20 @@ _Última atualização: 2026-11-28 14:31 — Páginas da multimídia numa moldur
 - Regras de negócio em `packages/core` (com testes); visual só com `@goclient/design-tokens`.
 
 ## Mudanças
+
+### 2026-11-28 15:03 — Fundo da multimídia é um desfoque da própria página
+
+Pedido do usuário (2 prints): atrás das páginas com moldura, o fundo (antes cor lisa, inclusive
+atrás da barra lateral) deve ser um desfoque que imita a página e preenche a tela toda.
+
+- `shell/page-backdrop.tsx`: tira uma foto pequena (192×112) da moldura da página aberta ao
+  trocar de página e a cada 3 s, amplia até cobrir a tela, desfoca (`blurRadius`) e troca com
+  um esmaecimento. Se a foto falhar, fica a cor de fundo.
+- `shell/page-capture.ts` (Android/iOS, `react-native-view-shot` 6.1.1, instalado com
+  `expo install`) e `page-capture.web.ts` (Preview, `html-to-image`). PNG para os cantos da
+  moldura ficarem transparentes.
+- A barra lateral fica sem cor própria fora do Mapa, então o desfoque aparece atrás dela.
+- O Mapa não muda. O celular também não.
 
 ### 2026-11-28 14:31 — Páginas da multimídia com cantos arredondados, como o Mapa
 

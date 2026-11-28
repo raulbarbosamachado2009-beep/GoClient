@@ -68,7 +68,8 @@ export function Sidebar() {
   const veil = dark ? (backdrop ? 'rgba(18,18,20,0.5)' : 'rgba(255,255,255,0.07)') : LIGHT_PANEL;
 
   return (
-    <View style={[styles.bar, { backgroundColor: pageBg }]}>
+    // Fora do Mapa, atrás da barra aparece o fundo desfocado da página (sem cor própria).
+    <View style={[styles.bar, { backgroundColor: onMap ? pageBg : 'transparent' }]}>
       <View style={[styles.panel, dark ? { borderColor: c.material.border } : styles.panelLight]}>
         {backdrop && (
           <Image
