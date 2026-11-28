@@ -5,7 +5,7 @@ Leia este arquivo antes de começar qualquer trabalho.
 
 ## Estado atual do app
 
-_Última atualização: 2026-11-27 13:19 — Cartão do WhatsApp no Mapa abre a conversa tocada._
+_Última atualização: 2026-11-28 11:57 — Cartões do Mapa na multimídia com elementos bem maiores._
 
 - **Automotive (`apps/automotive`)** é onde está quase todo o produto: Mapa (OSM + OpenRouteService,
   navegação com voz), Kyte (telas próprias sobre a janela do Kyte) e o assistente de voz Lucas.
@@ -26,6 +26,17 @@ _Última atualização: 2026-11-27 13:19 — Cartão do WhatsApp no Mapa abre a 
 - Regras de negócio em `packages/core` (com testes); visual só com `@goclient/design-tokens`.
 
 ## Mudanças
+
+### 2026-11-28 11:57 — Cartões do Mapa na multimídia com elementos bem maiores
+
+Pedido do usuário (3 prints): aumentar bem mais os elementos dos cartões do Mapa na multimídia.
+
+- **Coluna da direita** mais larga (520 → 600) para caber o texto maior.
+- **Cartão da rota** (Parada N de M): "Ver lista" e "Parada" maiores, foto 140, nome 50, endereço
+  30, "Próxima parada" maior, botões Ligar/WhatsApp/‹/› de 96 → 116, e chegada/tempo/km em 54.
+- **Lista de paradas:** linhas 108 → 136, número 76, nome 36 e endereço 28, alça de arrastar maior.
+- **Destino de um cliente só:** foto 132, nome 46, endereço 30, × maior, chegada/tempo/km em 54
+  e Ligar/WhatsApp com 108 de altura.
 
 ### 2026-11-27 13:19 — Cartão do WhatsApp no Mapa abre a conversa tocada
 

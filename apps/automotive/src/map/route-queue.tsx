@@ -10,7 +10,7 @@ import { SheetLock, Tap } from './sheet-context';
 /** Altura fixa de cada linha (o arrasto calcula a posição por ela). */
 const ROW_BASE = 116;
 /** Multimídia: linhas um pouco mais baixas, sem foto, no estilo da lista do cartão. */
-const ROW_CAR = 108;
+const ROW_CAR = 136;
 const SPRING = {
   stiffness: 320,
   damping: 30,
@@ -294,20 +294,20 @@ function QueueRow({
               <View style={[styles.badgeCar, { backgroundColor: current ? c.accent : soft }]}>
                 <Text
                   variant="headline"
-                  style={{ fontSize: 26, color: current ? '#FFFFFF' : c.accent }}
+                  style={{ fontSize: 34, color: current ? '#FFFFFF' : c.accent }}
                 >
                   {index + 1}
                 </Text>
               </View>
               <View style={{ flex: 1, minWidth: 0 }}>
-                <Text variant="headline" numberOfLines={1} style={{ fontSize: 28, lineHeight: 34 }}>
+                <Text variant="headline" numberOfLines={1} style={{ fontSize: 36, lineHeight: 44 }}>
                   {name}
                 </Text>
                 <Text
                   variant="callout"
                   tone="secondary"
                   numberOfLines={1}
-                  style={{ fontSize: 22, lineHeight: 28 }}
+                  style={{ fontSize: 28, lineHeight: 34 }}
                 >
                   {current ? 'Parada atual' : client.address}
                 </Text>
@@ -342,13 +342,13 @@ function QueueRow({
             accessibilityLabel={`Mover ${client.tradeName || client.name}`}
             style={[styles.handle, HANDLE_WEB]}
           >
-            <Icon name="reorder-three" size={car ? 40 : 44} color={c.textTertiary} />
+            <Icon name="reorder-three" size={car ? 52 : 44} color={c.textTertiary} />
           </View>
         )}
       </View>
       {!last && !active && (
         <View
-          style={[styles.sep, { backgroundColor: c.separator }, car && { left: spacing[4] + 76 }]}
+          style={[styles.sep, { backgroundColor: c.separator }, car && { left: spacing[4] + 96 }]}
         />
       )}
     </Animated.View>
@@ -385,9 +385,9 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   badgeCar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 76,
+    height: 76,
+    borderRadius: 38,
     alignItems: 'center',
     justifyContent: 'center',
   },

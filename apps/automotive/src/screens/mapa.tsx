@@ -968,10 +968,10 @@ function MorphColumn({
 function Stat({ value, label }: { value: string; label: string }) {
   return (
     <View style={{ alignItems: 'center' }}>
-      <Text variant="title" style={{ fontSize: 40, lineHeight: 46 }}>
+      <Text variant="title" style={{ fontSize: 54, lineHeight: 62 }}>
         {value}
       </Text>
-      <Text variant="caption" tone="secondary">
+      <Text variant="caption" tone="secondary" style={{ fontSize: 24, lineHeight: 30 }}>
         {label}
       </Text>
     </View>
@@ -1031,7 +1031,7 @@ function ClientCard({
       onPress={onPress}
       style={[styles.step, { backgroundColor: tile }]}
     >
-      <Icon name={icon} size={38} />
+      <Icon name={icon} size={48} />
     </Touchable>
   );
 
@@ -1043,24 +1043,24 @@ function ClientCard({
         onLayout={(e) => onFit?.(Math.ceil(e.nativeEvent.layout.height))}
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[4] }}>
-          <Avatar name={client.name} size={104} radius={COMPACT_INNER} />
+          <Avatar name={client.name} size={132} radius={COMPACT_INNER} />
           <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
-            <Text variant="headline" tone="secondary" style={{ fontSize: 22, lineHeight: 28 }}>
+            <Text variant="headline" tone="secondary" style={{ fontSize: 28, lineHeight: 34 }}>
               {stopLabel ?? 'Destino'}
             </Text>
-            <Text variant="title" numberOfLines={1} style={{ fontSize: 36, lineHeight: 42 }}>
+            <Text variant="title" numberOfLines={1} style={{ fontSize: 46, lineHeight: 54 }}>
               {client.tradeName || client.name}
             </Text>
             <Marquee
               text={[client.address, district].filter(Boolean).join(' · ')}
-              lineHeight={30}
-              style={{ fontSize: 24 }}
+              lineHeight={38}
+              style={{ fontSize: 30 }}
             />
           </View>
           <IconButton
             icon="close"
-            size={56}
-            iconSize={30}
+            size={72}
+            iconSize={38}
             variant="gray"
             accessibilityLabel="Fechar destino"
             onPress={onClose}
@@ -1078,8 +1078,8 @@ function ClientCard({
               onPress={() => callPhone(client.phone)}
               style={[styles.wideAction, { backgroundColor: tile }]}
             >
-              <Icon name="call" size={34} />
-              <Text variant="headline" style={{ fontSize: 26 }}>
+              <Icon name="call" size={44} />
+              <Text variant="headline" style={{ fontSize: 34 }}>
                 Ligar
               </Text>
             </Touchable>
@@ -1088,8 +1088,8 @@ function ClientCard({
               onPress={() => openWhatsApp(client.phone)}
               style={[styles.wideAction, { backgroundColor: tile }]}
             >
-              <Icon name="logo-whatsapp" size={34} />
-              <Text variant="headline" style={{ fontSize: 26 }}>
+              <Icon name="logo-whatsapp" size={44} />
+              <Text variant="headline" style={{ fontSize: 34 }}>
                 WhatsApp
               </Text>
             </Touchable>
@@ -1109,9 +1109,9 @@ function ClientCard({
             onPress={() => setList((v) => !v)}
             style={styles.topLink}
           >
-            <Icon name={list ? 'chevron-back' : 'list'} size={32} color={c.accent} />
+            <Icon name={list ? 'chevron-back' : 'list'} size={42} color={c.accent} />
             {!list && (
-              <Text variant="headline" tone="accent" style={{ fontSize: 26, lineHeight: 32 }}>
+              <Text variant="headline" tone="accent" style={{ fontSize: 34, lineHeight: 40 }}>
                 Ver lista
               </Text>
             )}
@@ -1119,14 +1119,14 @@ function ClientCard({
         ) : (
           <IconButton
             icon="close"
-            size={56}
-            iconSize={30}
+            size={72}
+            iconSize={38}
             variant="gray"
             accessibilityLabel="Fechar destino"
             onPress={onClose}
           />
         )}
-        <Text variant="headline" tone="secondary" style={{ fontSize: 24, lineHeight: 30 }}>
+        <Text variant="headline" tone="secondary" style={{ fontSize: 30, lineHeight: 36 }}>
           {stopLabel ?? 'Destino'}
         </Text>
       </View>
@@ -1157,22 +1157,22 @@ function ClientCard({
         ) : (
           <View style={styles.compactBody}>
             <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: spacing[4] }}>
-              <Avatar name={client.name} size={120} radius={COMPACT_INNER} />
+              <Avatar name={client.name} size={140} radius={COMPACT_INNER} />
               <View style={{ flex: 1, gap: 6 }}>
-                <Text variant="title" numberOfLines={2} style={{ fontSize: 40, lineHeight: 46 }}>
+                <Text variant="title" numberOfLines={2} style={{ fontSize: 50, lineHeight: 58 }}>
                   {client.tradeName || client.name}
                 </Text>
                 {/* Endereço numa linha só: quando não cabe, passa como um carrossel. */}
                 <Marquee
                   text={[client.address, district].filter(Boolean).join(' · ')}
-                  lineHeight={30}
-                  style={{ fontSize: 24 }}
+                  lineHeight={38}
+                  style={{ fontSize: 30 }}
                 />
               </View>
               <IconButton
                 icon="close"
-                size={56}
-                iconSize={28}
+                size={72}
+                iconSize={38}
                 accessibilityLabel="Fechar destino"
                 onPress={onClose}
               />
@@ -1187,23 +1187,23 @@ function ClientCard({
                 style={[styles.nextStop, { backgroundColor: tile }]}
               >
                 <View style={[styles.queueDot, { backgroundColor: soft }]}>
-                  <Text variant="headline" style={{ fontSize: 26, color: c.accent }}>
+                  <Text variant="headline" style={{ fontSize: 34, color: c.accent }}>
                     {nextIndex + 1}
                   </Text>
                 </View>
                 <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text variant="callout" tone="secondary" style={{ fontSize: 22, lineHeight: 28 }}>
+                  <Text variant="callout" tone="secondary" style={{ fontSize: 28, lineHeight: 34 }}>
                     Próxima parada
                   </Text>
                   <Text
                     variant="headline"
                     numberOfLines={1}
-                    style={{ fontSize: 28, lineHeight: 34 }}
+                    style={{ fontSize: 36, lineHeight: 44 }}
                   >
                     {next.tradeName || next.name}
                   </Text>
                 </View>
-                <Icon name="chevron-forward" size={30} color={c.textTertiary} />
+                <Icon name="chevron-forward" size={38} color={c.textTertiary} />
               </Touchable>
             ) : null}
             <View style={{ gap: spacing[4] }}>
@@ -1331,7 +1331,7 @@ const COMPACT_INNER = concentric(COMPACT_R, spacing[6]);
 
 const LEFT = layout.sidebarWidth + layout.gutter;
 /** Coluna de cartões à direita do mapa. */
-const SIDE_W = 520;
+const SIDE_W = 600;
 /** Cartão do WhatsApp no tamanho de painel (quando o cartão de baixo cresce). */
 const WA_H = 136;
 let savedFit = 0;
@@ -1439,7 +1439,7 @@ const styles = StyleSheet.create({
   waItem: { flexDirection: 'row', alignItems: 'center', gap: spacing[4], height: 92 },
   wideAction: {
     flex: 1,
-    height: 84,
+    height: 108,
     borderRadius: COMPACT_INNER,
     flexDirection: 'row',
     alignItems: 'center',
@@ -1456,11 +1456,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    height: 48,
+    height: 64,
     marginTop: -spacing[2],
-    marginBottom: spacing[3],
+    marginBottom: spacing[4],
   },
-  topLink: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 48 },
+  topLink: { flexDirection: 'row', alignItems: 'center', gap: 8, height: 64 },
   nextStop: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1478,9 +1478,9 @@ const styles = StyleSheet.create({
     paddingRight: spacing[4],
   },
   queueDot: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 76,
+    height: 76,
+    borderRadius: 38,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1509,8 +1509,8 @@ const styles = StyleSheet.create({
   next: { height: 96, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
   stepRow: { flexDirection: 'row', gap: spacing[3] },
   step: {
-    width: 96,
-    height: 96,
+    width: 116,
+    height: 116,
     borderRadius: COMPACT_INNER,
     alignItems: 'center',
     justifyContent: 'center',
