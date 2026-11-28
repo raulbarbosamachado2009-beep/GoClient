@@ -1338,7 +1338,7 @@ let savedFit = 0;
 /** Altura do cartão do WhatsApp no início ("Para onde vamos?"). */
 const WA_HOME = 300;
 const WA_R = 48;
-const MAP_R = 48;
+const MAP_R = layout.pageRadius;
 
 /** Celular em pé: busca/orientação no topo, cartão embaixo (acima das abas). */
 const PHONE = StyleSheet.create({
